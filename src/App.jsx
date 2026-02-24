@@ -7,6 +7,7 @@ import CancelScreen from './Screens/CancelScreen';
 import AutoTranslate from './AutoTranslate';
 import StudentPopup from './Components/Popup.jsx';
 import BackDesignPopup from './Components/BackDesignPopup.jsx';
+import BackTextPopup from './Components/BackTextPopup.jsx';
 import StudentRegister from './Pages/StudentRegister.jsx';
 import StudentLogin from './Pages/StudentLogin.jsx';
 import { useAuth } from './context/AuthContext';
@@ -24,6 +25,7 @@ function App() {
     return saved ? JSON.parse(saved) : {};
   }); // student-specific customizations
   const [showBackPopup, setShowBackPopup] = useState(false);
+  const [showBackTextPopup, setShowBackTextPopup] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
   const { fetchBackDesigns, backDesigns } = useBackDesignStore();
   const getUser = localStorage.getItem('user');
@@ -100,6 +102,15 @@ function App() {
           backDesigns={backDesigns}
         />
       )}
+      {showBackTextPopup && (
+        <BackTextPopup
+          students={students}
+          customizations={customizations}
+          setCustomizations={setCustomizations}
+          onFinish={() => setShowBackTextPopup(false)}
+          isAppReady={isAppReady}
+        />
+      )}
       <Routes>
         <Route path="/" element={
           user ? (
@@ -117,6 +128,7 @@ function App() {
                   customizations={customizations}
                   setCustomizations={setCustomizations}
                   setShowBackPopup={setShowBackPopup}
+                  setShowBackTextPopup={setShowBackTextPopup}
                 />
               )}
             </>

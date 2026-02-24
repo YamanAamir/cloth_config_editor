@@ -20,7 +20,7 @@ import StudentPopup from '../Components/Popup';
 import useLogoStore from '../store/logoStore';
 import { useAuth } from '../context/AuthContext';
 
-const StudentDashboard = ({ mode, setMode, students, customizations, setCustomizations, setShowBackPopup }) => {
+const StudentDashboard = ({ mode, setMode, students, customizations, setCustomizations, setShowBackPopup, setShowBackTextPopup }) => {
     const { logout } = useAuth();
     const [activeMenu, setActiveMenu] = useState('T-SHIRT');
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
@@ -67,7 +67,8 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                 leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '',
                 rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
                 leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
-                backDesign: null
+                backDesign: null,
+                backTexts: []
             }
         },
         'SWEATSHIRT': {
@@ -78,7 +79,8 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                 leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '',
                 rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
                 leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
-                backDesign: null
+                backDesign: null,
+                backTexts: []
             }
         },
         'HOODIE': {
@@ -90,7 +92,8 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                 bottomChestText: '', bottomChestFlag: '', bottomChestLogoPredefined: '', bottomChestLogoCustom: '', bottomChestType: '',
                 rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
                 leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
-                backDesign: null
+                backDesign: null,
+                backTexts: []
             }
         },
         'ZIPPERHOODIE': {
@@ -101,7 +104,8 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                 leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '',
                 rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
                 leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
-                backDesign: null
+                backDesign: null,
+                backTexts: []
             }
         },
         'SWEATPANTS': {
@@ -329,6 +333,14 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                             <Settings className="w-4 h-4" />
                             <span className="hidden sm:inline">Design Back</span>
                             <span className="sm:hidden text-[10px]">Back</span>
+                        </button>
+                        <button
+                            onClick={() => setShowBackTextPopup(true)}
+                            className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-indigo-700 text-white rounded-xl hover:bg-indigo-800 transition-all font-medium text-sm shadow-md"
+                        >
+                            <Settings className="w-4 h-4" />
+                            <span className="hidden sm:inline">Back Text</span>
+                            <span className="sm:hidden text-[10px]">Text</span>
                         </button>
                         <button
                             onClick={handleChangeMode}
