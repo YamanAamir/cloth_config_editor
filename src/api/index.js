@@ -39,7 +39,7 @@ const handleUnauthorized = (error) => {
         localStorage.removeItem("user");
 
         // Redirect to login
-        window.location.href = "Clothing-Configurator/login";
+        window.location.href = "/Clothing-Configurator/login";
     }
 
     return Promise.reject(error);
