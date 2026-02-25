@@ -6,7 +6,45 @@ import { useEffect } from 'react';
 import { placeOrder } from '../api/api';
 // const stripePromise = loadStripe("pk_test_51S0HgS2ZnQzLDaK40M9tlj1n72wtQNsUNhG986xbE6bfHxWmFfOMJfWGAbg4QrAlFtnhVCtOajoIqUbRgSBnRnkb00iMo1bD1o");
 
-const QuoteModal = ({ isOpen, onClose, selectedOptions, price, onContinueConfiguring, packageName, program }) => {
+const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, price, onContinueConfiguring, packageName, program }) => {
+
+  // Helper: Check if a garment has been actually configured (differs from defaults)
+  const isGarmentConfigured = (garmentType, garmentData) => {
+    const defaults = defaultSelections[garmentType];
+    if (!defaults) return true; // No default known → treat as configured
+
+    // Check color
+    if (garmentData.selectedColor && garmentData.selectedColor !== defaults.selectedColor) return true;
+    // Check size
+    if (garmentData.selectedSize && garmentData.selectedSize !== defaults.selectedSize) return true;
+
+    // Check pressureOptions deeply
+    const currentPO = garmentData.pressureOptions || {};
+    const defaultPO = defaults.pressureOptions || {};
+
+    for (const key of Object.keys(currentPO)) {
+      const currentVal = currentPO[key];
+      const defaultVal = defaultPO[key];
+
+      // Handle arrays (e.g. backTexts)
+      if (Array.isArray(currentVal)) {
+        if (currentVal.length > 0) return true;
+        continue;
+      }
+      // Handle objects (e.g. backDesign)
+      if (currentVal !== null && typeof currentVal === 'object') {
+        if (JSON.stringify(currentVal) !== JSON.stringify(defaultVal)) return true;
+        continue;
+      }
+      // Handle strings/primitives
+      if (currentVal !== '' && currentVal !== null && currentVal !== undefined && currentVal !== defaultVal) {
+        return true;
+      }
+    }
+
+    return false; // Nothing changed from defaults
+  };
+
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
@@ -562,8 +600,16 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, price, onContinueConfigu
         throw new Error("Student or Class information not found. Please log in again.");
       }
 
-      // Prepare garments array for the backend
-      const garments = Object.entries(selectedOptions).map(([type, options]) => ({
+      // Prepare garments array — only include garments that were actually configured
+      const configuredEntries = Object.entries(selectedOptions).filter(
+        ([type, options]) => isGarmentConfigured(type, options)
+      );
+
+      if (configuredEntries.length === 0) {
+        throw new Error("No garments configured. Please configure at least one garment before placing an order.");
+      }
+
+      const garments = configuredEntries.map(([type, options]) => ({
         product_type: type,
         selectedColor: options.selectedColor,
         selectedSize: options.selectedSize,
@@ -642,9 +688,9 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, price, onContinueConfigu
 
   // Step 1: Quote Review (Original content)
   const renderQuoteReview = () => (
-    <div className="overflow-y-auto px-6 py-4">
-      <div className="space-y-6">
-        {Object.entries(selectedOptions).map(([category, options], categoryIndex) => {
+    <div className="overflow-y-auto px-6 py-6 space-y-8 custom-scrollbar-premium">
+      <div className="grid grid-cols-1 gap-8">
+        {Object.entries(selectedOptions).filter(([category, options]) => isGarmentConfigured(category, options)).map(([category, options], categoryIndex) => {
           const filteredOptions = filterOptions(options);
 
           if (Object.keys(filteredOptions).length === 0) return null;
@@ -652,32 +698,44 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, price, onContinueConfigu
           return (
             <div
               key={category}
-              className="group hover:bg-gray-50/50 rounded-xl p-4 transition-all duration-300 border border-transparent hover:border-green-100"
+              className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 group overflow-hidden relative"
             >
-              <div className="flex items-center mb-4">
-                <div className="p-2 bg-gradient-to-r from-green-100 to-green-50 rounded-lg mr-3">
-                  <Star className="w-4 h-4 text-green-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-800 capitalize">
-                  {category.replace(/([A-Z])/g, ' $1').trim()}
-                </h3>
-                <div className="flex-1 h-px bg-gradient-to-r from-green-200 to-transparent ml-3"></div>
-              </div>
+              {/* Background Accent */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:bg-green-50/50 transition-colors duration-500"></div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {Object.entries(filteredOptions).map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-100 hover:border-green-200 hover:shadow-sm transition-all duration-200"
-                  >
-                    <span className="text-sm text-gray-600 capitalize font-medium">
-                      {key.replace(/([A-Z])/g, ' $1').trim()}
-                    </span>
-                    <span className="text-sm text-gray-900 font-semibold text-right ml-3 bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
-                      {formatValue(value, category, key)}
-                    </span>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-200 transform group-hover:rotate-6 transition-transform duration-500">
+                      <Star className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-extrabold text-slate-800 capitalize tracking-tight">
+                        {category.replace(/([A-Z])/g, ' $1').trim()}
+                      </h3>
+                      <p className="text-sm text-slate-500 font-medium">Custom Configuration</p>
+                    </div>
                   </div>
-                ))}
+                  <div className="px-4 py-1.5 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-100 uppercase tracking-widest">
+                    Ready
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {Object.entries(filteredOptions).map(([key, value]) => (
+                    <div
+                      key={key}
+                      className="group/item relative flex flex-col p-4 bg-slate-50/50 rounded-2xl border border-transparent hover:border-green-100 hover:bg-white hover:shadow-md transition-all duration-300"
+                    >
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 group-hover/item:text-green-600 transition-colors">
+                        {key.replace(/([A-Z])/g, ' $1').trim()}
+                      </span>
+                      <span className="text-sm font-bold text-slate-700 group-hover/item:text-slate-900 transition-colors truncate">
+                        {formatValue(value, category, key)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           );
@@ -689,19 +747,13 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, price, onContinueConfigu
   // Step 2: Customer Details Form
   // Step 2: Customer Details Form
   const renderCustomerDetails = () => {
-    // Handle Enter key press - follow the refOrder sequence
     const handleKeyPress = (e, currentFieldName) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-
-        // Find current field index
         const currentIndex = refOrder.findIndex(ref => ref.current?.name === currentFieldName);
-
-        // Move to next field if not last
         if (currentIndex >= 0 && currentIndex < refOrder.length - 1) {
           refOrder[currentIndex + 1].current?.focus();
         } else if (currentIndex === refOrder.length - 1) {
-          // If on last field (notes), proceed to next step if validation passes
           if (validateCustomerDetails()) {
             setCurrentStep(prev => prev + 1);
           }
@@ -709,243 +761,204 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, price, onContinueConfigu
       }
     };
 
+    const inputClasses = "w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 focus:bg-white transition-all duration-300 outline-none text-slate-700 font-medium placeholder:text-slate-400 shadow-sm";
+    const labelClasses = "block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1";
+
     return (
-      <div className="overflow-y-auto px-6 py-4">
+      <div className="overflow-y-auto px-6 py-6 space-y-8 custom-scrollbar-premium">
         <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Left Column */}
-            <div className="space-y-3">
-              {/* First Name */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  First Name *
-                </label>
-                <input
-                  ref={refs.firstName}
-                  name="firstName"
-                  type="text"
-                  value={customerDetails.firstName || ""}
-                  onChange={(e) => handleInputChange("firstName", e.target.value)}
-                  onKeyPress={(e) => handleKeyPress(e, "firstName")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
-                  placeholder="Enter your first name"
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Email *
-                </label>
-                <input
-                  ref={refs.email}
-                  name="email"
-                  type="email"
-                  value={customerDetails.email || ""}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  onKeyPress={(e) => handleKeyPress(e, "email")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
-                  placeholder="Enter your email"
-                />
-              </div>
-
-              {/* School Name + Deliver to School */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  School Name *
-                </label>
-                <input
-                  ref={refs.Skolenavn}
-                  name="Skolenavn"
-                  type="text"
-                  value={customerDetails.Skolenavn || ""}
-                  onChange={(e) => handleInputChange("Skolenavn", e.target.value)}
-                  onKeyPress={(e) => handleKeyPress(e, "Skolenavn")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
-                  placeholder="Enter your school name"
-                />
-
-                <div className="mt-2 flex items-center">
+          <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Left Column */}
+              <div className="space-y-6">
+                <div>
+                  <label className={labelClasses}>First Name *</label>
                   <input
-                    type="checkbox"
-                    checked={customerDetails.deliverToSchool || false}
-                    onChange={(e) =>
-                      handleInputChange("deliverToSchool", e.target.checked)
-                    }
-                    className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                    id="deliverToSchool"
+                    ref={refs.firstName}
+                    name="firstName"
+                    type="text"
+                    value={customerDetails.firstName || ""}
+                    onChange={(e) => handleInputChange("firstName", e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, "firstName")}
+                    className={inputClasses}
+                    placeholder="Enter your first name"
                   />
-                  <label
-                    htmlFor="deliverToSchool"
-                    className="ml-2 text-sm text-gray-700"
-                  >
-                    Delivery to school
-                  </label>
+                </div>
+
+                <div>
+                  <label className={labelClasses}>Email Address *</label>
+                  <input
+                    ref={refs.email}
+                    name="email"
+                    type="email"
+                    value={customerDetails.email || ""}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, "email")}
+                    className={inputClasses}
+                    placeholder="name@example.com"
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClasses}>School Name *</label>
+                  <input
+                    ref={refs.Skolenavn}
+                    name="Skolenavn"
+                    type="text"
+                    value={customerDetails.Skolenavn || ""}
+                    onChange={(e) => handleInputChange("Skolenavn", e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, "Skolenavn")}
+                    className={inputClasses}
+                    placeholder="e.g. Copenhagen High"
+                  />
+                  <div className="mt-4 flex items-center group cursor-pointer" onClick={() => handleInputChange("deliverToSchool", !customerDetails.deliverToSchool)}>
+                    <div className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${customerDetails.deliverToSchool ? 'bg-green-600' : 'bg-slate-200'}`}>
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 transform ${customerDetails.deliverToSchool ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                    </div>
+                    <label className="ml-3 text-sm font-bold text-slate-600 cursor-pointer">
+                      Deliver to school campus
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelClasses}>City *</label>
+                  <input
+                    ref={refs.city}
+                    name="city"
+                    type="text"
+                    value={customerDetails.city || ""}
+                    onChange={(e) => handleInputChange("city", e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, "city")}
+                    className={inputClasses}
+                    placeholder="e.g. Copenhagen"
+                  />
                 </div>
               </div>
 
-              {/* City */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  City *
-                </label>
-                <input
-                  ref={refs.city}
-                  name="city"
-                  type="text"
-                  value={customerDetails.city || ""}
-                  onChange={(e) => handleInputChange("city", e.target.value)}
-                  onKeyPress={(e) => handleKeyPress(e, "city")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
-                  placeholder="Enter your city"
-                />
-              </div>
+              {/* Right Column */}
+              <div className="space-y-6">
+                <div>
+                  <label className={labelClasses}>Last Name *</label>
+                  <input
+                    ref={refs.lastName}
+                    name="lastName"
+                    type="text"
+                    value={customerDetails.lastName || ""}
+                    onChange={(e) => handleInputChange("lastName", e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, "lastName")}
+                    className={inputClasses}
+                    placeholder="Enter your last name"
+                  />
+                </div>
 
-              {/* Country */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Country
-                </label>
-                <select
-                  ref={refs.country}
-                  name="country"
-                  value={customerDetails.country || "Denmark"}
-                  onChange={(e) => handleInputChange("country", e.target.value)}
-                  onKeyPress={(e) => handleKeyPress(e, "country")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
+                <div>
+                  <label className={labelClasses}>Phone Number *</label>
+                  <input
+                    ref={refs.phone}
+                    name="phone"
+                    type="tel"
+                    value={customerDetails.phone || ""}
+                    onChange={(e) => handleInputChange("phone", e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, "phone")}
+                    className={inputClasses}
+                    placeholder="+45 00 00 00 00"
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClasses}>Street Address *</label>
+                  <input
+                    ref={refs.address}
+                    name="address"
+                    type="text"
+                    value={customerDetails.address || ""}
+                    onChange={(e) => handleInputChange("address", e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, "address")}
+                    className={inputClasses}
+                    placeholder="Enter street and number"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClasses}>Postal Code *</label>
+                    <input
+                      ref={refs.postalCode}
+                      name="postalCode"
+                      type="text"
+                      value={customerDetails.postalCode || ""}
+                      onChange={(e) => handleInputChange("postalCode", e.target.value)}
+                      onKeyPress={(e) => handleKeyPress(e, "postalCode")}
+                      className={inputClasses}
+                      placeholder="0000"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClasses}>Country</label>
+                    <select
+                      ref={refs.country}
+                      name="country"
+                      value={customerDetails.country || "Denmark"}
+                      onChange={(e) => handleInputChange("country", e.target.value)}
+                      onKeyPress={(e) => handleKeyPress(e, "country")}
+                      className={`${inputClasses} appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%20stroke%3D%22currentColor%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.75rem_center] bg-no-repeat`}
+                    >
+                      <option value="Denmark">Denmark</option>
+                      <option value="Sweden">Sweden</option>
+                      <option value="Norway">Norway</option>
+                      <option value="Germany">Germany</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100">
+              <label className={labelClasses}>Delivery Preference</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <button
+                  onClick={() => handleInputChange("deliveryType", "regular")}
+                  className={`flex items-start p-4 rounded-2xl border-2 transition-all duration-300 text-left ${customerDetails.deliveryType === "regular" ? 'border-green-600 bg-green-50/50 shadow-md' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
                 >
-                  <option value="Denmark">Denmark</option>
-                  <option value="Sweden">Sweden</option>
-                  <option value="Norway">Norway</option>
-                  <option value="Germany">Germany</option>
-                  <option value="Other">Other</option>
-                </select>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 mr-3 transition-colors ${customerDetails.deliveryType === "regular" ? 'border-green-600 bg-green-600' : 'border-slate-300 bg-white'}`}>
+                    {customerDetails.deliveryType === "regular" && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">Regular Delivery</p>
+                    <p className="text-xs text-slate-500 font-medium">Estimated 6 weeks free shipping</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleInputChange("deliveryType", "express")}
+                  className={`flex items-start p-4 rounded-2xl border-2 transition-all duration-300 text-left ${customerDetails.deliveryType === "express" ? 'border-green-600 bg-green-50/50 shadow-md' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                >
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 mr-3 transition-colors ${customerDetails.deliveryType === "express" ? 'border-green-600 bg-green-600' : 'border-slate-300 bg-white'}`}>
+                    {customerDetails.deliveryType === "express" && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">Express Priority</p>
+                    <p className="text-xs text-slate-500 font-medium">Estimated 3 weeks delivery</p>
+                  </div>
+                </button>
               </div>
             </div>
 
-            {/* Right Column */}
-            <div className="space-y-3">
-              {/* Last Name */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Last Name *
-                </label>
-                <input
-                  ref={refs.lastName}
-                  name="lastName"
-                  type="text"
-                  value={customerDetails.lastName || ""}
-                  onChange={(e) => handleInputChange("lastName", e.target.value)}
-                  onKeyPress={(e) => handleKeyPress(e, "lastName")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
-                  placeholder="Enter your last name"
-                />
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Phone Number *
-                </label>
-                <input
-                  ref={refs.phone}
-                  name="phone"
-                  type="tel"
-                  value={customerDetails.phone || ""}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                  onKeyPress={(e) => handleKeyPress(e, "phone")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
-                  placeholder="Enter your phone number"
-                />
-              </div>
-
-              {/* Address */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Address *
-                </label>
-                <input
-                  ref={refs.address}
-                  name="address"
-                  type="text"
-                  value={customerDetails.address || ""}
-                  onChange={(e) => handleInputChange("address", e.target.value)}
-                  onKeyPress={(e) => handleKeyPress(e, "address")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
-                  placeholder="Enter your street address"
-                />
-              </div>
-
-              {/* Postal Code */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Postal Code *
-                </label>
-                <input
-                  ref={refs.postalCode}
-                  name="postalCode"
-                  type="text"
-                  value={customerDetails.postalCode || ""}
-                  onChange={(e) => handleInputChange("postalCode", e.target.value)}
-                  onKeyPress={(e) => handleKeyPress(e, "postalCode")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
-                  placeholder="Enter your postal code"
-                />
-              </div>
+            <div className="pt-4">
+              <label className={labelClasses}>Order Notes (Optional)</label>
+              <textarea
+                ref={refs.notes}
+                name="notes"
+                value={customerDetails.notes || ""}
+                onChange={(e) => handleInputChange("notes", e.target.value)}
+                onKeyPress={(e) => handleKeyPress(e, "notes")}
+                rows={3}
+                className={`${inputClasses} resize-none min-h-[100px]`}
+                placeholder="Any special requests or comments for your order..."
+              />
             </div>
           </div>
-
-          {/* Notes */}
-          <div className="mt-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Order Notes (optional)
-            </label>
-            <textarea
-              ref={refs.notes}
-              name="notes"
-              value={customerDetails.notes || ""}
-              onChange={(e) => handleInputChange("notes", e.target.value)}
-              onKeyPress={(e) => handleKeyPress(e, "notes")}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
-              placeholder="Any special requests or comments for your order..."
-            />
-          </div>
-          <div className="mt-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Delivery Type
-            </label>
-
-            {/* Regular Delivery */}
-            <input
-              type="radio"
-              name="deliveryType"
-              checked={customerDetails.deliveryType === "regular"}
-              onChange={() => handleInputChange("deliveryType", "regular")}
-              className="h-4 w-4 text-green-600 border-gray-300"
-              id="regularDelivery"
-            />
-            <label htmlFor="regularDelivery" className="ml-2 text-sm text-gray-700">
-              Regular delivery – estimated delivery time (6 weeks)
-            </label>
-
-            <br />
-
-            {/* Express Delivery */}
-            <input
-              type="radio"
-              name="deliveryType"
-              checked={customerDetails.deliveryType === "express"}
-              onChange={() => handleInputChange("deliveryType", "express")}
-              className="h-4 w-4 text-green-600 border-gray-300"
-              id="expressDelivery"
-            />
-            <label htmlFor="expressDelivery" className="ml-2 text-sm text-gray-700">
-              Express delivery – estimated delivery time (3 weeks)
-            </label>
-          </div>
-
-
         </div>
       </div>
     );
@@ -955,130 +968,145 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, price, onContinueConfigu
 
   // Step 3: Order Confirmation
   const renderOrderConfirmation = () => (
-    <div className="overflow-y-auto px-6 py-4">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="overflow-y-auto px-6 py-6 space-y-8 custom-scrollbar-premium">
+      <div className="max-w-4xl mx-auto space-y-8">
         {/* Customer Details Summary */}
-        <div className="bg-gradient-to-r from-blue-50 to-blue-100/50 rounded-xl p-4 border border-blue-200">
-          <div className="flex items-center mb-3">
-            <User className="w-4 h-4 text-blue-600 mr-2" />
-            <h3 className="text-lg font-bold text-gray-800">Your Information</h3>
+        <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:bg-blue-50 transition-colors duration-500"></div>
+
+          <div className="relative z-10">
+            <div className="flex items-center space-x-4 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+                <User className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-extrabold text-slate-800 tracking-tight">Delivery Details</h3>
+                <p className="text-sm text-slate-500 font-medium">Verify your information</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+              <div className="space-y-4">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Customer Name</span>
+                  <span className="text-sm font-bold text-slate-700">{customerDetails.firstName} {customerDetails.lastName}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Email Contact</span>
+                  <span className="text-sm font-bold text-slate-700">{customerDetails.email}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Phone Number</span>
+                  <span className="text-sm font-bold text-slate-700">{customerDetails.phone}</span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Shipping Address</span>
+                  <span className="text-sm font-bold text-slate-700 leading-relaxed">
+                    {customerDetails.address}<br />
+                    {customerDetails.postalCode} {customerDetails.city}<br />
+                    {customerDetails.country}
+                  </span>
+                </div>
+                {customerDetails.Skolenavn && (
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Educational Institution</span>
+                    <span className="text-sm font-bold text-slate-700">{customerDetails.Skolenavn}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {customerDetails.notes && (
+              <div className="mt-8 pt-6 border-t border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Special Instructions</span>
+                <p className="text-sm font-medium text-slate-600 bg-slate-50 p-4 rounded-xl italic">"{customerDetails.notes}"</p>
+              </div>
+            )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Left Column */}
-            <div className="space-y-1">
-              <p className="text-sm">
-                <span className="font-medium text-gray-700">Name:</span>{" "}
-                {customerDetails.firstName} {customerDetails.lastName}
-              </p>
-              <p className="text-sm">
-                <span className="font-medium text-gray-700">Email:</span>{" "}
-                {customerDetails.email}
-              </p>
-              <p className="text-sm">
-                <span className="font-medium text-gray-700">Phone Number:</span>{" "}
-                {customerDetails.phone}
-              </p>
-              {customerDetails.Skolenavn && (
-                <p className="text-sm">
-                  <span className="font-medium text-gray-700">School Name:</span>{" "}
-                  {customerDetails.Skolenavn}
-                </p>
-              )}
-            </div>
-
-            {/* Right Column */}
-            <div className="space-y-1">
-              <p className="text-sm">
-                <span className="font-medium text-gray-700">Adresse:</span>{" "}
-                {customerDetails.address}
-              </p>
-              <p className="text-sm">
-                <span className="font-medium text-gray-700">City:</span>{" "}
-                {customerDetails.city}, {customerDetails.postalCode}
-              </p>
-              <p className="text-sm">
-                <span className="font-medium text-gray-700">Land:</span>{" "}
-                {customerDetails.country}
-              </p>
-            </div>
-          </div>
-
-          {/* Notes Section */}
-          {customerDetails.notes && (
-            <div className="mt-3 pt-3 border-t border-blue-200">
-              <p className="text-sm">
-                <span className="font-medium text-gray-700">Order Notes:</span>{" "}
-                {customerDetails.notes}
-              </p>
-            </div>
-          )}
-
-
         </div>
 
         {/* Product Configuration Summary */}
-        <div className="bg-gradient-to-r from-green-50 to-green-100/50 rounded-xl p-4 border border-green-200">
-          <div className="flex items-center mb-3">
-            <Package className="w-4 h-4 text-green-600 mr-2" />
-            <h3 className="text-lg font-bold text-gray-800">Clothing Selection Summary</h3>
-          </div>
-          <div className="space-y-3">
-            {Object.entries(selectedOptions).map(([category, options]) => {
-              const filteredOptions = filterOptions(options);
-              if (Object.keys(filteredOptions).length === 0) return null;
+        <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:bg-green-50 transition-colors duration-500"></div>
 
-              return (
-                <div key={category} className="bg-white rounded-lg p-3 border border-green-100">
-                  <h4 className="font-bold text-gray-800 text-sm capitalize mb-1">
-                    {category.replace(/([A-Z])/g, ' $1').trim()}
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                    {Object.entries(filteredOptions).map(([key, value]) => (
-                      <div key={key} className="flex justify-between text-xs">
-                        <span className="text-gray-600 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}:</span>
-                        <span className="font-medium text-gray-900">{formatValue(value, category, key)}</span>
-                      </div>
-                    ))}
+          <div className="relative z-10">
+            <div className="flex items-center space-x-4 mb-8">
+              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-200">
+                <Package className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-extrabold text-slate-800 tracking-tight">Configuration Summary</h3>
+                <p className="text-sm text-slate-500 font-medium">Garments in your order</p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {Object.entries(selectedOptions).filter(([category, options]) => isGarmentConfigured(category, options)).map(([category, options]) => {
+                const filteredOptions = filterOptions(options);
+                if (Object.keys(filteredOptions).length === 0) return null;
+
+                return (
+                  <div key={category} className="bg-slate-50/50 rounded-[1.5rem] p-6 border border-slate-100 hover:bg-white hover:border-green-100 transition-all duration-300">
+                    <h4 className="font-extrabold text-slate-800 text-sm capitalize mb-4 flex items-center">
+                      <div className="w-1.5 h-4 bg-green-500 rounded-full mr-2"></div>
+                      {category.replace(/([A-Z])/g, ' $1').trim()}
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-8">
+                      {Object.entries(filteredOptions).map(([key, value]) => (
+                        <div key={key} className="flex flex-col">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                          <span className="text-xs font-bold text-slate-700">{formatValue(value, category, key)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
   const renderThankYouPage = () => (
-    <div className="overflow-y-auto px-6 py-8">
-      <div className="max-w-2xl mx-auto text-center">
-        <div className="flex justify-center mb-6">
-          <div className="p-4 bg-green-100 rounded-full">
-            <CheckCircle className="w-12 h-12 text-green-600" />
+    <div className="overflow-y-auto px-6 py-12 custom-scrollbar-premium">
+      <div className="max-w-xl mx-auto text-center space-y-8">
+        <div className="relative inline-block">
+          <div className="absolute inset-0 bg-green-500/20 blur-3xl rounded-full scale-150 animate-pulse"></div>
+          <div className="relative w-24 h-24 bg-gradient-to-br from-green-500 to-green-700 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-green-200 animate-in bounce-in duration-1000">
+            <CheckCircle className="w-12 h-12 text-white" />
           </div>
         </div>
 
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Thank You for Your Order!</h2>
-        <p className="text-gray-600 mb-6">
-          Your custom clothing configuration has been received successfully. We'll send a confirmation email to{' '}
-          <span className="font-medium text-green-600">{customerDetails.email}</span> shortly.
-        </p>
-
-        <div className="bg-gray-50 rounded-lg p-4 mb-6">
-          <p className="text-sm text-gray-600 mb-1">Order Reference</p>
-          <p className="font-bold text-gray-900">{orderDate}</p>
+        <div className="space-y-4">
+          <h2 className="text-4xl font-black text-slate-800 tracking-tight">Order Received!</h2>
+          <p className="text-slate-500 font-medium text-lg leading-relaxed">
+            Your premium clothing configuration has been successfully queued for production.
+          </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="bg-slate-50 rounded-[2rem] p-8 border border-white shadow-inner">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Confirmation Number</span>
+          <p className="text-2xl font-black text-slate-800 tracking-tight font-mono">{orderDate}</p>
+          <div className="mt-4 pt-4 border-t border-slate-200 flex items-center justify-center space-x-2">
+            <Mail className="w-4 h-4 text-green-600" />
+            <span className="text-xs font-bold text-slate-500">Receipt sent to {customerDetails.email}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 pt-4">
           <button
             onClick={() => {
               handleResetModal();
               window.location.href = "https://shop.studentlife.dk/homepage-duplicate-95/";
               onClose()
-
             }}
-            className="flex items-center justify-center px-6 py-3 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-all duration-200"
+            className="flex-1 flex items-center justify-center px-8 py-5 bg-white border border-slate-200 rounded-2xl text-slate-700 font-bold hover:bg-slate-50 hover:border-slate-300 transition-all duration-300 shadow-sm transform active:scale-95"
           >
-            <ShoppingCart className="w-5 h-5 mr-2" />
+            <ShoppingCart className="w-5 h-5 mr-3" />
             Continue Shopping
           </button>
 
@@ -1089,10 +1117,10 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, price, onContinueConfigu
                 onContinueConfiguring();
               }
             }}
-            className="flex items-center justify-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all duration-200"
+            className="flex-1 flex items-center justify-center px-8 py-5 bg-gradient-to-br from-slate-800 to-slate-900 text-white rounded-2xl font-bold hover:from-black hover:to-slate-800 transition-all duration-300 shadow-xl shadow-slate-200 transform active:scale-95"
           >
-            <Settings className="w-5 h-5 mr-2" />
-            Keep Configuring
+            <Settings className="w-5 h-5 mr-3" />
+            Change Design
           </button>
         </div>
       </div>
@@ -1134,8 +1162,8 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, price, onContinueConfigu
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-      <div className="bg-white w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl border border-gray-100 animate-in slide-in-from-bottom duration-500">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in fade-in duration-300">
+      <div className="bg-white/95 backdrop-blur-xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-white/40 rounded-2xl overflow-hidden animate-in slide-in-from-bottom duration-500">
         {/* Modal Header with Step Indicator */}
         <div className="relative bg-gradient-to-r from-green-50 via-white to-green-50 border-b border-green-100">
           <div className="absolute inset-0 bg-gradient-to-r from-green-600/5 to-green-700/5"></div>

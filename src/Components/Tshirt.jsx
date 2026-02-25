@@ -132,17 +132,17 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
     ctx.fillStyle = hasFlag || hasLogo ? "#ffffff" : "#000000";
     ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
 
-    // Add black border if both text and flag are present
-    if (text?.trim() && hasFlag) {
+    // Add black border if flag or logo is present
+    if (hasFlag || hasLogo) {
       ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 10;
+      ctx.lineWidth = 40;
       ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
     }
 
     return canvas.toDataURL("image/png");
   };
 
-  const getDiffuseBase64 = (countryName, text, callback) => {
+  const getDiffuseBase64 = (countryName, hasLogo, text, callback) => {
     const canvas = document.createElement("canvas");
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
@@ -166,12 +166,13 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
     }
 
     const drawBorder = () => {
-      if (text?.trim() && countryName) {
+      if (countryName || hasLogo) {
         ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 10;
+        ctx.lineWidth = 40;
         ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
       }
     };
+
 
     if (countryName && flagImages[countryName]) {
       const img = new Image();
@@ -398,7 +399,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
       });
 
       // Diffuse
-      getDiffuseBase64(flag, text, (diffuseBase) => {
+      getDiffuseBase64(flag, hasLogo, text, (diffuseBase) => {
         getLogoBase64(logoPre, logoCustom, (logoBase) => {
           const finalCanvas = document.createElement("canvas");
           finalCanvas.width = CANVAS_WIDTH;

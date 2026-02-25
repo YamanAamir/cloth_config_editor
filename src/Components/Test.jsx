@@ -15,6 +15,7 @@ import design6 from '../assets/predefinedbackimages/Design6.jpeg';
 import design7 from '../assets/predefinedbackimages/Design7.jpeg';
 import design8 from '../assets/predefinedbackimages/Design8.jpeg';
 import { BASE_URL } from "../utils/const";
+import useLogoStore from "../store/logoStore";
 
 // Preload icons
 const deleteIcon = new Image();
@@ -32,7 +33,7 @@ const HANDLE_SIZE = 28;
 const CANVAS_WIDTH = 400;
 const CANVAS_HEIGHT = 400;
 
-// const backDesigns = [
+// const logos = [
 //   { name: 'Design 1', url: design1 },
 //   { name: 'Design 2', url: design2 },
 //   { name: 'Design 3', url: design3 },
@@ -43,7 +44,7 @@ const CANVAS_HEIGHT = 400;
 //   { name: 'Design 8', url: design8 },
 // ];
 
-export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, backDesigns = [] }) {
+export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) {
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const [objects, setObjects] = useState([]);
@@ -54,6 +55,17 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, ba
   const [offset, setOffset] = useState({});
   const [initialSize, setInitialSize] = useState({ w: 0, h: 0 });
   const [initialAngleOffset, setInitialAngleOffset] = useState(0);
+
+  const { logos, loading, fetchLogos } = useLogoStore();
+  const userStr = localStorage.getItem("user");
+  const user = userStr ? JSON.parse(userStr) : null;
+  const school_id = user?.school_id;
+
+  useEffect(() => {
+    if (school_id) {
+      fetchLogos({ school_id: school_id });
+    }
+  }, [school_id]);
 
   // Load saved backDesign when pressureOptions change
   useEffect(() => {
@@ -464,6 +476,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, ba
     setResizing(false);
     setRotating(false);
   };
+  console.log("logos", logos);
 
   return (
     <div className="p-0 max-w-2xl mx-auto">
@@ -473,7 +486,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, ba
           Select Predefined Back Design
         </label>
         <div className="grid grid-cols-4 gap-4 mb-8">
-          {(backDesigns || []).map((design, idx) => {
+          {(logos || []).map((design, idx) => {
             const img = `${BASE_URL}${design.file_path.replace(/\\/g, "/")}`;
             return (
               <button

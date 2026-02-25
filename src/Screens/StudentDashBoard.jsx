@@ -667,6 +667,7 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                     isOpen={isQuoteModalOpen}
                     onClose={() => setIsQuoteModalOpen(false)}
                     selectedOptions={allSelections}
+                    defaultSelections={DEFAULT_SELECTIONS}
                     price={400}
                     packageName={packageName}
                     program={program}
