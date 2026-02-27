@@ -105,7 +105,7 @@ export default function Test1({ pressureOptions, onUpdate, postEx, isAppReady })
   useEffect(() => {
     requestAnimationFrame(() => {
       const cleanBase64 = draw(false);
-      const prefixed = (postEx || '') + "leg_custom:" + cleanBase64;
+      const prefixed = (postEx || '') + "leg_custom: " + cleanBase64;
       onUpdate?.({ canvasBase64: prefixed });
     });
   }, [objects, isAppReady]);

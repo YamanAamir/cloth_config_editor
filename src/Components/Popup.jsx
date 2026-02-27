@@ -172,6 +172,7 @@
 
 // export default StudentPopup;
 import React, { useState } from "react";
+import { message } from "antd";
 
 const StudentPopup = ({ setMode, setStudents }) => {
   const [activeTab, setActiveTab] = useState("individual");
@@ -201,7 +202,7 @@ const StudentPopup = ({ setMode, setStudents }) => {
 
     if (activeTab === "individual") {
       if (!individualName.trim()) {
-        alert("Please enter student name");
+        message.error("Please enter student name");
         return;
       }
       finalStudents = [individualName.trim()];
@@ -211,7 +212,7 @@ const StudentPopup = ({ setMode, setStudents }) => {
         .filter((n) => n.length > 0);
 
       if (finalStudents.length === 0) {
-        alert("Please enter at least one student name");
+        message.error("Please enter at least one student name");
         return;
       }
     }
@@ -219,7 +220,7 @@ const StudentPopup = ({ setMode, setStudents }) => {
     localStorage.setItem("students", JSON.stringify(finalStudents));
     setStudents(finalStudents);
     setMode(activeTab);
-    alert("Saved successfully!");
+    message.success("Saved successfully!");
   };
 
   return (

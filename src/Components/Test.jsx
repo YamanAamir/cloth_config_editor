@@ -162,9 +162,16 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) 
     if (onUpdate && postEx && diffuseBase64 && opacityBase64) {
       onUpdate({
         canvasBase64: {
-          diffuse: postEx + "back_diffuse:" + diffuseBase64,
-          opacity: postEx + "back_opacity:" + opacityBase64,
-          emissive: postEx + "back_emissive:" + diffuseBase64
+          diffuse: postEx + "back_diffuse: " + diffuseBase64,
+          opacity: postEx + "back_opacity: " + opacityBase64,
+          emissive: postEx + "back_emissive: " + diffuseBase64,
+          // Special field for PlayCanvas to avoid CORS:
+          rawData: {
+            diffuse: diffuseBase64,
+            opacity: opacityBase64,
+            emissive: diffuseBase64,
+            slot: 'back'
+          }
         }
       });
     }

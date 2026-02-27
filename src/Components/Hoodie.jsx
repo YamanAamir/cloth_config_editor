@@ -392,10 +392,8 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos }) => {
       ["preview-iframe", "preview-iframe2"].forEach((id) => {
         const iframe = document.getElementById(id);
         if (iframe?.contentWindow) {
-          iframe.contentWindow.postMessage(
-            `Hoodie:${area}_opacity:${opacity}`,
-            "*"
-          );
+          const msg = `Hoodie:${area}_opacity: ${opacity}`;
+          iframe.contentWindow.postMessage(msg, "*");
         }
       });
 
@@ -425,10 +423,8 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos }) => {
                 ["preview-iframe", "preview-iframe2"].forEach((id) => {
                   const iframe = document.getElementById(id);
                   if (iframe?.contentWindow) {
-                    iframe.contentWindow.postMessage(
-                      `Hoodie:${area}_diffuse:${finalDiffuse}`,
-                      "*"
-                    );
+                    const msg = `Hoodie:${area}_diffuse: ${finalDiffuse}`;
+                    iframe.contentWindow.postMessage(msg, "*");
                   }
                 });
               };
@@ -437,10 +433,8 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos }) => {
               ["preview-iframe", "preview-iframe2"].forEach((id) => {
                 const iframe = document.getElementById(id);
                 if (iframe?.contentWindow) {
-                  iframe.contentWindow.postMessage(
-                    `Hoodie:${area}_diffuse:${diffuseBase}`,
-                    "*"
-                  );
+                  const msg = `Hoodie:${area}_diffuse: ${diffuseBase}`;
+                  iframe.contentWindow.postMessage(msg, "*");
                 }
               });
             }

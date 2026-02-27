@@ -101,9 +101,9 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
   // ];
 
   // CANVAS CONSTANTS
-  const CANVAS_WIDTH = 320;
+  const CANVAS_WIDTH = 300;
   const TEXT_HEIGHT = 80;
-  const FLAG_HEIGHT = 240;
+  const FLAG_HEIGHT = 210;
   const CANVAS_HEIGHT = TEXT_HEIGHT + FLAG_HEIGHT;
 
   const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false) => {
@@ -112,9 +112,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
     canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, canvas.width, TEXT_HEIGHT);
-
+    // Use transparency instead of black background for cleaner blending
     if (text?.trim()) {
       let fontSize = 48;
       ctx.font = `bold ${fontSize}px Arial`;
@@ -129,10 +127,12 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
       ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
     }
 
-    ctx.fillStyle = hasFlag || hasLogo ? "#ffffff" : "#000000";
-    ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+    if (hasFlag || hasLogo) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+    }
 
-    // Add black border if flag or logo is present
+    // Add black border (mask) if flag or logo is present
     if (hasFlag || hasLogo) {
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 40;
@@ -142,14 +142,17 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
     return canvas.toDataURL("image/png");
   };
 
-  const getDiffuseBase64 = (countryName, hasLogo, text, callback) => {
+
+  const getDiffuseBase64 = (flag, logoPre, logoCustom, text, callback) => {
     const canvas = document.createElement("canvas");
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Remove solid black background to avoid black borders around customization
+    // ctx.fillStyle = "#000000";
+    // ctx.fillRect(0, 0, canvas.width, canvas.height);
+
 
     if (text?.trim()) {
       let fontSize = 48;
@@ -166,73 +169,62 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
     }
 
     const drawBorder = () => {
-      if (countryName || hasLogo) {
+      if (flag || logoPre || logoCustom) {
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 40;
         ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
       }
     };
 
+    const finalize = () => {
+      drawBorder();
+      callback(canvas.toDataURL("image/png"));
+    };
 
-    if (countryName && flagImages[countryName]) {
+    if (flag && flagImages[flag]) {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
         ctx.drawImage(img, 0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-        drawBorder();
-        callback(canvas.toDataURL("image/png"));
+        finalize();
       };
-      img.src = flagImages[countryName];
+      img.onerror = finalize;
+      img.src = flagImages[flag];
       return;
     }
 
-    drawBorder();
-    callback(canvas.toDataURL("image/png"));
-  };
-
-  const getLogoBase64 = (predefinedName, customBase64, callback) => {
-    const canvas = document.createElement("canvas");
-    canvas.width = CANVAS_WIDTH;
-    canvas.height = FLAG_HEIGHT;
-    const ctx = canvas.getContext("2d");
-
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    let src = customBase64;
-
-    if (!src && predefinedName) {
-      const foundLogo = logos.find((l) => l.name === predefinedName);
-
+    let logoSrc = logoCustom;
+    if (!logoSrc && logoPre) {
+      const foundLogo = logos.find((l) => l.name === logoPre);
       if (foundLogo?.file_path) {
-        // Replace backslashes and attach BASE_URL
         const cleanPath = foundLogo.file_path.replace(/\\/g, "/");
-        src = `${BASE_URL}${cleanPath}`;
+        logoSrc = `${BASE_URL}${cleanPath}`;
       }
     }
 
-
-    if (src) {
+    if (logoSrc) {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
         const ratio = Math.min(
-          canvas.width / img.width,
-          canvas.height / img.height,
+          CANVAS_WIDTH / img.width,
+          FLAG_HEIGHT / img.height
         );
         const w = img.width * ratio * 0.9;
         const h = img.height * ratio * 0.9;
-        const x = (canvas.width - w) / 2;
-        const y = (canvas.height - h) / 2;
+        const x = (CANVAS_WIDTH - w) / 2;
+        const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
         ctx.drawImage(img, x, y, w, h);
-        callback(canvas.toDataURL("image/png"));
+        finalize();
       };
-      img.src = src;
+      img.onerror = finalize;
+      img.src = logoSrc;
       return;
     }
 
-    callback(canvas.toDataURL("image/png"));
+    finalize();
   };
+
 
   const handleFlagSelect = (field) => {
     setCurrentField(field);
@@ -391,60 +383,20 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
       ["preview-iframe", "preview-iframe2"].forEach((id) => {
         const iframe = document.getElementById(id);
         if (iframe?.contentWindow) {
-          iframe.contentWindow.postMessage(
-            `T-Shirt:${area}_opacity:${opacity}`,
-            "*"
-          );
+          // Optimized message format to avoid browser protocol detection errors
+          const msg = `T-Shirt:${area}_opacity: ${opacity}`;
+          iframe.contentWindow.postMessage(msg, "*");
         }
       });
 
       // Diffuse
-      getDiffuseBase64(flag, hasLogo, text, (diffuseBase) => {
-        getLogoBase64(logoPre, logoCustom, (logoBase) => {
-          const finalCanvas = document.createElement("canvas");
-          finalCanvas.width = CANVAS_WIDTH;
-          finalCanvas.height = CANVAS_HEIGHT;
-          const ctx = finalCanvas.getContext("2d");
-
-          const diffuseImg = new Image();
-          diffuseImg.onload = () => {
-            ctx.drawImage(diffuseImg, 0, 0);
-
-            if (hasLogo) {
-              const logoImg = new Image();
-              logoImg.onload = () => {
-                ctx.drawImage(
-                  logoImg,
-                  0,
-                  TEXT_HEIGHT,
-                  CANVAS_WIDTH,
-                  FLAG_HEIGHT
-                );
-                const finalDiffuse = finalCanvas.toDataURL("image/png");
-                ["preview-iframe", "preview-iframe2"].forEach((id) => {
-                  const iframe = document.getElementById(id);
-                  if (iframe?.contentWindow) {
-                    iframe.contentWindow.postMessage(
-                      `T-Shirt:${area}_diffuse:${finalDiffuse}`,
-                      "*"
-                    );
-                  }
-                });
-              };
-              logoImg.src = logoBase;
-            } else {
-              ["preview-iframe", "preview-iframe2"].forEach((id) => {
-                const iframe = document.getElementById(id);
-                if (iframe?.contentWindow) {
-                  iframe.contentWindow.postMessage(
-                    `T-Shirt:${area}_diffuse:${diffuseBase}`,
-                    "*"
-                  );
-                }
-              });
-            }
-          };
-          diffuseImg.src = diffuseBase;
+      getDiffuseBase64(flag, logoPre, logoCustom, text, (diffuseBase) => {
+        ["preview-iframe", "preview-iframe2"].forEach((id) => {
+          const iframe = document.getElementById(id);
+          if (iframe?.contentWindow) {
+            const msg = `T-Shirt:${area}_diffuse: ${diffuseBase}`;
+            iframe.contentWindow.postMessage(msg, "*");
+          }
         });
       });
     });
@@ -956,6 +908,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
               ["preview-iframe", "preview-iframe2"].forEach((id) => {
                 const iframe = document.getElementById(id);
                 if (iframe?.contentWindow) {
+                  // Message for backward compatibility
                   iframe.contentWindow.postMessage(diffuse, "*");
                   iframe.contentWindow.postMessage(opacity, "*");
                   if (emissive) iframe.contentWindow.postMessage(emissive, "*");

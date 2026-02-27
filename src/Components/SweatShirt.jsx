@@ -387,10 +387,8 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
       ["preview-iframe", "preview-iframe2"].forEach((id) => {
         const iframe = document.getElementById(id);
         if (iframe?.contentWindow) {
-          iframe.contentWindow.postMessage(
-            `SweatShirt:${area}_opacity:${opacity}`,
-            "*"
-          );
+          const msg = `SweatShirt:${area}_opacity: ${opacity}`;
+          iframe.contentWindow.postMessage(msg, "*");
         }
       });
 
@@ -420,10 +418,8 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                 ["preview-iframe", "preview-iframe2"].forEach((id) => {
                   const iframe = document.getElementById(id);
                   if (iframe?.contentWindow) {
-                    iframe.contentWindow.postMessage(
-                      `SweatShirt:${area}_diffuse:${finalDiffuse}`,
-                      "*"
-                    );
+                    const msg = `SweatShirt:${area}_diffuse: ${finalDiffuse}`;
+                    iframe.contentWindow.postMessage(msg, "*");
                   }
                 });
               };
@@ -432,10 +428,8 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
               ["preview-iframe", "preview-iframe2"].forEach((id) => {
                 const iframe = document.getElementById(id);
                 if (iframe?.contentWindow) {
-                  iframe.contentWindow.postMessage(
-                    `SweatShirt:${area}_diffuse:${diffuseBase}`,
-                    "*"
-                  );
+                  const msg = `SweatShirt:${area}_diffuse: ${diffuseBase}`;
+                  iframe.contentWindow.postMessage(msg, "*");
                 }
               });
             }

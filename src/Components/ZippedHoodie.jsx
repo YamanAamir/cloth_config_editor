@@ -388,10 +388,8 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
       ["preview-iframe", "preview-iframe2"].forEach((id) => {
         const iframe = document.getElementById(id);
         if (iframe?.contentWindow) {
-          iframe.contentWindow.postMessage(
-            `ZipperHoodie:${area}_opacity:${opacity}`,
-            "*"
-          );
+          const msg = `ZipperHoodie:${area}_opacity: ${opacity}`;
+          iframe.contentWindow.postMessage(msg, "*");
         }
       });
 
@@ -421,10 +419,15 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
                 ["preview-iframe", "preview-iframe2"].forEach((id) => {
                   const iframe = document.getElementById(id);
                   if (iframe?.contentWindow) {
-                    iframe.contentWindow.postMessage(
-                      `ZipperHoodie:${area}_diffuse:${finalDiffuse}`,
-                      "*"
-                    );
+                    const msg = `ZipperHoodie:${area}_diffuse: ${finalDiffuse}`;
+                    iframe.contentWindow.postMessage(msg, "*");
+
+                    iframe.contentWindow.postMessage({
+                      type: 'texture_update',
+                      item: 'ZipperHoodie',
+                      slot: `${area}_diffuse`,
+                      data: finalDiffuse
+                    }, "*");
                   }
                 });
               };
@@ -433,10 +436,15 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
               ["preview-iframe", "preview-iframe2"].forEach((id) => {
                 const iframe = document.getElementById(id);
                 if (iframe?.contentWindow) {
-                  iframe.contentWindow.postMessage(
-                    `ZipperHoodie:${area}_diffuse:${diffuseBase}`,
-                    "*"
-                  );
+                  const msg = `ZipperHoodie:${area}_diffuse: ${diffuseBase}`;
+                  iframe.contentWindow.postMessage(msg, "*");
+
+                  iframe.contentWindow.postMessage({
+                    type: 'texture_update',
+                    item: 'ZipperHoodie',
+                    slot: `${area}_diffuse`,
+                    data: diffuseBase
+                  }, "*");
                 }
               });
             }

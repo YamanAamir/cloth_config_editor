@@ -12,12 +12,12 @@ const BackDesignPopup = ({ onFinish, customizations, setCustomizations, students
     const [activeTab, setActiveTab] = useState('T-SHIRT');
 
     const productTabs = [
-        { name: 'T-SHIRT', icon: img1, postEx: 'T-Shirt:' },
-        { name: 'SWEATSHIRT', icon: img2, postEx: 'SweatShirt:' },
-        { name: 'HOODIE', icon: img3, postEx: 'Hoodie:' },
-        { name: 'ZIPPERHOODIE', icon: img4, postEx: 'ZipperHoodie:' },
-        // { name: 'SWEATPANTS', icon: img5, postEx: 'SweatPant:' },
-        // { name: 'SHORTS', icon: img6, postEx: 'Shorts:' },
+        { name: 'T-SHIRT', icon: img1, postEx: 'T-Shirt: ' },
+        { name: 'SWEATSHIRT', icon: img2, postEx: 'SweatShirt: ' },
+        { name: 'HOODIE', icon: img3, postEx: 'Hoodie: ' },
+        { name: 'ZIPPERHOODIE', icon: img4, postEx: 'ZipperHoodie: ' },
+        // { name: 'SWEATPANTS', icon: img5, postEx: 'SweatPant: ' },
+        // { name: 'SHORTS', icon: img6, postEx: 'Shorts: ' },
     ];
 
     const handleUpdate = (update) => {

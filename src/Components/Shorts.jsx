@@ -372,10 +372,8 @@ const Shorts = ({ data, onUpdate, isAppReady, logos }) => {
       ["preview-iframe", "preview-iframe2"].forEach((id) => {
         const iframe = document.getElementById(id);
         if (iframe?.contentWindow) {
-          iframe.contentWindow.postMessage(
-            `Short:${area}_opacity:${opacity}`,
-            "*"
-          );
+          const msg = `Short:${area}_opacity: ${opacity}`;
+          iframe.contentWindow.postMessage(msg, "*");
         }
       });
 
@@ -405,10 +403,8 @@ const Shorts = ({ data, onUpdate, isAppReady, logos }) => {
                 ["preview-iframe", "preview-iframe2"].forEach((id) => {
                   const iframe = document.getElementById(id);
                   if (iframe?.contentWindow) {
-                    iframe.contentWindow.postMessage(
-                      `Short:${area}_diffuse:${finalDiffuse}`,
-                      "*"
-                    );
+                    const msg = `Short:${area}_diffuse: ${finalDiffuse}`;
+                    iframe.contentWindow.postMessage(msg, "*");
                   }
                 });
               };
@@ -417,10 +413,8 @@ const Shorts = ({ data, onUpdate, isAppReady, logos }) => {
               ["preview-iframe", "preview-iframe2"].forEach((id) => {
                 const iframe = document.getElementById(id);
                 if (iframe?.contentWindow) {
-                  iframe.contentWindow.postMessage(
-                    `Short:${area}_diffuse:${diffuseBase}`,
-                    "*"
-                  );
+                  const msg = `Short:${area}_diffuse: ${diffuseBase}`;
+                  iframe.contentWindow.postMessage(msg, "*");
                 }
               });
             }

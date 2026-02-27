@@ -187,14 +187,15 @@ const BackTextPopup = ({ onFinish, customizations, setCustomizations, students, 
             console.warn("Opacity canvas failed:", err);
         }
 
-        // 3. Send to PlayCanvas iframes (same postMessage format as Test.jsx)
+        // 3. Send to PlayCanvas iframes (fixed format to avoid CORS)
         if (diffuseBase64 && opacityBase64) {
             ['preview-iframe', 'preview-iframe2'].forEach(id => {
                 const iframe = document.getElementById(id);
                 if (iframe?.contentWindow) {
-                    iframe.contentWindow.postMessage(postEx + 'back_diffuse:' + diffuseBase64, '*');
-                    iframe.contentWindow.postMessage(postEx + 'back_opacity:' + opacityBase64, '*');
-                    iframe.contentWindow.postMessage(postEx + 'back_emissive:' + diffuseBase64, '*');
+                    // We add a space after the colon to prevent browser protocol detection
+                    iframe.contentWindow.postMessage(postEx + 'back_diffuse: ' + diffuseBase64, '*');
+                    iframe.contentWindow.postMessage(postEx + 'back_opacity: ' + opacityBase64, '*');
+                    iframe.contentWindow.postMessage(postEx + 'back_emissive: ' + diffuseBase64, '*');
                 }
             });
         }

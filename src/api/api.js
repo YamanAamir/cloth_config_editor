@@ -66,3 +66,7 @@ export const markNameListReady = (nameListId) => api.put(`/class-rep/namelist/${
 export const deleteNameListItem = (itemId) => api.delete(`/class-rep/namelist/item/${itemId}`);
 // Place Order
 export const placeOrder = (data) => api.post('/student/place-order', data);
+
+
+// Stripe Payment
+export const createCheckoutSession = (data) => api.post('/payment/create-checkout-session', data);

@@ -246,12 +246,12 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                             const { selectedColor, selectedSize } = currentData;
 
                             const prefixMap = {
-                                'T-SHIRT': 'T-Shirt:',
-                                'SWEATSHIRT': 'SweatShirt:',
-                                'HOODIE': 'Hoodie:',
-                                'ZIPPERHOODIE': 'ZipperHoodie:',
-                                'SWEATPANTS': 'SweatPant:',
-                                'SHORTS': 'Short:'
+                                'T-SHIRT': 'T-Shirt: ',
+                                'SWEATSHIRT': 'SweatShirt: ',
+                                'HOODIE': 'Hoodie: ',
+                                'ZIPPERHOODIE': 'ZipperHoodie: ',
+                                'SWEATPANTS': 'SweatPant: ',
+                                'SHORTS': 'Short: '
                             };
 
                             const prefix = prefixMap[activeMenu];

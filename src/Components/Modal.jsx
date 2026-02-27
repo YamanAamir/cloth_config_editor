@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { message } from 'antd';
 import { X, Printer, Download, Mail, CheckCircle, Package, Star, User, CreditCard, ArrowLeft, ArrowRight, Loader2, ShoppingCart, Settings } from 'lucide-react';
 // import { loadStripe } from "@stripe/stripe-js";
 import { useRef } from 'react';
 import { useEffect } from 'react';
-import { placeOrder } from '../api/api';
+import { placeOrder, createCheckoutSession } from '../api/api';
 // const stripePromise = loadStripe("pk_test_51S0HgS2ZnQzLDaK40M9tlj1n72wtQNsUNhG986xbE6bfHxWmFfOMJfWGAbg4QrAlFtnhVCtOajoIqUbRgSBnRnkb00iMo1bD1o");
 
 const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, price, onContinueConfiguring, packageName, program }) => {
@@ -639,30 +640,39 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
         logo_id: logo_id
       };
 
-      const response = await placeOrder(orderPayload)
-
-      const result = await response.json();
+      const response = await placeOrder(orderPayload);
+      const result = response.data;
 
       if (!result.success) {
         throw new Error(result.error || "Failed to submit order");
       }
 
-      // Mock stripeRes as requested by user
-      const stripeRes = { ok: true, json: async () => ({ id: "mock_session" }) };
-
       console.log("Order placed successfully:", result);
 
-      if (result.data?.orderId) {
-        setOrderDate(`ORD-${result.data.orderId}`);
+      const orderId = result.data?.orderId;
+      if (orderId) {
+        setOrderDate(`ORD-${orderId}`);
+
+        // Initiate Stripe Payment
+        const stripeResponse = await createCheckoutSession({
+          orderId: orderId,
+          amount: price * 100 // Convert to cents/øre if price is in DKK
+        });
+
+        if (stripeResponse.data?.success && stripeResponse.data?.url) {
+          window.location.href = stripeResponse.data.url;
+          return;
+        } else {
+          throw new Error("Failed to create Stripe checkout session");
+        }
       }
 
-      // Since user said "stripe k ilaawa", we proceed to success directly
-      setOrderComplete(true);
+      // Fallback if no orderId or payment failed to initiate
       setIsLoading(false);
 
     } catch (error) {
       console.error("Error during confirmation:", error);
-      alert(error.message);
+      message.error(error.message);
       setIsLoading(false);
     }
   };
@@ -1279,7 +1289,7 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
                 <button
                   onClick={() => {
                     if (currentStep === 1 && !validateCustomerDetails()) {
-                      alert('Please fill in all required fields.');
+                      message.error('Please fill in all required fields.');
                       return;
                     }
                     setCurrentStep(prev => prev + 1);
