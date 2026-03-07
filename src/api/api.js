@@ -31,7 +31,9 @@ export const assignClassRep = (data) => api.post('/admin/class/assign-rep', data
 // Logo & Design APIs (admin)
 export const getAllLogos = (params = {}) => api.post('/admin/logos', params);
 export const listSchoolLogos = (params = {}) => api.post('/student/logos', params);
-export const listSchoolBackDesigns = (params = {}) => api.post('/student/class-back-designs', params);
+// export const listSchoolBackDesigns = (params = {}) => api.post('/student/class-back-designs', params);
+// export const listSchoolBackDesigns = (params = {}) => api.post('/student/back-designs', params);
+export const getMyClassBackDesigns = (params = {}) => api.post('/student/back-designs', params);
 export const approveLogo = (logoId, body = {}) => api.put(`/admin/approve-logo/${logoId}`, body);
 export const rejectLogo = (logoId, body = {}) => api.put(`/admin/reject-logo/${logoId}`, body);
 export const getAllBackDesigns = (params = {}) => api.post('/admin/back-designs', params);

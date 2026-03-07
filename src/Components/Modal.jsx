@@ -49,6 +49,18 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  
+  // ✨ NEW: Track which garments are selected for purchase
+  const [selectedGarments, setSelectedGarments] = useState(() => {
+    // Initially select all configured garments
+    const configured = {};
+    Object.entries(selectedOptions).forEach(([type, options]) => {
+      if (isGarmentConfigured(type, options)) {
+        configured[type] = true;
+      }
+    });
+    return configured;
+  });
   const [customerDetails, setCustomerDetails] = useState({
     firstName: '',
     lastName: '',
@@ -151,6 +163,37 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
   if (!isOpen) return null;
 
   const steps = orderComplete ? ['Thank You'] : ['Order Overview', 'Delivery Information', 'Order Confirmation'];
+
+  // ✨ NEW: Base prices for each garment type
+  const GARMENT_PRICES = {
+    'T-SHIRT': 200,
+    'SWEATSHIRT': 350,
+    'HOODIE': 450,
+    'ZIPPERHOODIE': 500,
+    'SWEATPANTS': 300,
+    'SHORTS': 250
+  };
+
+  // ✨ NEW: Calculate dynamic total price
+  const calculateTotalPrice = () => {
+    let total = 0;
+    Object.entries(selectedGarments).forEach(([garmentType, isSelected]) => {
+      if (isSelected && isGarmentConfigured(garmentType, selectedOptions[garmentType])) {
+        total += GARMENT_PRICES[garmentType] || 0;
+      }
+    });
+    return total;
+  };
+
+  const dynamicPrice = calculateTotalPrice();
+
+  // ✨ NEW: Toggle garment selection
+  const toggleGarmentSelection = (garmentType) => {
+    setSelectedGarments(prev => ({
+      ...prev,
+      [garmentType]: !prev[garmentType]
+    }));
+  };
 
   // Price definitions for each option
   const priceConfig = {
@@ -601,13 +644,13 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
         throw new Error("Student or Class information not found. Please log in again.");
       }
 
-      // Prepare garments array — only include garments that were actually configured
+      // Prepare garments array — only include garments that were actually configured AND selected
       const configuredEntries = Object.entries(selectedOptions).filter(
-        ([type, options]) => isGarmentConfigured(type, options)
+        ([type, options]) => isGarmentConfigured(type, options) && selectedGarments[type]
       );
 
       if (configuredEntries.length === 0) {
-        throw new Error("No garments configured. Please configure at least one garment before placing an order.");
+        throw new Error("No garments selected. Please select at least one garment before placing an order.");
       }
 
       const garments = configuredEntries.map(([type, options]) => ({
@@ -656,7 +699,7 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
         // Initiate Stripe Payment
         const stripeResponse = await createCheckoutSession({
           orderId: orderId,
-          amount: price * 100 // Convert to cents/øre if price is in DKK
+          amount: dynamicPrice * 100 // Convert to cents/øre - using dynamic price
         });
 
         if (stripeResponse.data?.success && stripeResponse.data?.url) {
@@ -699,24 +742,63 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
   // Step 1: Quote Review (Original content)
   const renderQuoteReview = () => (
     <div className="overflow-y-auto px-6 py-6 space-y-8 custom-scrollbar-premium">
+      {/* ✨ NEW: Selection Instructions */}
+      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6">
+        <div className="flex items-start gap-3">
+          <Package className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <h4 className="font-bold text-blue-900 text-sm mb-1">Select Items to Purchase</h4>
+            <p className="text-blue-700 text-xs">
+              Click the checkbox on each garment card to select/deselect items for your order. 
+              Price will update automatically based on your selection.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-8">
         {Object.entries(selectedOptions).filter(([category, options]) => isGarmentConfigured(category, options)).map(([category, options], categoryIndex) => {
           const filteredOptions = filterOptions(options);
 
           if (Object.keys(filteredOptions).length === 0) return null;
 
+          const isSelected = selectedGarments[category] || false;
+          const garmentPrice = GARMENT_PRICES[category] || 0;
+
           return (
             <div
               key={category}
-              className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 group overflow-hidden relative"
+              className={`bg-white rounded-3xl p-6 shadow-sm border-2 transition-all duration-500 group overflow-hidden relative cursor-pointer ${
+                isSelected 
+                  ? 'border-green-500 shadow-xl shadow-green-200/50' 
+                  : 'border-slate-200 hover:border-slate-300 opacity-60'
+              }`}
+              onClick={() => toggleGarmentSelection(category)}
             >
+              {/* ✨ NEW: Selection Checkbox */}
+              <div className="absolute top-4 right-4 z-20">
+                <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all ${
+                  isSelected 
+                    ? 'bg-green-600 border-green-600' 
+                    : 'bg-white border-slate-300'
+                }`}>
+                  {isSelected && <CheckCircle className="w-5 h-5 text-white" />}
+                </div>
+              </div>
+
               {/* Background Accent */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:bg-green-50/50 transition-colors duration-500"></div>
+              <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -mr-16 -mt-16 transition-colors duration-500 ${
+                isSelected ? 'bg-green-50' : 'bg-slate-50'
+              }`}></div>
 
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-200 transform group-hover:rotate-6 transition-transform duration-500">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-all duration-500 ${
+                      isSelected 
+                        ? 'bg-gradient-to-br from-green-500 to-green-600 shadow-green-200' 
+                        : 'bg-gradient-to-br from-slate-400 to-slate-500 shadow-slate-200'
+                    }`}>
                       <Star className="w-6 h-6 text-white" />
                     </div>
                     <div>
@@ -726,8 +808,22 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
                       <p className="text-sm text-slate-500 font-medium">Custom Configuration</p>
                     </div>
                   </div>
-                  <div className="px-4 py-1.5 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-100 uppercase tracking-widest">
-                    Ready
+                  <div className="flex flex-col items-end gap-2">
+                    <div className={`px-4 py-1.5 text-xs font-bold rounded-full border uppercase tracking-widest ${
+                      isSelected 
+                        ? 'bg-green-50 text-green-700 border-green-100' 
+                        : 'bg-slate-50 text-slate-500 border-slate-200'
+                    }`}>
+                      {isSelected ? 'Selected' : 'Not Selected'}
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-2xl font-bold ${isSelected ? 'text-green-600' : 'text-slate-400'}`}>
+                        {garmentPrice}
+                      </span>
+                      <span className={`text-sm font-semibold ml-1 ${isSelected ? 'text-green-600' : 'text-slate-400'}`}>
+                        DKK
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -751,6 +847,21 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
           );
         })}
       </div>
+
+      {/* ✨ NEW: No items selected warning */}
+      {Object.values(selectedGarments).every(v => !v) && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mt-6">
+          <div className="flex items-start gap-3">
+            <X className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h4 className="font-bold text-red-900 text-sm mb-1">No Items Selected</h4>
+              <p className="text-red-700 text-xs">
+                Please select at least one garment to continue with your order.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -1054,16 +1165,21 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
             </div>
 
             <div className="space-y-6">
-              {Object.entries(selectedOptions).filter(([category, options]) => isGarmentConfigured(category, options)).map(([category, options]) => {
+              {Object.entries(selectedOptions).filter(([category, options]) => isGarmentConfigured(category, options) && selectedGarments[category]).map(([category, options]) => {
                 const filteredOptions = filterOptions(options);
                 if (Object.keys(filteredOptions).length === 0) return null;
 
                 return (
                   <div key={category} className="bg-slate-50/50 rounded-[1.5rem] p-6 border border-slate-100 hover:bg-white hover:border-green-100 transition-all duration-300">
-                    <h4 className="font-extrabold text-slate-800 text-sm capitalize mb-4 flex items-center">
-                      <div className="w-1.5 h-4 bg-green-500 rounded-full mr-2"></div>
-                      {category.replace(/([A-Z])/g, ' $1').trim()}
-                    </h4>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-extrabold text-slate-800 text-sm capitalize flex items-center">
+                        <div className="w-1.5 h-4 bg-green-500 rounded-full mr-2"></div>
+                        {category.replace(/([A-Z])/g, ' $1').trim()}
+                      </h4>
+                      <span className="text-lg font-bold text-green-600">
+                        {GARMENT_PRICES[category]} DKK
+                      </span>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-8">
                       {Object.entries(filteredOptions).map(([key, value]) => (
                         <div key={key} className="flex flex-col">
@@ -1250,11 +1366,13 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
               <div className="flex justify-between items-center">
                 <div>
                   <span className="text-base font-bold text-gray-900">Your Price</span>
-                  <p className="text-gray-600 text-xs mt-1">Shipping and fees included</p>
+                  <p className="text-gray-600 text-xs mt-1">
+                    {Object.values(selectedGarments).filter(Boolean).length} item(s) selected • Shipping included
+                  </p>
                 </div>
                 <div className="text-right">
                   <span className="text-2xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
-                    {price}
+                    {dynamicPrice}
                   </span>
 
                   <span className="text-base font-semibold text-green-600 ml-1">DKK</span>
@@ -1288,6 +1406,10 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
               {currentStep < steps.length - 1 ? (
                 <button
                   onClick={() => {
+                    if (currentStep === 0 && Object.values(selectedGarments).every(v => !v)) {
+                      message.error('Please select at least one garment to continue.');
+                      return;
+                    }
                     if (currentStep === 1 && !validateCustomerDetails()) {
                       message.error('Please fill in all required fields.');
                       return;

@@ -1,26 +1,21 @@
 import { create } from 'zustand';
-import { listSchoolBackDesigns } from '../api/api';
+import { getMyClassBackDesigns } from '../api/api';
 
 const useBackDesignStore = create((set) => ({
-    backDesigns: [],
+    backDesigns: null, // store single object instead of array
     loading: false,
     error: null,
-    pagination: {
-        total: 0,
-        page: 1,
-        limit: 10,
-        totalPages: 0,
-    },
 
     fetchBackDesigns: async (params = {}) => {
         set({ loading: true, error: null });
         try {
-            const { data } = await listSchoolBackDesigns(params);
+            const { data } = await getMyClassBackDesigns(params);
+            console.log("Fetched BackDesign:", data.data);
 
             if (data.success) {
                 set({
-                    backDesigns: (data.data || []).filter(i => String(i.status) === "0"),
-                    pagination: data.pagination,
+                    // store as object directly
+                    backDesigns: String(data.data?.status) === "1" ? data.data : null,
                     loading: false,
                     error: null
                 });
@@ -40,15 +35,9 @@ const useBackDesignStore = create((set) => ({
 
     // Reset store if needed
     reset: () => set({
-        backDesigns: [],
+        backDesigns: null,
         loading: false,
-        error: null,
-        pagination: {
-            total: 0,
-            page: 1,
-            limit: 10,
-            totalPages: 0,
-        }
+        error: null
     })
 }));
 

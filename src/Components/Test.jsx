@@ -60,13 +60,14 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) 
   const { backDesigns, loading, fetchBackDesigns } = useBackDesignStore();
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : null;
-  const school_id = user?.school_id;
+  const getClassId = user?.class_id;
+
 
   useEffect(() => {
-    if (school_id) {
-      fetchBackDesigns({ school_id: school_id });
+    if (getClassId) {
+      fetchBackDesigns({ class_id: getClassId });
     }
-  }, [school_id]);
+  }, [getClassId]);
 
   // Load saved backDesign when pressureOptions change
   useEffect(() => {
@@ -494,7 +495,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) 
           Select Predefined Back Design
         </label>
         <div className="grid grid-cols-4 gap-4 mb-8">
-          {(backDesigns || []).map((design, idx) => {
+          {backDesigns ? [backDesigns].map((design, idx) => {
             const img = `${BASE_URL}${design.file_path.replace(/\\/g, "/")}`;
             return (
               <button
@@ -506,7 +507,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) 
                 <span className="text-xs text-center block mt-1 text-gray-600">{design.name}</span>
               </button>
             )
-          })}
+          }) : null}
         </div>
 
         {/* <label className="block text-lg font-semibold text-gray-800 mb-4">

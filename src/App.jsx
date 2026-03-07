@@ -7,7 +7,7 @@ import CancelScreen from './Screens/CancelScreen';
 import AutoTranslate from './AutoTranslate';
 import StudentPopup from './Components/Popup.jsx';
 import BackDesignPopup from './Components/BackDesignPopup.jsx';
-import BackTextPopup from './Components/BackTextPopup.jsx';
+// import BackTextPopup from './Components/BackTextPopup.jsx'; // COMMENTED: Back text feature disabled
 import StudentRegister from './Pages/StudentRegister.jsx';
 import StudentLogin from './Pages/StudentLogin.jsx';
 import { useAuth } from './context/AuthContext';
@@ -25,7 +25,7 @@ function App() {
     return saved ? JSON.parse(saved) : {};
   }); // student-specific customizations
   const [showBackPopup, setShowBackPopup] = useState(false);
-  const [showBackTextPopup, setShowBackTextPopup] = useState(false);
+  // const [showBackTextPopup, setShowBackTextPopup] = useState(false); // COMMENTED: Back text feature disabled
   const [isAppReady, setIsAppReady] = useState(false);
   const { fetchBackDesigns, backDesigns } = useBackDesignStore();
   const getUser = localStorage.getItem('user');
@@ -102,7 +102,8 @@ function App() {
           backDesigns={backDesigns}
         />
       )}
-      {showBackTextPopup && (
+      {/* COMMENTED: Back text feature disabled */}
+      {/* {showBackTextPopup && (
         <BackTextPopup
           students={students}
           customizations={customizations}
@@ -110,7 +111,7 @@ function App() {
           onFinish={() => setShowBackTextPopup(false)}
           isAppReady={isAppReady}
         />
-      )}
+      )} */}
       <Routes>
         <Route path="/" element={
           user ? (
@@ -128,7 +129,7 @@ function App() {
                   customizations={customizations}
                   setCustomizations={setCustomizations}
                   setShowBackPopup={setShowBackPopup}
-                  setShowBackTextPopup={setShowBackTextPopup}
+                  // setShowBackTextPopup={setShowBackTextPopup} // COMMENTED: Back text feature disabled
                 />
               )}
             </>

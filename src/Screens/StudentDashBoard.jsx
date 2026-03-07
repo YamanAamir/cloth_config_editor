@@ -20,7 +20,7 @@ import StudentPopup from '../Components/Popup';
 import useLogoStore from '../store/logoStore';
 import { useAuth } from '../context/AuthContext';
 
-const StudentDashboard = ({ mode, setMode, students, customizations, setCustomizations, setShowBackPopup, setShowBackTextPopup }) => {
+const StudentDashboard = ({ mode, setMode, students, customizations, setCustomizations, setShowBackPopup /*, setShowBackTextPopup */ }) => { // COMMENTED: Back text feature disabled
     const { logout } = useAuth();
     const [activeMenu, setActiveMenu] = useState('T-SHIRT');
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
@@ -68,7 +68,7 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                 rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
                 leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
                 backDesign: null,
-                backTexts: []
+                // backTexts: [] // COMMENTED: Back text feature disabled
             }
         },
         'SWEATSHIRT': {
@@ -80,7 +80,7 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                 rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
                 leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
                 backDesign: null,
-                backTexts: []
+                // backTexts: [] // COMMENTED: Back text feature disabled
             }
         },
         'HOODIE': {
@@ -93,7 +93,7 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                 rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
                 leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
                 backDesign: null,
-                backTexts: []
+                // backTexts: [] // COMMENTED: Back text feature disabled
             }
         },
         'ZIPPERHOODIE': {
@@ -105,7 +105,7 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                 rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
                 leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
                 backDesign: null,
-                backTexts: []
+                // backTexts: [] // COMMENTED: Back text feature disabled
             }
         },
         'SWEATPANTS': {
@@ -334,14 +334,15 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                             <span className="hidden sm:inline">Design Back</span>
                             <span className="sm:hidden text-[10px]">Back</span>
                         </button>
-                        <button
+                        {/* COMMENTED: Back text feature disabled */}
+                        {/* <button
                             onClick={() => setShowBackTextPopup(true)}
                             className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-indigo-700 text-white rounded-xl hover:bg-indigo-800 transition-all font-medium text-sm shadow-md"
                         >
-                            <Settings className="w-4 h-4" />
+                            <Type className="w-4 h-4" />
                             <span className="hidden sm:inline">Back Text</span>
                             <span className="sm:hidden text-[10px]">Text</span>
-                        </button>
+                        </button> */}
                         <button
                             onClick={handleChangeMode}
                             className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
