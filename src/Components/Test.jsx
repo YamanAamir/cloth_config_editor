@@ -93,6 +93,79 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) 
       setSelectedId(null);
     }
   }, [pressureOptions]);
+ const selectPredefinedDesign = async (url, design) => {
+    console.log("🎯 Auto Selected Design:", design);
+    
+    const img = new Image();
+    img.crossOrigin = "anonymous"; // allow CORS
+    img.src = url;
+
+    img.onload = async () => {
+      const scale = Math.min(
+        (CANVAS_WIDTH * 0.75) / img.width,
+        (CANVAS_HEIGHT * 0.65) / img.height
+      );
+      const w = img.width * scale;
+      const h = img.height * scale;
+
+      const newImageObj = {
+        id: 'uploadedImage',
+        type: 'image',
+        srcObj: img,
+        pos: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
+        size: { w, h },
+        angle: 0,
+        locked: false,
+      };
+
+      setObjects([newImageObj]);
+      setSelectedId('uploadedImage');
+
+      try {
+        // Convert the image URL into a Blob/File if needed
+        const response = await fetch(url, { mode: 'cors' });
+        const blob = await response.blob();
+        const file = new File([blob], url.split("/").pop(), { type: blob.type });
+
+        onUpdate({
+          backDesign: {
+            pos: newImageObj.pos,
+            size: newImageObj.size,
+            angle: newImageObj.angle,
+            locked: newImageObj.locked,
+            src: url,
+            fileObj: file,
+            designId: design?.id
+          }
+        });
+      } catch (error) {
+        console.error("Error fetching image:", error);
+        onUpdate({
+          backDesign: {
+            pos: newImageObj.pos,
+            size: newImageObj.size,
+            angle: newImageObj.angle,
+            locked: newImageObj.locked,
+            src: url,
+            designId: design?.id
+          }
+        });
+      }
+    };
+  };
+  // Auto-select predefined design when backDesigns object is available
+  useEffect(() => {
+    // Only auto-select if:
+    // 1. No current design configured
+    // 2. backDesigns object exists (single design from API)
+    // 3. Objects array is empty (nothing on canvas)
+    if (!pressureOptions?.backDesign && backDesigns && objects.length === 0) {
+      const design = backDesigns;
+      const img = `${BASE_URL}${design.file_path.replace(/\\/g, "/")}`;
+      console.log("🎯 Auto-selecting design:", design.name);
+      selectPredefinedDesign(img, design);
+    }
+  }, [backDesigns, pressureOptions, objects.length, selectPredefinedDesign]);
 
   const getSelected = () => objects.find(o => o.id === selectedId);
 
@@ -243,49 +316,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) 
   //   img.src = url;
   // };
 
-  const selectPredefinedDesign = async (url) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous"; // allow CORS
-    img.src = url;
-
-    img.onload = async () => {
-      const scale = Math.min(
-        (CANVAS_WIDTH * 0.75) / img.width,
-        (CANVAS_HEIGHT * 0.65) / img.height
-      );
-      const w = img.width * scale;
-      const h = img.height * scale;
-
-      const newImageObj = {
-        id: 'uploadedImage',
-        type: 'image',
-        srcObj: img,
-        pos: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
-        size: { w, h },
-        angle: 0,
-        locked: false,
-      };
-
-      setObjects([newImageObj]);
-      setSelectedId('uploadedImage');
-
-      // Convert the image URL into a Blob/File if needed
-      const response = await fetch(url, { mode: 'cors' });
-      const blob = await response.blob();
-      const file = new File([blob], url.split("/").pop(), { type: blob.type });
-
-      onUpdate({
-        backDesign: {
-          pos: newImageObj.pos,
-          size: newImageObj.size,
-          angle: newImageObj.angle,
-          locked: newImageObj.locked,
-          src: url,
-          fileObj: file, // ✅ now you have the File object
-        }
-      });
-    };
-  };
+ 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -489,51 +520,14 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) 
 
   return (
     <div className="p-0 max-w-2xl mx-auto">
-      {/* Predefined Designs */}
-      <div className="mb-6">
-        <label className="block text-lg font-semibold text-gray-800 mb-4">
-          Select Predefined Back Design
-        </label>
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {backDesigns ? [backDesigns].map((design, idx) => {
-            const img = `${BASE_URL}${design.file_path.replace(/\\/g, "/")}`;
-            return (
-              <button
-                key={idx}
-                onClick={() => selectPredefinedDesign(img)}
-                className="p-2 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all duration-200"
-              >
-                <img src={img} alt={design.name} className="w-full h-20 object-contain" />
-                <span className="text-xs text-center block mt-1 text-gray-600">{design.name}</span>
-              </button>
-            )
-          }) : null}
+      {/* Show message when design is auto-applied */}
+      {backDesigns && objects.length > 0 && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <p className="text-sm text-green-800 font-medium">
+            ✓ Back design "{backDesigns.name}" has been automatically applied to all students.
+          </p>
         </div>
-
-        {/* <label className="block text-lg font-semibold text-gray-800 mb-4">
-          Or Upload Your Own
-        </label>
-        <div className="relative">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-          />
-          <div className="flex items-center justify-center w-full h-32 px-6 py-8 bg-white border-2 border-dashed border-green-600 rounded-xl hover:border-green-700 hover:bg-green-50 transition-all duration-300">
-            <div className="text-center">
-              <svg className="mx-auto h-12 w-12 text-green-600" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <p className="mt-3 text-base font-medium text-gray-700">
-                Click to upload or drag and drop
-              </p>
-              <p className="text-sm text-gray-500">PNG, JPG, GIF up to 10MB</p>
-            </div>
-          </div>
-        </div> */}
-      </div>
+      )}
 
       {/* Main Canvas */}
       <canvas
