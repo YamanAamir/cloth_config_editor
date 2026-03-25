@@ -7,7 +7,7 @@ import logo2 from "../assets/Universitylogo/logo2.png";
 import logo3 from "../assets/Universitylogo/logo3.jpg";
 import logo4 from "../assets/Universitylogo/logo4.png";
 import { BASE_URL } from "../utils/const";
-import { X, Search, Image as ImageIcon, Flag } from "lucide-react";
+import { X, Search, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 
 
 const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
@@ -48,26 +48,26 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
   };
 
   const countries = [
-    { name: "Denmark", flag: "https://flagcdn.com/w40/dk.png" },
-    { name: "United States", flag: "https://flagcdn.com/w40/us.png" },
-    { name: "United Kingdom", flag: "https://flagcdn.com/w40/gb.png" },
-    { name: "Germany", flag: "https://flagcdn.com/w40/de.png" },
-    { name: "France", flag: "https://flagcdn.com/w40/fr.png" },
-    { name: "Spain", flag: "https://flagcdn.com/w40/es.png" },
-    { name: "Italy", flag: "https://flagcdn.com/w40/it.png" },
-    { name: "Netherlands", flag: "https://flagcdn.com/w40/nl.png" },
-    { name: "Sweden", flag: "https://flagcdn.com/w40/se.png" },
-    { name: "Norway", flag: "https://flagcdn.com/w40/no.png" },
-    { name: "Finland", flag: "https://flagcdn.com/w40/fi.png" },
-    { name: "Poland", flag: "https://flagcdn.com/w40/pl.png" },
-    { name: "Japan", flag: "https://flagcdn.com/w40/jp.png" },
-    { name: "South Korea", flag: "https://flagcdn.com/w40/kr.png" },
-    { name: "China", flag: "https://flagcdn.com/w40/cn.png" },
-    { name: "India", flag: "https://flagcdn.com/w40/in.png" },
-    { name: "Brazil", flag: "https://flagcdn.com/w40/br.png" },
-    { name: "Canada", flag: "https://flagcdn.com/w40/ca.png" },
-    { name: "Australia", flag: "https://flagcdn.com/w40/au.png" },
-    { name: "Mexico", flag: "https://flagcdn.com/w40/mx.png" },
+    { name: "Denmark", flag: "https://flagcdn.com/w160/dk.png" },
+    { name: "United States", flag: "https://flagcdn.com/w160/us.png" },
+    { name: "United Kingdom", flag: "https://flagcdn.com/w160/gb.png" },
+    { name: "Germany", flag: "https://flagcdn.com/w160/de.png" },
+    { name: "France", flag: "https://flagcdn.com/w160/fr.png" },
+    { name: "Spain", flag: "https://flagcdn.com/w160/es.png" },
+    { name: "Italy", flag: "https://flagcdn.com/w160/it.png" },
+    { name: "Netherlands", flag: "https://flagcdn.com/w160/nl.png" },
+    { name: "Sweden", flag: "https://flagcdn.com/w160/se.png" },
+    { name: "Norway", flag: "https://flagcdn.com/w160/no.png" },
+    { name: "Finland", flag: "https://flagcdn.com/w160/fi.png" },
+    { name: "Poland", flag: "https://flagcdn.com/w160/pl.png" },
+    { name: "Japan", flag: "https://flagcdn.com/w160/jp.png" },
+    { name: "South Korea", flag: "https://flagcdn.com/w160/kr.png" },
+    { name: "China", flag: "https://flagcdn.com/w160/cn.png" },
+    { name: "India", flag: "https://flagcdn.com/w160/in.png" },
+    { name: "Brazil", flag: "https://flagcdn.com/w160/br.png" },
+    { name: "Canada", flag: "https://flagcdn.com/w160/ca.png" },
+    { name: "Australia", flag: "https://flagcdn.com/w160/au.png" },
+    { name: "Mexico", flag: "https://flagcdn.com/w160/mx.png" },
   ];
 
   const flagImages = {
@@ -101,9 +101,13 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
   // ];
 
   // CANVAS CONSTANTS
-  const CANVAS_WIDTH = 300;
-  const TEXT_HEIGHT = 80;
-  const FLAG_HEIGHT = 210;
+  // const CANVAS_WIDTH = 300;
+  // const TEXT_HEIGHT = 80;
+  // const FLAG_HEIGHT = 210;
+
+  const CANVAS_WIDTH = 320;
+  const TEXT_HEIGHT = 120;
+  const FLAG_HEIGHT = 240;
   const CANVAS_HEIGHT = TEXT_HEIGHT + FLAG_HEIGHT;
 
   const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false) => {
@@ -537,7 +541,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                     <label className="block text-sm text-gray-600 mb-1">
                       Free text
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <input
                         type="text"
                         value={pressureOptions[`${area}Text`]}
@@ -551,14 +555,15 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                         }
                         placeholder="Enter text"
                         maxLength={10}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
                       />
                       {pressureOptions[`${area}Text`] && (
                         <button
                           onClick={() => clearField(`${area}Text`)}
-                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                          title="Clear text"
                         >
-                          Clear
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       )}
                     </div>
@@ -599,27 +604,28 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                       <label className="block text-sm text-gray-600 mb-1">
                         Predefined flag
                       </label>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <input
                           type="text"
                           value={getFlagDisplay(pressureOptions[`${area}Flag`])}
                           readOnly
                           placeholder="Select flag"
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                          className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
                           onClick={() => handleFlagSelect(`${area}Flag`)}
                         />
                         <button
                           onClick={() => handleFlagSelect(`${area}Flag`)}
-                          className="px-6 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium"
+                          className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium text-sm"
                         >
                           Select
                         </button>
                         {pressureOptions[`${area}Flag`] && (
                           <button
                             onClick={() => clearField(`${area}Flag`)}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                            title="Clear flag"
                           >
-                            Clear
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         )}
                       </div>
@@ -633,15 +639,15 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                         <label className="block text-sm text-gray-600 mb-1">
                           Predefined Logo
                         </label>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <input
                             type="text"
                             value={getLogoDisplay(
                               pressureOptions[`${area}LogoPredefined`],
                             )}
                             readOnly
-                            placeholder="Select predefined logo"
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                            placeholder="Select logo"
+                            className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
                             onClick={() =>
                               handleFlagSelect(`${area}LogoPredefined`)
                             }
@@ -650,7 +656,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                             onClick={() =>
                               handleFlagSelect(`${area}LogoPredefined`)
                             }
-                            className="px-6 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium"
+                            className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium text-sm"
                           >
                             Select
                           </button>
@@ -659,9 +665,10 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                               onClick={() =>
                                 clearField(`${area}LogoPredefined`)
                               }
-                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                              title="Clear logo"
                             >
-                              Clear
+                              <Trash2 className="w-5 h-5" />
                             </button>
                           )}
                         </div>
@@ -671,34 +678,37 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                         <label className="block text-sm text-gray-600 mb-1">
                           Or upload custom logo
                         </label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            if (!file) return;
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                              onUpdate({
-                                pressureOptions: {
-                                  ...pressureOptions,
-                                  [`${area}LogoCustom`]: ev.target.result,
-                                  [`${area}LogoPredefined`]: "",
-                                },
-                              });
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                        />
-                        {pressureOptions[`${area}LogoCustom`] && (
-                          <button
-                            onClick={() => clearField(`${area}LogoCustom`)}
-                            className="mt-2 px-4 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                          >
-                            Remove custom logo
-                          </button>
-                        )}
+                        <div className="flex flex-wrap items-center gap-3">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                onUpdate({
+                                  pressureOptions: {
+                                    ...pressureOptions,
+                                    [`${area}LogoCustom`]: ev.target.result,
+                                    [`${area}LogoPredefined`]: "",
+                                  },
+                                });
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                            className="flex-1 min-w-[150px] text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                          />
+                          {pressureOptions[`${area}LogoCustom`] && (
+                            <button
+                              onClick={() => clearField(`${area}LogoCustom`)}
+                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                              title="Remove custom logo"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -724,7 +734,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                     <label className="block text-sm text-gray-600 mb-1">
                       Free text
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <input
                         type="text"
                         value={pressureOptions[`${area}Text`]}
@@ -738,14 +748,15 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                         }
                         placeholder="Enter text"
                         maxLength={10}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
                       />
                       {pressureOptions[`${area}Text`] && (
                         <button
                           onClick={() => clearField(`${area}Text`)}
-                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                          title="Clear text"
                         >
-                          Clear
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       )}
                     </div>
@@ -786,27 +797,28 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                       <label className="block text-sm text-gray-600 mb-1">
                         Predefined flag
                       </label>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <input
                           type="text"
                           value={getFlagDisplay(pressureOptions[`${area}Flag`])}
                           readOnly
                           placeholder="Select flag"
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                          className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
                           onClick={() => handleFlagSelect(`${area}Flag`)}
                         />
                         <button
                           onClick={() => handleFlagSelect(`${area}Flag`)}
-                          className="px-6 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium"
+                          className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium text-sm"
                         >
                           Select
                         </button>
                         {pressureOptions[`${area}Flag`] && (
                           <button
                             onClick={() => clearField(`${area}Flag`)}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                            title="Clear flag"
                           >
-                            Clear
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         )}
                       </div>
@@ -820,15 +832,15 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                         <label className="block text-sm text-gray-600 mb-1">
                           Predefined Logo
                         </label>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <input
                             type="text"
                             value={getLogoDisplay(
                               pressureOptions[`${area}LogoPredefined`],
                             )}
                             readOnly
-                            placeholder="Select predefined logo"
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                            placeholder="Select logo"
+                            className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
                             onClick={() =>
                               handleFlagSelect(`${area}LogoPredefined`)
                             }
@@ -837,7 +849,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                             onClick={() =>
                               handleFlagSelect(`${area}LogoPredefined`)
                             }
-                            className="px-6 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium"
+                            className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium text-sm"
                           >
                             Select
                           </button>
@@ -846,9 +858,10 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                               onClick={() =>
                                 clearField(`${area}LogoPredefined`)
                               }
-                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                              title="Clear logo"
                             >
-                              Clear
+                              <Trash2 className="w-5 h-5" />
                             </button>
                           )}
                         </div>
@@ -858,34 +871,37 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                         <label className="block text-sm text-gray-600 mb-1">
                           Or upload custom logo
                         </label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            if (!file) return;
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                              onUpdate({
-                                pressureOptions: {
-                                  ...pressureOptions,
-                                  [`${area}LogoCustom`]: ev.target.result,
-                                  [`${area}LogoPredefined`]: "",
-                                },
-                              });
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                        />
-                        {pressureOptions[`${area}LogoCustom`] && (
-                          <button
-                            onClick={() => clearField(`${area}LogoCustom`)}
-                            className="mt-2 px-4 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                          >
-                            Remove custom logo
-                          </button>
-                        )}
+                        <div className="flex flex-wrap items-center gap-3">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                onUpdate({
+                                  pressureOptions: {
+                                    ...pressureOptions,
+                                    [`${area}LogoCustom`]: ev.target.result,
+                                    [`${area}LogoPredefined`]: "",
+                                  },
+                                });
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                            className="flex-1 min-w-[150px] text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                          />
+                          {pressureOptions[`${area}LogoCustom`] && (
+                            <button
+                              onClick={() => clearField(`${area}LogoCustom`)}
+                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                              title="Remove custom logo"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1010,16 +1026,16 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                     <button
                       key={country.name}
                       onClick={() => selectFlag(country.name)}
-                      className="group flex flex-col items-center gap-4 p-5 rounded-2xl bg-white border border-slate-100 hover:border-green-300 hover:shadow-lg hover:shadow-green-900/5 hover:-translate-y-1 transition-all duration-300"
+                      className="group flex flex-col items-center gap-3 p-4 rounded-xl bg-white border border-slate-100 hover:border-green-300 hover:shadow-lg hover:shadow-green-900/5 hover:-translate-y-1 transition-all duration-300"
                     >
-                      <div className="relative w-14 h-14 rounded-full overflow-hidden shadow-inner bg-slate-100 group-hover:ring-4 group-hover:ring-green-50 transition-all duration-300">
+                      <div className="relative w-16 h-12 rounded-lg overflow-hidden shadow-sm bg-slate-100 group-hover:ring-4 group-hover:ring-green-50 transition-all duration-300">
                         <img
                           src={country.flag}
                           alt={country.name}
-                          className="w-full h-full object-cover scale-150"
+                          className="w-full h-full object-cover"
                         />
                       </div>
-                      <span className="text-[10px] font-black text-slate-400 group-hover:text-slate-900 leading-tight uppercase tracking-[0.1em] text-center">
+                      <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-900 leading-tight uppercase tracking-wider text-center">
                         {country.name}
                       </span>
                     </button>

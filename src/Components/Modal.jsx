@@ -1,13 +1,27 @@
 import React, { useState } from 'react';
 import { message } from 'antd';
-import { X, Printer, Download, Mail, CheckCircle, Package, Star, User, CreditCard, ArrowLeft, ArrowRight, Loader2, ShoppingCart, Settings } from 'lucide-react';
+import { X, Printer, Download, Mail, CheckCircle, Package, Star, User, CreditCard, ArrowLeft, ArrowRight, Loader2, ShoppingCart, Settings, History } from 'lucide-react';
 // import { loadStripe } from "@stripe/stripe-js";
 import { useRef } from 'react';
 import { useEffect } from 'react';
 import { placeOrder, createCheckoutSession } from '../api/api';
 // const stripePromise = loadStripe("pk_test_51S0HgS2ZnQzLDaK40M9tlj1n72wtQNsUNhG986xbE6bfHxWmFfOMJfWGAbg4QrAlFtnhVCtOajoIqUbRgSBnRnkb00iMo1bD1o");
 
-const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, price, onContinueConfiguring, packageName, program }) => {
+const QuoteModal = ({ 
+  isOpen, 
+  onClose, 
+  selectedOptions, 
+  defaultSelections = {}, 
+  price, 
+  amountPaid = 0,
+  paymentStatus = 'unpaid',
+  balanceDue = 0,
+  editDeadline = null,
+  onContinueConfiguring, 
+  packageName, 
+  program, 
+  initialDeliveryDetails 
+}) => {
 
   // Helper: Check if a garment has been actually configured (differs from defaults)
   const isGarmentConfigured = (garmentType, garmentData) => {
@@ -61,19 +75,31 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
     });
     return configured;
   });
+
   const [customerDetails, setCustomerDetails] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    Skolenavn: '',
-    address: '',
-    city: '',
-    postalCode: '',
-    country: 'Denmark',
-    notes: '',
-    deliveryType: "regular"
+    firstName: initialDeliveryDetails?.firstName || '',
+    lastName: initialDeliveryDetails?.lastName || '',
+    email: initialDeliveryDetails?.email || '',
+    phone: initialDeliveryDetails?.phone || '',
+    Skolenavn: initialDeliveryDetails?.Skolenavn || '',
+    address: initialDeliveryDetails?.address || '',
+    city: initialDeliveryDetails?.city || '',
+    postalCode: initialDeliveryDetails?.postalCode || '',
+    country: initialDeliveryDetails?.country || 'Denmark',
+    notes: initialDeliveryDetails?.notes || '',
+    deliveryType: initialDeliveryDetails?.deliveryType || "regular",
+    deliverToSchool: initialDeliveryDetails?.deliverToSchool || false
   });
+
+  // Sync state if initialDeliveryDetails changes while modal is open (e.g. slow fetch)
+  useEffect(() => {
+    if (initialDeliveryDetails) {
+      setCustomerDetails(prev => ({
+        ...prev,
+        ...initialDeliveryDetails
+      }));
+    }
+  }, [initialDeliveryDetails]);
 
   // --- outside renderCustomerDetails, in your component ---
   const refs = {
@@ -560,7 +586,6 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
     }
 
 
-    // 3. New Clothing Logic: Flatten pressureOptions
     if (options.pressureOptions) {
       const po = options.pressureOptions;
       if (po.rightChestText) filtered['Right Chest (Text)'] = po.rightChestText;
@@ -568,10 +593,19 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
       if (po.leftChestText) filtered['Left Chest (Text)'] = po.leftChestText;
       if (po.leftChestFlag) filtered['Left Chest (Flag)'] = po.leftChestFlag;
 
+      if (po.bottomChestText) filtered['Bottom Chest (Text)'] = po.bottomChestText;
+      
       if (po.rightSleeveText) filtered['Right Sleeve (Text)'] = po.rightSleeveText;
       if (po.rightSleeveFlag) filtered['Right Sleeve (Flag)'] = po.rightSleeveFlag;
       if (po.leftSleeveText) filtered['Left Sleeve (Text)'] = po.leftSleeveText;
       if (po.leftSleeveFlag) filtered['Left Sleeve (Flag)'] = po.leftSleeveFlag;
+
+      if (po.rightLegText) filtered['Right Leg (Text)'] = po.rightLegText;
+      if (po.rightLegFlag) filtered['Right Leg (Flag)'] = po.rightLegFlag;
+      if (po.leftLegText) filtered['Left Leg (Text)'] = po.leftLegText;
+      if (po.leftLegFlag) filtered['Left Leg (Flag)'] = po.leftLegFlag;
+
+      if (po.backDesign) filtered['Back Design'] = po.backDesign.name || 'Custom';
 
       // Remove the raw object so it doesn't show up as [Object object]
       delete filtered.pressureOptions;
@@ -621,16 +655,14 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
     const required = ['firstName', 'lastName', 'email', 'phone', 'address', 'city', 'postalCode'];
     return required.every(field => customerDetails[field].trim() !== '');
   };
-
   const buildFilteredOptions = (selectedOptions) => {
     return Object.fromEntries(
       Object.entries(selectedOptions).map(([category, options]) => {
         return [category, filterOptions(options)];
-      }).filter(([_, filtered]) => Object.keys(filtered).length > 0) // remove empty categories
+      }).filter(([_, filtered]) => Object.keys(filtered).length > 0)
     );
   };
 
-  // Handle order submission
   const handleConfirmOrder = async () => {
     setIsLoading(true);
 
@@ -644,7 +676,7 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
         throw new Error("Student or Class information not found. Please log in again.");
       }
 
-      // Prepare garments array — only include garments that were actually configured AND selected
+      // Prepare order data
       const configuredEntries = Object.entries(selectedOptions).filter(
         ([type, options]) => isGarmentConfigured(type, options) && selectedGarments[type]
       );
@@ -660,62 +692,58 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
         design_config: options.pressureOptions || {}
       }));
 
-      // Find if any logo was selected (optional, backend can store null)
-      let logo_id = null;
-      // Searching for any item that has a predefined logo selected
-      for (const item of Object.values(selectedOptions)) {
-        if (item.pressureOptions) {
-          for (const key in item.pressureOptions) {
-            if (key.includes("LogoPredefined") && item.pressureOptions[key]) {
-              // This is a bit of a heuristic, we really just need A logo ID if required by schema
-              // In this app, Logos are usually school-wide.
-              break;
-            }
-          }
+      // Check if balance exists
+      if (balanceDue <= 0) {
+        // Just save the order
+        const saveResponse = await placeOrder({
+          student_id: studentId,
+          class_id: classId,
+          garments,
+          delivery_details: customerDetails,
+          logo_id: null
+        });
+
+        if (saveResponse.data?.success) {
+          message.success("Order details updated successfully!");
+          setOrderComplete(true);
+          // We don't need a Stripe redirect
+          return;
         }
       }
 
-      const orderPayload = {
+      // Prepare Stripe session
+      const tempOrderData = {
         student_id: studentId,
         class_id: classId,
         garments: garments,
-        delivery_details: customerDetails,
-        logo_id: logo_id
+        delivery_details: customerDetails
       };
 
-      const response = await placeOrder(orderPayload);
-      const result = response.data;
+      const stripeResponse = await createCheckoutSession({
+        orderData: tempOrderData,
+        amount: balanceDue
+      });
 
-      if (!result.success) {
-        throw new Error(result.error || "Failed to submit order");
-      }
-
-      console.log("Order placed successfully:", result);
-
-      const orderId = result.data?.orderId;
-      if (orderId) {
-        setOrderDate(`ORD-${orderId}`);
-
-        // Initiate Stripe Payment
-        const stripeResponse = await createCheckoutSession({
-          orderId: orderId,
-          amount: dynamicPrice * 100 // Convert to cents/øre - using dynamic price
-        });
-
-        if (stripeResponse.data?.success && stripeResponse.data?.url) {
-          window.location.href = stripeResponse.data.url;
-          return;
+      if (stripeResponse.data?.success && stripeResponse.data?.url) {
+        window.location.href = stripeResponse.data.url;
+        return;
+      } else {
+        if (stripeResponse.data?.message) {
+          throw new Error(stripeResponse.data.message);
         } else {
           throw new Error("Failed to create Stripe checkout session");
         }
       }
 
-      // Fallback if no orderId or payment failed to initiate
-      setIsLoading(false);
-
     } catch (error) {
-      console.error("Error during confirmation:", error);
-      message.error(error.message);
+      console.error("Error during checkout:", error);
+      if (error.response?.data?.message) {
+        message.error(error.response.data.message);
+      } else if (error.message) {
+        message.error(error.message);
+      } else {
+        message.error("An unexpected error occurred. Please try again.");
+      }
       setIsLoading(false);
     }
   };
@@ -1361,21 +1389,37 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
         {/* Enhanced Footer with Step Navigation - Only show if not on thank you page */}
         {!orderComplete && (
           <div className="bg-gradient-to-r from-gray-50 via-white to-gray-50 border-t border-gray-100 p-6">
-            {/* Price Section - Show on all steps */}
+            {/* Price Section */}
             <div className="bg-gradient-to-r from-green-50 to-green-100/50 rounded-xl p-4 mb-4 border border-green-200">
               <div className="flex justify-between items-center">
-                <div>
-                  <span className="text-base font-bold text-gray-900">Your Price</span>
-                  <p className="text-gray-600 text-xs mt-1">
-                    {Object.values(selectedGarments).filter(Boolean).length} item(s) selected • Shipping included
-                  </p>
+                <div className="flex-1">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs font-bold text-gray-500 uppercase">Configuration Total</span>
+                    <span className="text-sm font-bold text-gray-700">{dynamicPrice} DKK</span>
+                  </div>
+                  {amountPaid > 0 && (
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-green-600 uppercase">Amount Already Paid</span>
+                      <span className="text-sm font-bold text-green-600">-{amountPaid} DKK</span>
+                    </div>
+                  )}
+                  {editDeadline && (
+                    <div className="flex items-center text-[10px] text-yellow-700 font-bold bg-yellow-100/50 px-2 py-1 rounded-md mt-2">
+                       <History className="w-3 h-3 mr-1" />
+                       Edit window expires: {editDeadline.toLocaleDateString()}
+                    </div>
+                  )}
                 </div>
-                <div className="text-right">
-                  <span className="text-2xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
-                    {dynamicPrice}
+                <div className="text-right pl-6 border-l border-green-200 ml-6">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">
+                    {balanceDue <= 0 ? 'STATUS' : 'BALANCE DUE'}
                   </span>
-
-                  <span className="text-base font-semibold text-green-600 ml-1">DKK</span>
+                  <div className="flex items-baseline justify-end">
+                    <span className="text-2xl font-black bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
+                      {balanceDue <= 0 ? (paymentStatus === 'paid' ? 'PAID' : 'FREE') : balanceDue}
+                    </span>
+                    {balanceDue > 0 && <span className="text-sm font-bold text-green-600 ml-1">DKK</span>}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1438,8 +1482,17 @@ const QuoteModal = ({ isOpen, onClose, selectedOptions, defaultSelections = {}, 
                       </>
                     ) : (
                       <>
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        Approve order and pay
+                        {balanceDue <= 0 ? (
+                          <>
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Save and finalize design
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="w-4 h-4 mr-1" />
+                            Approve order and pay
+                          </>
+                        )}
                       </>
                     )}
                   </span>

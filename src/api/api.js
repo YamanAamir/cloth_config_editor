@@ -68,7 +68,13 @@ export const markNameListReady = (nameListId) => api.put(`/class-rep/namelist/${
 export const deleteNameListItem = (itemId) => api.delete(`/class-rep/namelist/item/${itemId}`);
 // Place Order
 export const placeOrder = (data) => api.post('/student/place-order', data);
+export const getMyOrder = () => api.get('/student/my-order');
+export const getMyOrderHistory = () => api.get('/student/my-order-history');
+export const deleteHistory = (id) => api.delete(`/student/history/${id}`);
 
+// Order Management (Admin/Class Rep)
+export const unlockOrder = (orderId) => api.put(`/admin/orders/${orderId}/unlock`);
+export const lockOrder = (orderId) => api.put(`/admin/orders/${orderId}/lock`);
 
 // Stripe Payment
 export const createCheckoutSession = (data) => api.post('/payment/create-checkout-session', data);

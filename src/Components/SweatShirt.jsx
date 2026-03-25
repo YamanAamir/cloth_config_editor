@@ -7,6 +7,7 @@ import logo2 from "../assets/Universitylogo/logo2.png";
 import logo3 from "../assets/Universitylogo/logo3.jpg";
 import logo4 from "../assets/Universitylogo/logo4.png";
 import { BASE_URL } from "../utils/const";
+import { X, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 
 const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
   const [activeTab, setActiveTab] = useState("size");
@@ -48,26 +49,26 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
   };
 
   const countries = [
-    { name: "Denmark", flag: "https://flagcdn.com/w40/dk.png" },
-    { name: "United States", flag: "https://flagcdn.com/w40/us.png" },
-    { name: "United Kingdom", flag: "https://flagcdn.com/w40/gb.png" },
-    { name: "Germany", flag: "https://flagcdn.com/w40/de.png" },
-    { name: "France", flag: "https://flagcdn.com/w40/fr.png" },
-    { name: "Spain", flag: "https://flagcdn.com/w40/es.png" },
-    { name: "Italy", flag: "https://flagcdn.com/w40/it.png" },
-    { name: "Netherlands", flag: "https://flagcdn.com/w40/nl.png" },
-    { name: "Sweden", flag: "https://flagcdn.com/w40/se.png" },
-    { name: "Norway", flag: "https://flagcdn.com/w40/no.png" },
-    { name: "Finland", flag: "https://flagcdn.com/w40/fi.png" },
-    { name: "Poland", flag: "https://flagcdn.com/w40/pl.png" },
-    { name: "Japan", flag: "https://flagcdn.com/w40/jp.png" },
-    { name: "South Korea", flag: "https://flagcdn.com/w40/kr.png" },
-    { name: "China", flag: "https://flagcdn.com/w40/cn.png" },
-    { name: "India", flag: "https://flagcdn.com/w40/in.png" },
-    { name: "Brazil", flag: "https://flagcdn.com/w40/br.png" },
-    { name: "Canada", flag: "https://flagcdn.com/w40/ca.png" },
-    { name: "Australia", flag: "https://flagcdn.com/w40/au.png" },
-    { name: "Mexico", flag: "https://flagcdn.com/w40/mx.png" },
+    { name: "Denmark", flag: "https://flagcdn.com/w160/dk.png" },
+    { name: "United States", flag: "https://flagcdn.com/w160/us.png" },
+    { name: "United Kingdom", flag: "https://flagcdn.com/w160/gb.png" },
+    { name: "Germany", flag: "https://flagcdn.com/w160/de.png" },
+    { name: "France", flag: "https://flagcdn.com/w160/fr.png" },
+    { name: "Spain", flag: "https://flagcdn.com/w160/es.png" },
+    { name: "Italy", flag: "https://flagcdn.com/w160/it.png" },
+    { name: "Netherlands", flag: "https://flagcdn.com/w160/nl.png" },
+    { name: "Sweden", flag: "https://flagcdn.com/w160/se.png" },
+    { name: "Norway", flag: "https://flagcdn.com/w160/no.png" },
+    { name: "Finland", flag: "https://flagcdn.com/w160/fi.png" },
+    { name: "Poland", flag: "https://flagcdn.com/w160/pl.png" },
+    { name: "Japan", flag: "https://flagcdn.com/w160/jp.png" },
+    { name: "South Korea", flag: "https://flagcdn.com/w160/kr.png" },
+    { name: "China", flag: "https://flagcdn.com/w160/cn.png" },
+    { name: "India", flag: "https://flagcdn.com/w160/in.png" },
+    { name: "Brazil", flag: "https://flagcdn.com/w160/br.png" },
+    { name: "Canada", flag: "https://flagcdn.com/w160/ca.png" },
+    { name: "Australia", flag: "https://flagcdn.com/w160/au.png" },
+    { name: "Mexico", flag: "https://flagcdn.com/w160/mx.png" },
   ];
 
   const flagImages = {
@@ -101,9 +102,12 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
   // ];
 
   // CANVAS CONSTANTS
+  // const CANVAS_WIDTH = 300;
+  // const TEXT_HEIGHT = 80;
+  // const FLAG_HEIGHT = 210;
   const CANVAS_WIDTH = 320;
-  const TEXT_HEIGHT = 80;
-  const FLAG_HEIGHT = 200;
+  const TEXT_HEIGHT = 120;
+  const FLAG_HEIGHT = 240;
   const CANVAS_HEIGHT = TEXT_HEIGHT + FLAG_HEIGHT;
 
   const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false) => {
@@ -112,9 +116,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
     canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, canvas.width, TEXT_HEIGHT);
-
+    // Use transparency instead of black background for cleaner blending
     if (text?.trim()) {
       let fontSize = 48;
       ctx.font = `bold ${fontSize}px Arial`;
@@ -129,27 +131,26 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
       ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
     }
 
-    ctx.fillStyle = hasFlag || hasLogo ? "#ffffff" : "#000000";
-    ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+    if (hasFlag || hasLogo) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+    }
 
-    // Add black border if both text and flag are present
-    if (text?.trim() && hasFlag) {
+    // Add black border (mask) if flag or logo is present
+    if (hasFlag || hasLogo) {
       ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 10;
+      ctx.lineWidth = 40;
       ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
     }
 
     return canvas.toDataURL("image/png");
   };
 
-  const getDiffuseBase64 = (countryName, text, callback) => {
+  const getDiffuseBase64 = (flag, logoPre, logoCustom, text, callback) => {
     const canvas = document.createElement("canvas");
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
-
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (text?.trim()) {
       let fontSize = 48;
@@ -166,66 +167,60 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
     }
 
     const drawBorder = () => {
-      if (text?.trim() && countryName) {
+      if (flag || logoPre || logoCustom) {
         ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 10;
+        ctx.lineWidth = 40;
         ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
       }
     };
 
-    if (countryName && flagImages[countryName]) {
+    const finalize = () => {
+      drawBorder();
+      callback(canvas.toDataURL("image/png"));
+    };
+
+    if (flag && flagImages[flag]) {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
         ctx.drawImage(img, 0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-        drawBorder();
-        callback(canvas.toDataURL("image/png"));
+        finalize();
       };
-      img.src = flagImages[countryName];
+      img.onerror = finalize;
+      img.src = flagImages[flag];
       return;
     }
 
-    drawBorder();
-    callback(canvas.toDataURL("image/png"));
-  };
-
-  const getLogoBase64 = (predefinedName, customBase64, callback) => {
-    const canvas = document.createElement("canvas");
-    canvas.width = CANVAS_WIDTH;
-    canvas.height = FLAG_HEIGHT;
-    const ctx = canvas.getContext("2d");
-
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    let src = customBase64;
-    if (!src && predefinedName && logos) {
-      const foundLogo = logos.find((l) => l.name === predefinedName);
-      if (foundLogo) {
-        src = `${BASE_URL}${foundLogo.file_path}`.replace(/\\/g, '/');
+    let logoSrc = logoCustom;
+    if (!logoSrc && logoPre) {
+      const foundLogo = logos.find((l) => l.name === logoPre);
+      if (foundLogo?.file_path) {
+        const cleanPath = foundLogo.file_path.replace(/\\/g, "/");
+        logoSrc = `${BASE_URL}${cleanPath}`;
       }
     }
 
-    if (src) {
+    if (logoSrc) {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
         const ratio = Math.min(
-          canvas.width / img.width,
-          canvas.height / img.height,
+          CANVAS_WIDTH / img.width,
+          FLAG_HEIGHT / img.height
         );
         const w = img.width * ratio * 0.9;
         const h = img.height * ratio * 0.9;
-        const x = (canvas.width - w) / 2;
-        const y = (canvas.height - h) / 2;
+        const x = (CANVAS_WIDTH - w) / 2;
+        const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
         ctx.drawImage(img, x, y, w, h);
-        callback(canvas.toDataURL("image/png"));
+        finalize();
       };
-      img.src = src;
+      img.onerror = finalize;
+      img.src = logoSrc;
       return;
     }
 
-    callback(canvas.toDataURL("image/png"));
+    finalize();
   };
 
   const handleFlagSelect = (field) => {
@@ -393,48 +388,13 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
       });
 
       // Diffuse
-      getDiffuseBase64(flag, text, (diffuseBase) => {
-        getLogoBase64(logoPre, logoCustom, (logoBase) => {
-          const finalCanvas = document.createElement("canvas");
-          finalCanvas.width = CANVAS_WIDTH;
-          finalCanvas.height = CANVAS_HEIGHT;
-          const ctx = finalCanvas.getContext("2d");
-
-          const diffuseImg = new Image();
-          diffuseImg.onload = () => {
-            ctx.drawImage(diffuseImg, 0, 0);
-
-            if (hasLogo) {
-              const logoImg = new Image();
-              logoImg.onload = () => {
-                ctx.drawImage(
-                  logoImg,
-                  0,
-                  TEXT_HEIGHT,
-                  CANVAS_WIDTH,
-                  FLAG_HEIGHT
-                );
-                const finalDiffuse = finalCanvas.toDataURL("image/png");
-                ["preview-iframe", "preview-iframe2"].forEach((id) => {
-                  const iframe = document.getElementById(id);
-                  if (iframe?.contentWindow) {
-                    const msg = `SweatShirt:${area}_diffuse: ${finalDiffuse}`;
-                    iframe.contentWindow.postMessage(msg, "*");
-                  }
-                });
-              };
-              logoImg.src = logoBase;
-            } else {
-              ["preview-iframe", "preview-iframe2"].forEach((id) => {
-                const iframe = document.getElementById(id);
-                if (iframe?.contentWindow) {
-                  const msg = `SweatShirt:${area}_diffuse: ${diffuseBase}`;
-                  iframe.contentWindow.postMessage(msg, "*");
-                }
-              });
-            }
-          };
-          diffuseImg.src = diffuseBase;
+      getDiffuseBase64(flag, logoPre, logoCustom, text, (diffuseBase) => {
+        ["preview-iframe", "preview-iframe2"].forEach((id) => {
+          const iframe = document.getElementById(id);
+          if (iframe?.contentWindow) {
+            const msg = `SweatShirt:${area}_diffuse: ${diffuseBase}`;
+            iframe.contentWindow.postMessage(msg, "*");
+          }
         });
       });
     });
@@ -576,7 +536,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                     <label className="block text-sm text-gray-600 mb-1">
                       Free text
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <input
                         type="text"
                         value={pressureOptions[`${area}Text`]}
@@ -590,14 +550,15 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                         }
                         placeholder="Enter text"
                         maxLength={10}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
                       />
                       {pressureOptions[`${area}Text`] && (
                         <button
                           onClick={() => clearField(`${area}Text`)}
-                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                          title="Clear text"
                         >
-                          Clear
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       )}
                     </div>
@@ -638,27 +599,28 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                       <label className="block text-sm text-gray-600 mb-1">
                         Predefined flag
                       </label>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <input
                           type="text"
                           value={getFlagDisplay(pressureOptions[`${area}Flag`])}
                           readOnly
                           placeholder="Select flag"
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                          className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
                           onClick={() => handleFlagSelect(`${area}Flag`)}
                         />
                         <button
                           onClick={() => handleFlagSelect(`${area}Flag`)}
-                          className="px-6 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium"
+                          className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium text-sm"
                         >
                           Select
                         </button>
                         {pressureOptions[`${area}Flag`] && (
                           <button
                             onClick={() => clearField(`${area}Flag`)}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                            title="Clear flag"
                           >
-                            Clear
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         )}
                       </div>
@@ -673,15 +635,15 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                         <label className="block text-sm text-gray-600 mb-1">
                           Predefined Logo
                         </label>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <input
                             type="text"
                             value={getLogoDisplay(
                               pressureOptions[`${area}LogoPredefined`],
                             )}
                             readOnly
-                            placeholder="Select predefined logo"
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                            placeholder="Select logo"
+                            className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
                             onClick={() =>
                               handleFlagSelect(`${area}LogoPredefined`)
                             }
@@ -690,7 +652,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                             onClick={() =>
                               handleFlagSelect(`${area}LogoPredefined`)
                             }
-                            className="px-6 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium"
+                            className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium text-sm"
                           >
                             Select
                           </button>
@@ -699,9 +661,10 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                               onClick={() =>
                                 clearField(`${area}LogoPredefined`)
                               }
-                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                              title="Clear logo"
                             >
-                              Clear
+                              <Trash2 className="w-5 h-5" />
                             </button>
                           )}
                         </div>
@@ -712,34 +675,37 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                         <label className="block text-sm text-gray-600 mb-1">
                           Or upload custom logo
                         </label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            if (!file) return;
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                              onUpdate({
-                                pressureOptions: {
-                                  ...pressureOptions,
-                                  [`${area}LogoCustom`]: ev.target.result,
-                                  [`${area}LogoPredefined`]: "",
-                                },
-                              });
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                        />
-                        {pressureOptions[`${area}LogoCustom`] && (
-                          <button
-                            onClick={() => clearField(`${area}LogoCustom`)}
-                            className="mt-2 px-4 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                          >
-                            Remove custom logo
-                          </button>
-                        )}
+                        <div className="flex flex-wrap items-center gap-3">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                onUpdate({
+                                  pressureOptions: {
+                                    ...pressureOptions,
+                                    [`${area}LogoCustom`]: ev.target.result,
+                                    [`${area}LogoPredefined`]: "",
+                                  },
+                                });
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                            className="flex-1 min-w-[150px] text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                          />
+                          {pressureOptions[`${area}LogoCustom`] && (
+                            <button
+                              onClick={() => clearField(`${area}LogoCustom`)}
+                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                              title="Remove custom logo"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -765,7 +731,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                     <label className="block text-sm text-gray-600 mb-1">
                       Free text
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <input
                         type="text"
                         value={pressureOptions[`${area}Text`]}
@@ -779,14 +745,15 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                         }
                         placeholder="Enter text"
                         maxLength={10}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
                       />
                       {pressureOptions[`${area}Text`] && (
                         <button
                           onClick={() => clearField(`${area}Text`)}
-                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                          title="Clear text"
                         >
-                          Clear
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       )}
                     </div>
@@ -827,27 +794,28 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                       <label className="block text-sm text-gray-600 mb-1">
                         Predefined flag
                       </label>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <input
                           type="text"
                           value={getFlagDisplay(pressureOptions[`${area}Flag`])}
                           readOnly
                           placeholder="Select flag"
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                          className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
                           onClick={() => handleFlagSelect(`${area}Flag`)}
                         />
                         <button
                           onClick={() => handleFlagSelect(`${area}Flag`)}
-                          className="px-6 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium"
+                          className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium text-sm"
                         >
                           Select
                         </button>
                         {pressureOptions[`${area}Flag`] && (
                           <button
                             onClick={() => clearField(`${area}Flag`)}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                            title="Clear flag"
                           >
-                            Clear
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         )}
                       </div>
@@ -861,15 +829,15 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                         <label className="block text-sm text-gray-600 mb-1">
                           Predefined Logo
                         </label>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <input
                             type="text"
                             value={getLogoDisplay(
                               pressureOptions[`${area}LogoPredefined`],
                             )}
                             readOnly
-                            placeholder="Select predefined logo"
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                            placeholder="Select logo"
+                            className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
                             onClick={() =>
                               handleFlagSelect(`${area}LogoPredefined`)
                             }
@@ -878,7 +846,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                             onClick={() =>
                               handleFlagSelect(`${area}LogoPredefined`)
                             }
-                            className="px-6 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium"
+                            className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium text-sm"
                           >
                             Select
                           </button>
@@ -887,9 +855,10 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                               onClick={() =>
                                 clearField(`${area}LogoPredefined`)
                               }
-                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                              title="Clear logo"
                             >
-                              Clear
+                              <Trash2 className="w-5 h-5" />
                             </button>
                           )}
                         </div>
@@ -899,34 +868,37 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                         <label className="block text-sm text-gray-600 mb-1">
                           Or upload custom logo
                         </label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            if (!file) return;
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                              onUpdate({
-                                pressureOptions: {
-                                  ...pressureOptions,
-                                  [`${area}LogoCustom`]: ev.target.result,
-                                  [`${area}LogoPredefined`]: "",
-                                },
-                              });
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                        />
-                        {pressureOptions[`${area}LogoCustom`] && (
-                          <button
-                            onClick={() => clearField(`${area}LogoCustom`)}
-                            className="mt-2 px-4 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                          >
-                            Remove custom logo
-                          </button>
-                        )}
+                        <div className="flex flex-wrap items-center gap-3">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                onUpdate({
+                                  pressureOptions: {
+                                    ...pressureOptions,
+                                    [`${area}LogoCustom`]: ev.target.result,
+                                    [`${area}LogoPredefined`]: "",
+                                  },
+                                });
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                            className="flex-1 min-w-[150px] text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                          />
+                          {pressureOptions[`${area}LogoCustom`] && (
+                            <button
+                              onClick={() => clearField(`${area}LogoCustom`)}
+                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
+                              title="Remove custom logo"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -967,80 +939,103 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
         />
       </div>
 
-      {/* Modal */}
+      {/* Modal / Asset Picker */}
       {showFlagModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
-              <h2 className="text-xl font-bold text-gray-800">
-                {currentField.includes("Logo")
-                  ? "Select a Logo"
-                  : "Choose a Flag"}
-              </h2>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300"
+            onClick={() => setShowFlagModal(false)}
+          />
+          <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
+            <div className="flex items-center justify-between px-8 py-7 border-b border-slate-50 bg-white/50 sticky top-0 z-10">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-green-50 rounded-2xl">
+                  {currentField.includes("Logo") ? (
+                    <ImageIcon className="w-6 h-6 text-green-600" />
+                  ) : (
+                    <Flag className="w-6 h-6 text-green-600" />
+                  )}
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900 leading-none">
+                    {currentField.includes("Logo") ? "Select a Logo" : "Choose a Flag"}
+                  </h2>
+                  <p className="text-slate-500 text-sm mt-1.5 font-medium">
+                    {currentField.includes("Logo") ? "Pick a symbol for your design" : "Represent your country"}
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setShowFlagModal(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-3 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-2xl transition-all duration-200 group"
               >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <X className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
               </button>
             </div>
-
-            {/* Content Area */}
-            <div className="p-6 overflow-y-auto custom-scrollbar">
+            <div className="p-8 overflow-y-auto custom-scrollbar-premium bg-slate-50/30">
               {currentField.includes("Logo") ? (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
                   {logos && logos.map((logo) => (
                     <button
                       key={logo.id}
                       onClick={() => selectLogo(logo.name)}
-                      className="group flex flex-col items-center p-4 border border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50/50 hover:shadow-md transition-all duration-200"
+                      className="group relative flex flex-col items-center p-2 rounded-3xl transition-all duration-300 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50"
                     >
-                      <div className="w-24 h-24 mb-3 flex items-center justify-center bg-white rounded-lg p-2">
+                      <div className="w-full aspect-square mb-4 flex items-center justify-center bg-white rounded-2xl border border-slate-100 shadow-sm group-hover:border-green-200 group-hover:-translate-y-2 transition-all duration-500 p-5 overflow-hidden">
                         <img
                           src={`${BASE_URL}${logo.file_path}`.replace(/\\/g, '/')}
                           alt={logo.name}
-                          className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-300"
+                          className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
                         />
+                        <div className="absolute inset-0 bg-green-600/0 group-hover:bg-green-600/5 transition-colors duration-300" />
                       </div>
-                      <span className="text-sm font-semibold text-gray-700 group-hover:text-green-700">
+                      <span className="text-xs font-bold text-slate-500 group-hover:text-green-700 truncate w-full px-2 text-center uppercase tracking-wider transition-colors">
                         {logo.name}
                       </span>
+                      <div className="absolute top-4 right-4 bg-green-600 rounded-full p-1 opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-300 shadow-lg">
+                        <X className="w-3 h-3 text-white rotate-45" />
+                      </div>
                     </button>
                   ))}
+                  {(!logos || logos.length === 0) && (
+                    <div className="col-span-full py-20 text-center">
+                      <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <ImageIcon className="w-8 h-8 text-slate-400" />
+                      </div>
+                      <p className="text-slate-400 font-bold text-lg">No logos found</p>
+                      <p className="text-slate-400/60 text-sm">Logos assigned to your class will appear here.</p>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {countries.map((country) => (
                     <button
                       key={country.name}
                       onClick={() => selectFlag(country.name)}
-                      className="flex flex-col items-center gap-2 p-3 border border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50/50 hover:shadow-sm transition-all duration-200 text-center"
+                      className="group flex flex-col items-center gap-3 p-4 rounded-xl bg-white border border-slate-100 hover:border-green-300 hover:shadow-lg hover:shadow-green-900/5 hover:-translate-y-1 transition-all duration-300"
                     >
-                      <img
-                        src={country.flag}
-                        alt={country.name}
-                        className="w-10 h-auto shadow-sm rounded-sm"
-                      />
-                      <span className="text-sm font-medium text-gray-700 leading-tight">
+                      <div className="relative w-16 h-12 rounded-lg overflow-hidden shadow-sm bg-slate-100 group-hover:ring-4 group-hover:ring-green-50 transition-all duration-300">
+                        <img
+                          src={country.flag}
+                          alt={country.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-900 leading-tight uppercase tracking-wider text-center">
                         {country.name}
                       </span>
                     </button>
                   ))}
                 </div>
               )}
+            </div>
+            {/* Quick Helper Footer */}
+            <div className="px-8 py-5 border-t border-slate-50 bg-white flex justify-center items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">
+                Choose an asset to customize your placement
+              </p>
             </div>
           </div>
         </div>

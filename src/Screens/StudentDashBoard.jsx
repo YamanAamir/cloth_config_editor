@@ -1,5 +1,6 @@
 // StudentDashboard.jsx (full fixed code with iframe src fixed to use null instead of empty string)
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { message, Tag } from 'antd';
 import img1 from '../assets/menuimages/1.png';
 import img2 from '../assets/menuimages/2.png';
 import img3 from '../assets/menuimages/3.png';
@@ -14,50 +15,19 @@ import Shorts from '../Components/Shorts';
 import SweatPants from '../Components/SweatPants';
 import SweatShirt from '../Components/SweatShirt';
 import QuoteModal from '../Components/Modal';
+import HistoryModal from '../Components/HistoryModal';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { GraduationCap, ChevronUp, ChevronDown, LogOut, Settings, LayoutGrid } from 'lucide-react';
+import { GraduationCap, ChevronUp, ChevronDown, LogOut, Settings, LayoutGrid, Lock, History, Package } from 'lucide-react';
 import StudentPopup from '../Components/Popup';
 import useLogoStore from '../store/logoStore';
 import { useAuth } from '../context/AuthContext';
+import { getMyOrder, getMyOrderHistory, placeOrder, unlockOrder, lockOrder, deleteHistory } from '../api/api';
+import useSocket from '../hooks/useSocket';
 
-const StudentDashboard = ({ mode, setMode, students, customizations, setCustomizations, setShowBackPopup /*, setShowBackTextPopup */ }) => { // COMMENTED: Back text feature disabled
+const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup /*, setShowBackTextPopup */ }) => { // COMMENTED: Back text feature disabled
     const { logout } = useAuth();
-    const [activeMenu, setActiveMenu] = useState('T-SHIRT');
-    const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
-    const [searchParams] = useSearchParams();
-    const packageName = searchParams.get("package"); // "standard"
-    const program = searchParams.get("program");
-    const [isConfigOpen, setIsConfigOpen] = useState(false);
-    const [globalEmblem, setGlobalEmblem] = useState({ name: 'Guld', value: 'Guld', color: '#FCD34D' });
-    const [isAppReady, setIsAppReady] = useState(false);
-    const [isIframeLoaded, setIsIframeLoaded] = useState(false);
-    const [extraCoverReset, setExtraCoverReset] = useState(false)
-    const [sizeFlag, setSizeFlag] = useState(true)
-    const [errors, setErrors] = useState({});
-    // Selected student for dropdown or individual display
-    const [selectedStudent, setSelectedStudent] = useState("");
 
-    const { logos, loading, fetchLogos } = useLogoStore();
-    const userStr = localStorage.getItem("user");
-    const user = userStr ? JSON.parse(userStr) : null;
-    const school_id = user?.school_id;
-
-    useEffect(() => {
-        if (school_id) {
-            fetchLogos({ school_id: school_id });
-        }
-    }, [school_id]);
-
-    const handleLogout = () => {
-        logout();
-        window.location.reload();
-    };
-
-    const handleChangeMode = () => {
-        setMode(null);
-        localStorage.removeItem('mode');
-    };
-
+    // 1. Move Constants & Logic to top
     const DEFAULT_SELECTIONS = {
         'T-SHIRT': {
             selectedColor: 'Red',
@@ -68,7 +38,6 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                 rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
                 leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
                 backDesign: null,
-                // backTexts: [] // COMMENTED: Back text feature disabled
             }
         },
         'SWEATSHIRT': {
@@ -80,7 +49,6 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                 rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
                 leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
                 backDesign: null,
-                // backTexts: [] // COMMENTED: Back text feature disabled
             }
         },
         'HOODIE': {
@@ -93,7 +61,6 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                 rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
                 leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
                 backDesign: null,
-                // backTexts: [] // COMMENTED: Back text feature disabled
             }
         },
         'ZIPPERHOODIE': {
@@ -105,7 +72,6 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                 rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
                 leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
                 backDesign: null,
-                // backTexts: [] // COMMENTED: Back text feature disabled
             }
         },
         'SWEATPANTS': {
@@ -126,8 +92,203 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
         }
     };
 
-    // Complete state for all components
+    const GARMENT_PRICES = {
+        'T-SHIRT': 200,
+        'SWEATSHIRT': 350,
+        'HOODIE': 450,
+        'ZIPPERHOODIE': 500,
+        'SWEATPANTS': 300,
+        'SHORTS': 250
+    };
+
+    const isGarmentConfigured = (garmentType, garmentData) => {
+        const defaults = DEFAULT_SELECTIONS[garmentType];
+        if (!defaults) return true;
+
+        if (garmentData.selectedColor && garmentData.selectedColor !== defaults.selectedColor) return true;
+        if (garmentData.selectedSize && garmentData.selectedSize !== defaults.selectedSize) return true;
+
+        const currentPO = garmentData.pressureOptions || {};
+        const defaultPO = defaults.pressureOptions || {};
+
+        for (const key of Object.keys(currentPO)) {
+            const currentVal = currentPO[key];
+            const defaultVal = defaultPO[key];
+            if (Array.isArray(currentVal)) {
+                if (currentVal.length > 0) return true;
+                continue;
+            }
+            if (currentVal !== null && typeof currentVal === 'object') {
+                if (JSON.stringify(currentVal) !== JSON.stringify(defaultVal)) return true;
+                continue;
+            }
+            if (currentVal !== '' && currentVal !== null && currentVal !== undefined && currentVal !== defaultVal) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // 2. State
     const [allSelections, setAllSelections] = useState(DEFAULT_SELECTIONS);
+    const [activeMenu, setActiveMenu] = useState('T-SHIRT');
+    const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+    const [undoAvailable, setUndoAvailable] = useState(false);
+    const [searchParams] = useSearchParams();
+    const packageName = searchParams.get("package"); // "standard"
+    const program = searchParams.get("program");
+    const [isConfigOpen, setIsConfigOpen] = useState(false);
+    const [globalEmblem, setGlobalEmblem] = useState({ name: 'Guld', value: 'Guld', color: '#FCD34D' });
+    const [isAppReady, setIsAppReady] = useState(false);
+    const [isIframeLoaded, setIsIframeLoaded] = useState(false);
+    const [extraCoverReset, setExtraCoverReset] = useState(false)
+    const [sizeFlag, setSizeFlag] = useState(true)
+    const [errors, setErrors] = useState({});
+    const [isLocked, setIsLocked] = useState(false);
+    const [deadline, setDeadline] = useState(null);
+    const [history, setHistory] = useState([]);
+    const [historyIndex, setHistoryIndex] = useState(-1);
+    const [dbHistory, setDbHistory] = useState([]);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState("");
+    const [existingDeliveryDetails, setExistingDeliveryDetails] = useState(null);
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [orderId, setOrderId] = useState(null);
+    const [amountPaid, setAmountPaid] = useState(0);
+    const [paymentStatus, setPaymentStatus] = useState('unpaid');
+    const [editDeadline, setEditDeadline] = useState(null);
+
+    // 3. Derived State
+    const calculateTotalPrice = () => {
+        let total = 0;
+        Object.entries(allSelections).forEach(([type, options]) => {
+            if (isGarmentConfigured(type, options)) {
+                total += GARMENT_PRICES[type] || 0;
+            }
+        });
+        return total;
+    };
+
+    const dynamicPrice = calculateTotalPrice();
+    const balanceDue = Math.max(0, dynamicPrice - amountPaid);
+
+
+    const { logos, loading, fetchLogos } = useLogoStore();
+    const userStr = localStorage.getItem("user");
+    const user = userStr ? JSON.parse(userStr) : null;
+    const school_id = user?.school_id;
+
+    // --- Real-time Socket Updates ---
+    const userId = user?.id;
+
+    const fetchOrderData = async () => {
+        try {
+            const resOrder = await getMyOrder();
+            if (resOrder.data?.success && resOrder.data.data) {
+                const order = resOrder.data.data;
+                setOrderId(order.id);
+                setIsLocked(order.is_locked);
+                setAmountPaid(parseFloat(order.amount_paid || 0));
+                setPaymentStatus(order.payment_status || 'unpaid');
+                if (order.edit_deadline) setEditDeadline(new Date(order.edit_deadline));
+                if (order.class?.change_deadline) setDeadline(new Date(order.class.change_deadline));
+                if (order.delivery_details) {
+                    const details = typeof order.delivery_details === 'string'
+                        ? JSON.parse(order.delivery_details) : order.delivery_details;
+                    setExistingDeliveryDetails(details);
+                }
+                if (order.order_items?.length > 0) {
+                    const newSelections = JSON.parse(JSON.stringify(DEFAULT_SELECTIONS));
+                    order.order_items.forEach(item => {
+                        const type = item.product_type;
+                        if (newSelections[type]) {
+                            newSelections[type].selectedColor = item.selectedColor;
+                            newSelections[type].selectedSize = item.selectedSize;
+                            newSelections[type].pressureOptions = item.design_config;
+                        }
+                    });
+                    setAllSelections(newSelections);
+                    const sName = user?.name || "Student";
+                    setCustomizations(prev => ({ ...prev, [sName]: newSelections }));
+                    setSelectedStudent(sName);
+                }
+            }
+        } catch (err) {
+            console.error("Error re-fetching order:", err);
+        }
+    };
+
+    const fetchHistoryData = async () => {
+        try {
+            const resHistory = await getMyOrderHistory();
+            if (resHistory.data?.success && resHistory.data.data) {
+                setDbHistory(resHistory.data.data);
+            }
+        } catch (err) {
+            console.error("Error re-fetching history:", err);
+        }
+    };
+
+    // Subscribe to real-time events
+    useSocket(
+        userId ? `order_update_${userId}` : null,
+        `order_update_${userId}`,
+        (data) => {
+            console.log('🔔 Real-time order update received:', data);
+            fetchOrderData();
+            fetchHistoryData();
+        }
+    );
+
+    useSocket(
+        userId ? `history_update_${userId}` : null,
+        `history_update_${userId}`,
+        (data) => {
+            console.log('🔔 Real-time history update received:', data);
+            fetchHistoryData();
+        }
+    );
+
+    // --- Fetch Existing Order & History ---
+    useEffect(() => {
+        if (user && user.role === 'student') {
+            fetchOrderData();
+            fetchHistoryData();
+        }
+    }, []);
+
+    useEffect(() => {
+        if (user) {
+            setIsAdmin(user.role === 'admin' || user.role === 'class_representative');
+
+            const now = new Date();
+
+            // 1. Check Class Deadline
+            if (user.class_deadline) {
+                const deadlineDate = new Date(user.class_deadline);
+                setDeadline(deadlineDate);
+                if (now > deadlineDate && user.role === 'student') {
+                    setIsLocked(true);
+                }
+            }
+
+            // 2. Check Post-Payment Edit Deadline (if exists)
+            if (editDeadline && now > editDeadline && user.role === 'student' && paymentStatus === 'paid') {
+                setIsLocked(true);
+            }
+        }
+    }, [user, editDeadline, paymentStatus]);
+
+    const handleLogout = () => {
+        logout();
+        window.location.reload();
+    };
+
+    const handleChangeMode = () => {
+        setMode(null);
+        localStorage.removeItem('mode');
+    };
 
     // Jab selected student change ho → uske customizations load karo
     useEffect(() => {
@@ -138,69 +299,227 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
     }, [selectedStudent, customizations]);
 
     const handleUpdateSelection = (category, updates) => {
+        if (isLocked && !isAdmin) {
+            message.warning("Editing is locked after the deadline.");
+            return;
+        }
+
+        // 1. Update LOCAL state immediately for responsive UI
         setAllSelections(prev => {
-            const newSelections = {
-                ...prev,
-                [category]: { ...prev[category], ...updates }
-            };
+            const next = JSON.parse(JSON.stringify(prev));
 
-            // SYNC LOGIC: If backDesign changed, apply to all shirt categories locally
-            const isBackDesignUpdate = updates.pressureOptions &&
-                updates.pressureOptions.backDesign !== undefined &&
-                updates.pressureOptions.backDesign !== (prev[category]?.pressureOptions?.backDesign);
-
-            if (isBackDesignUpdate) {
-                const newBackDesign = updates.pressureOptions.backDesign;
-                ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'].forEach(cat => {
-                    if (newSelections[cat]) {
-                        newSelections[cat] = {
-                            ...newSelections[cat],
-                            pressureOptions: {
-                                ...(newSelections[cat].pressureOptions || {}),
-                                backDesign: newBackDesign
-                            }
-                        };
+            // Sync Color with allowed restrictions for bottom wear
+            if (updates.selectedColor) {
+                const colorValue = updates.selectedColor;
+                const allowedShortsColors = ["heather grey", "black", "navy", "white"];
+                Object.keys(next).forEach(cat => {
+                    if (cat === 'SHORTS' || cat === 'SWEATPANTS') {
+                        if (allowedShortsColors.includes(colorValue.toLowerCase())) {
+                            next[cat].selectedColor = colorValue;
+                        }
+                    } else {
+                        next[cat].selectedColor = colorValue;
                     }
                 });
             }
 
-            // Save to global customizations for this student
-            setCustomizations(prevCustom => {
-                const nextCustom = { ...prevCustom };
+            // Sync Size across all products
+            if (updates.selectedSize) {
+                Object.keys(next).forEach(cat => {
+                    next[cat].selectedSize = updates.selectedSize;
+                });
+            }
 
-                if (isBackDesignUpdate) {
-                    // Sync to all students AND all categories
-                    students.forEach(student => {
-                        const studentName = typeof student === 'object' ? (student.name || student.id) : student;
-                        const studentData = nextCustom[studentName] || {};
-
-                        // Update all 4 categories for this student
-                        const updatedStudentData = { ...studentData };
+            // Sync Pressure Options with positional mapping
+            if (updates.pressureOptions) {
+                const pUpdates = updates.pressureOptions;
+                Object.keys(pUpdates).forEach(key => {
+                    if (key === 'backDesign') {
+                        const val = pUpdates[key];
                         ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'].forEach(cat => {
-                            const categoryData = updatedStudentData[cat] || {};
-                            updatedStudentData[cat] = {
-                                ...categoryData,
-                                pressureOptions: {
-                                    ...(categoryData.pressureOptions || {}),
-                                    backDesign: updates.pressureOptions.backDesign
-                                }
-                            };
+                            if (next[cat]) next[cat].pressureOptions.backDesign = val;
                         });
-                        nextCustom[studentName] = updatedStudentData;
-                    });
-                } else {
-                    // Update only selected student
-                    nextCustom[selectedStudent] = {
-                        ...(nextCustom[selectedStudent] || {}),
-                        [category]: newSelections[category]
-                    };
-                }
+                        return;
+                    }
 
-                return nextCustom;
+                    const newValue = pUpdates[key];
+                    // Regex for exact position matching to avoid chest/sleeve cross-contamination
+                    const match = key.match(/^(rightChest|leftChest|rightSleeve|leftSleeve|bottomChest|rightLeg|leftLeg)(.*)$/);
+                    if (match) {
+                        const basePos = match[1];
+                        const suffix = match[2]; // e.g., "Text", "Flag", "Type"
+
+                        // Map Chest to Leg for unified "side" selection
+                        const mapping = {
+                            'rightChest': ['rightChest', 'rightLeg'],
+                            'leftChest': ['leftChest', 'leftLeg'],
+                            'rightLeg': ['rightChest', 'rightLeg'],
+                            'leftLeg': ['leftChest', 'leftLeg'],
+                            'rightSleeve': ['rightSleeve'],
+                            'leftSleeve': ['leftSleeve'],
+                            'bottomChest': ['bottomChest']
+                        };
+
+                        const targets = mapping[basePos] || [basePos];
+                        Object.keys(next).forEach(cat => {
+                            targets.forEach(tPos => {
+                                const tKey = `${tPos}${suffix}`;
+                                if (next[cat].pressureOptions && next[cat].pressureOptions.hasOwnProperty(tKey)) {
+                                    next[cat].pressureOptions[tKey] = newValue;
+                                }
+                            });
+                        });
+                    }
+                });
+            }
+
+            // Apply any non-sync updates directly
+            Object.keys(updates).forEach(key => {
+                if (key !== 'selectedColor' && key !== 'selectedSize' && key !== 'pressureOptions') {
+                    next[category][key] = updates[key];
+                }
             });
 
-            return newSelections;
+            // 2. Schedule parent state update
+            setCustomizations(prevCustom => {
+                const updated = { ...prevCustom, [selectedStudent]: next };
+
+                // (BackDesign batch sync removed as multi-student mode is disabled)
+
+                // Save to history for Change Control
+                setHistory(h => {
+                    const newH = [...h.slice(0, historyIndex + 1), JSON.parse(JSON.stringify(updated))].slice(-10);
+                    setHistoryIndex(newH.length - 1);
+                    setUndoAvailable(newH.length > 1);
+                    return newH;
+                });
+
+                return updated;
+            });
+
+            return next;
         });
+    };
+
+    const handleUndo = () => {
+        if (historyIndex > 0) {
+            const prevIndex = historyIndex - 1;
+            const prevState = history[prevIndex];
+            setCustomizations(prevState);
+            setAllSelections(prevState[selectedStudent] || DEFAULT_SELECTIONS);
+            setHistoryIndex(prevIndex);
+            setUndoAvailable(prevIndex > 0);
+            message.info("Changes reverted.");
+        }
+    };
+
+    const handleRevertToVersion = (versionItem) => {
+        if (!versionItem.changes) return;
+
+        try {
+            // changes usually contains previousItems or similar structure
+            // In our paymentController we save { previousItems: existingOrder.order_items }
+            // Let's assume versionItem.order_items (from the history list API)
+            const items = versionItem.order_items || versionItem.changes.previousItems;
+
+            if (items && Array.isArray(items)) {
+                const newSelections = JSON.parse(JSON.stringify(DEFAULT_SELECTIONS));
+                items.forEach(item => {
+                    const type = item.product_type;
+                    if (newSelections[type]) {
+                        newSelections[type].selectedColor = item.selectedColor;
+                        newSelections[type].selectedSize = item.selectedSize;
+                        newSelections[type].pressureOptions = item.design_config;
+                    }
+                });
+
+                // Update state
+                setAllSelections(newSelections);
+                setCustomizations(prev => ({
+                    ...prev,
+                    [selectedStudent]: newSelections
+                }));
+
+                // Push to local UNDO history so user can revert this restoration
+                setHistory(h => {
+                    const updated = { ...customizations, [selectedStudent]: newSelections };
+                    const newH = [...h.slice(0, historyIndex + 1), JSON.parse(JSON.stringify(updated))].slice(-10);
+                    setHistoryIndex(newH.length - 1);
+                    setUndoAvailable(true);
+                    return newH;
+                });
+
+                message.success(`Restored Version ${versionItem.version}`);
+                setIsHistoryModalOpen(false);
+            }
+        } catch (err) {
+            console.error("Error reverting version:", err);
+            message.error("Failed to restore this version.");
+        }
+    };
+
+    const handleSaveOrder = async () => {
+        if (isLocked && !isAdmin) {
+            message.warning("Order is locked and cannot be saved.");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const configuredEntries = Object.entries(allSelections).filter(
+                ([type, options]) => isGarmentConfigured(type, options)
+            );
+
+            if (configuredEntries.length === 0) {
+                message.warning("Please configure at least one garment before saving.");
+                setIsSaving(false);
+                return;
+            }
+
+            const garments = configuredEntries.map(([type, options]) => ({
+                product_type: type,
+                selectedColor: options.selectedColor,
+                selectedSize: options.selectedSize,
+                design_config: options.pressureOptions || {}
+            }));
+
+            const response = await placeOrder({
+                student_id: user?.id,
+                class_id: user?.class_id,
+                garments,
+                delivery_details: existingDeliveryDetails || {},
+                logo_id: null
+            });
+
+            if (response.data?.success) {
+                message.success("Design saved successfully!");
+                // Refresh history
+                const resHistory = await getMyOrderHistory();
+                if (resHistory.data?.success) setDbHistory(resHistory.data.data);
+            }
+        } catch (err) {
+            console.error("Error saving order:", err);
+            message.error(err.response?.data?.message || "Failed to save design.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleAdminUnlock = async () => {
+        if (!orderId) {
+            message.error("No order found to unlock.");
+            return;
+        }
+        try {
+            const res = await unlockOrder(orderId);
+            if (res.data?.success) {
+                setIsLocked(false);
+                message.success("Order unlocked for student.");
+            }
+        } catch (err) {
+            console.error("Error unlocking order:", err);
+            message.error("Failed to unlock order.");
+        }
     };
     const menuItems = [
         { name: 'T-SHIRT', icon: img1 },
@@ -214,13 +533,12 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
     // Function to collect all selected options
     // Force iframe src initialization
     useEffect(() => {
-        if (!mode) return;
         const playcanvasUrl = 'https://playcanv.as/e/p/1b1eadeb/';
         ['preview-iframe', 'preview-iframe2'].forEach(id => {
             const iframe = document.getElementById(id);
             if (iframe && !iframe.src) iframe.src = playcanvasUrl;
         });
-    }, [mode]);
+    }, []);
 
     // Unified message sending logic for Page switching and state synchronization
     useEffect(() => {
@@ -267,8 +585,6 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
     }, [activeMenu, isAppReady]);
 
     useEffect(() => {
-        if (!mode) return;
-
         const handleMessage = (event) => {
             if (event.data === 'app:ready') {
                 console.log("App Ready signal received in Dashboard");
@@ -278,21 +594,7 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
 
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [mode]);
-
-
-    useEffect(() => {
-        if (students.length > 0) {
-            const firstStudent = students[0];
-            const initialSelection = typeof firstStudent === 'object' ? (firstStudent.name || firstStudent.id) : firstStudent;
-
-            if (mode === "individual") {
-                setSelectedStudent(initialSelection);
-            } else if (mode === "batch") {
-                setSelectedStudent(initialSelection);
-            }
-        }
-    }, [mode, students]);
+    }, []);
 
     // Jab selected student change ho → uske customizations load karo
     useEffect(() => {
@@ -321,11 +623,47 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                         </div>
                         <div>
                             <h1 className="text-lg font-bold text-slate-900 tracking-tight">StudentLife</h1>
-                            <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-widest leading-none mt-0.5">Cloth Configurator</p>
+                            <div className="flex items-center space-x-2">
+                                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-widest leading-none">Cloth Configurator</p>
+                                {isLocked && (
+                                    <Tag color="error" className="flex items-center space-x-1 px-1.5 py-0 rounded border-red-100 h-4">
+                                        <Lock className="w-2.5 h-2.5" />
+                                        <span className="text-[9px] font-bold uppercase">Locked</span>
+                                    </Tag>
+                                )}
+                            </div>
                         </div>
                     </div>
 
                     <div className="flex items-center space-x-2 sm:space-x-4">
+                        {undoAvailable && (
+                            <button
+                                onClick={handleUndo}
+                                className="flex items-center space-x-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all font-medium text-sm border border-slate-200"
+                                title="Undo last change"
+                            >
+                                <span className="rotate-180">↺</span>
+                                <span className="hidden sm:inline">Undo</span>
+                            </button>
+                        )}
+                        <button
+                            onClick={handleSaveOrder}
+                            disabled={isSaving || (isLocked && !isAdmin)}
+                            className={`flex items-center space-x-2 px-3 py-2 ${isSaving ? 'bg-slate-100' : 'bg-green-600 hover:bg-green-700'} text-white rounded-xl transition-all font-medium text-sm shadow-sm disabled:opacity-50`}
+                        >
+                            <Settings className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} />
+                            <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save Design'}</span>
+                        </button>
+                        {dbHistory.length > 0 && (
+                            <button
+                                onClick={() => setIsHistoryModalOpen(true)}
+                                className="flex items-center space-x-2 px-3 py-2 bg-white text-slate-600 rounded-xl hover:bg-slate-50 transition-all font-medium text-sm border border-slate-200"
+                                title="View Saved Versions"
+                            >
+                                <History className="w-4 h-4 text-green-600" />
+                                <span className="hidden sm:inline">History</span>
+                            </button>
+                        )}
                         <button
                             onClick={() => setShowBackPopup(true)}
                             className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-900 transition-all font-medium text-sm shadow-md"
@@ -343,13 +681,7 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                             <span className="hidden sm:inline">Back Text</span>
                             <span className="sm:hidden text-[10px]">Text</span>
                         </button> */}
-                        <button
-                            onClick={handleChangeMode}
-                            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
-                            title="Change Selection Mode"
-                        >
-                            <LayoutGrid className="w-5 h-5" />
-                        </button>
+
                         <button
                             onClick={handleLogout}
                             className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl transition-all font-medium text-sm"
@@ -359,6 +691,57 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                         </button>
                     </div>
                 </header>
+
+                {/* Status Bar for Locked / Deadline / Progress */}
+                <div className="bg-slate-800 text-white px-6 py-2 flex items-center justify-between shadow-inner">
+                    <div className="flex items-center space-x-6">
+                        <div className="flex items-center space-x-2">
+                            <Package className="w-4 h-4 text-green-400" />
+                            <span className="text-sm">
+                                {Object.entries(allSelections).filter(([type, options]) => isGarmentConfigured(type, options)).length} Items Configured
+                            </span>
+                        </div>
+                        {editDeadline && (
+                            <div className="flex items-center space-x-2">
+                                <History className="w-4 h-4 text-yellow-400" />
+                                <span className={`text-sm ${new Date() > editDeadline ? 'text-red-400 font-bold' : ''}`}>
+                                    Edit Window: {editDeadline.toLocaleDateString()} {new Date() > editDeadline && '(Expired)'}
+                                </span>
+                            </div>
+                        )}
+                        <div className="flex items-center space-x-4">
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Configuration Total</span>
+                                <span className="text-sm font-bold text-white">{dynamicPrice} DKK</span>
+                            </div>
+                            {amountPaid > 0 && (
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[10px] text-green-400 font-bold uppercase tracking-wider">Paid</span>
+                                    <span className="text-sm font-bold text-green-400">{amountPaid} DKK</span>
+                                </div>
+                            )}
+                            <Tag color={paymentStatus === 'paid' ? 'success' : (paymentStatus === 'partial' ? 'warning' : 'default')} style={{ margin: 0 }}>
+                                {paymentStatus.toUpperCase()}
+                            </Tag>
+                        </div>
+                        {isLocked && (
+                            <div className="flex items-center space-x-2 bg-red-600/50 px-3 py-1 rounded-xl border border-red-500/50 animate-pulse">
+                                <Lock className="w-3.5 h-3.5" />
+                                <span className="text-xs font-bold uppercase tracking-widest">
+                                    {new Date() > editDeadline ? 'Window Expired' : (new Date() > deadline ? 'Deadline Passed' : 'Order Locked')}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                    {isAdmin && isLocked && (
+                        <button
+                            onClick={handleAdminUnlock}
+                            className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg text-xs font-bold transition-all border border-white/10"
+                        >
+                            Admin Bypass: Unlock Order
+                        </button>
+                    )}
+                </div>
 
                 <div className="hidden md:flex h-[calc(100vh-80px)] w-full relative">
                     {/* Sidebar */}
@@ -396,51 +779,7 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                             </div>
                             <div className="flex-1 bg-white/50 secondDiv overflow-y-auto custom-scrollbar-premium">
                                 <div className="p-6 space-y-8">
-                                    {/* MODE + STUDENTS DISPLAY */}
-                                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex items-center space-x-3">
-                                                <div className="p-2 bg-green-50 rounded-xl">
-                                                    <LayoutGrid className="w-5 h-5 text-green-600" />
-                                                </div>
-                                                <div>
-                                                    <h2 className="text-sm font-bold text-slate-900 leading-tight">
-                                                        {mode === 'individual' ? 'Individual Configuration' : 'Batch Configuration'}
-                                                    </h2>
-                                                    <p className="text-xs text-slate-500 font-medium">{students.length} Students</p>
-                                                </div>
-                                            </div>
-                                        </div>
 
-                                        {mode === "individual" && students.length > 0 && (
-                                            <div className="flex items-center space-x-2 bg-slate-50 p-4 rounded-2xl border border-dashed border-slate-200">
-                                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                                                <span className="text-sm font-bold text-slate-700">
-                                                    Currently Editing: {typeof selectedStudent === 'object' ? (selectedStudent.name || selectedStudent.id) : selectedStudent}
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        {mode === "batch" && students.length > 0 && (
-                                            <div className="space-y-3">
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Select student to edit</label>
-                                                <select
-                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500/20 transition-all appearance-none cursor-pointer"
-                                                    value={selectedStudent}
-                                                    onChange={(e) => setSelectedStudent(e.target.value)}
-                                                >
-                                                    {students.map((student, index) => {
-                                                        const name = typeof student === 'object' ? (student.name || student.id) : student;
-                                                        return (
-                                                            <option key={index} value={name}>
-                                                                {name}
-                                                            </option>
-                                                        );
-                                                    })}
-                                                </select>
-                                            </div>
-                                        )}
-                                    </div>
                                     {activeMenu === 'T-SHIRT' && <Tshirt isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} />}
                                     {activeMenu === "SWEATSHIRT" && <SweatShirt isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} />}
                                     {activeMenu === "HOODIE" && <Hoodie isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} />}
@@ -455,9 +794,9 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                                 <span className="text-sm font-medium text-slate-600">Total Price</span>
                                 <div className="text-right">
                                     <div className="text-2xl font-bold text-slate-900">
-                                        400 DKK
+                                        {dynamicPrice} DKK
                                     </div>
-                                    <div className="text-xs text-slate-500"> Service fee of 59.00 kr. included</div>
+                                    <div className="text-xs text-slate-500"> Service fee included</div>
                                 </div>
                             </div>
                             <button
@@ -469,7 +808,7 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                                         ? "bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 hover:shadow-lg"
                                         : "bg-gray-300 text-gray-500 cursor-not-allowed"}`}
                             >
-                                Approve and Pay
+                                {balanceDue <= 0 && paymentStatus === 'paid' ? 'Save Changes' : (balanceDue > 0 && amountPaid > 0 ? `Pay Balance (${balanceDue} DKK)` : 'Approve and Pay')}
                             </button>
                         </div>
                     </div>
@@ -497,8 +836,7 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                                 <div className="flex-1 rounded-b-2xl overflow-hidden">
                                     <iframe
                                         id="preview-iframe"
-                                        // src={mode ? 'https://playcanv.as/e/p/i27y23x9/' : null}
-                                        src={mode ? 'https://playcanv.as/e/p/1b1eadeb/' : null}
+                                        src={'https://playcanv.as/e/p/1b1eadeb/'}
                                         className="w-full h-full"
                                         frameBorder="0"
                                         title="3D Student Card Preview"
@@ -531,6 +869,12 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                                             </div>
                                         </div>
                                         <div className="flex items-center space-x-2">
+                                            {isLocked && (
+                                                <Tag color="error" className="flex items-center space-x-1 px-2 py-0.5 rounded-full border-red-100">
+                                                    <Lock className="w-3 h-3" />
+                                                    <span className="text-[10px] font-bold uppercase tracking-tight">Locked</span>
+                                                </Tag>
+                                            )}
                                             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                                             <span className="text-xs font-medium text-slate-600">LIVE</span>
                                         </div>
@@ -550,8 +894,7 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                                     >
                                         <iframe
                                             id="preview-iframe2"
-                                            // src={mode ? 'https://playcanv.as/e/p/i27y23x9/' : null}
-                                            src={mode ? 'https://playcanv.as/e/p/1b1eadeb/' : null}
+                                            src={'https://playcanv.as/e/p/1b1eadeb/'}
                                             className="w-full h-full"
                                             frameBorder="0"
                                             title="3D Student Card Preview"
@@ -644,10 +987,29 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                                 <span className="text-sm font-medium text-slate-600">Total Price</span>
                                 <div className="text-right">
                                     <div className="text-xl font-bold text-slate-900">
-                                        400 DKK
+                                        {dynamicPrice} DKK
                                     </div>
-                                    <div className="text-xs text-slate-500">Service fee of 59.00 kr. included</div>
+                                    <div className="text-xs text-slate-500">Service fee included</div>
                                 </div>
+                            </div>
+                            <div className="flex space-x-3 mb-4">
+                                <button
+                                    onClick={handleSaveOrder}
+                                    disabled={isSaving || (isLocked && !isAdmin)}
+                                    className="flex-1 flex items-center justify-center space-x-2 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold transition-all hover:bg-slate-200 disabled:opacity-50"
+                                >
+                                    <Settings className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} />
+                                    <span>{isSaving ? 'Saving...' : 'Save Design'}</span>
+                                </button>
+                                {dbHistory.length > 0 && (
+                                    <button
+                                        onClick={() => setIsHistoryModalOpen(true)}
+                                        className="flex-1 flex items-center justify-center space-x-2 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold transition-all hover:bg-slate-50"
+                                    >
+                                        <History className="w-4 h-4 text-green-600" />
+                                        <span>History</span>
+                                    </button>
+                                )}
                             </div>
                             <button
                                 onClick={() => setIsQuoteModalOpen(true)}
@@ -669,9 +1031,21 @@ const StudentDashboard = ({ mode, setMode, students, customizations, setCustomiz
                     onClose={() => setIsQuoteModalOpen(false)}
                     selectedOptions={allSelections}
                     defaultSelections={DEFAULT_SELECTIONS}
-                    price={400}
+                    price={dynamicPrice}
+                    amountPaid={amountPaid}
+                    paymentStatus={paymentStatus}
+                    balanceDue={balanceDue}
+                    editDeadline={editDeadline}
                     packageName={packageName}
                     program={program}
+                    initialDeliveryDetails={existingDeliveryDetails}
+                />
+                <HistoryModal
+                    isOpen={isHistoryModalOpen}
+                    onClose={() => setIsHistoryModalOpen(false)}
+                    history={dbHistory}
+                    onRevert={handleRevertToVersion}
+                    onHistoryUpdated={fetchHistoryData}
                 />
             </div>
         </>

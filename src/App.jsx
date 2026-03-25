@@ -15,11 +15,7 @@ import useBackDesignStore from './store/backDesignStore';
 
 function App() {
   const { user, loading } = useAuth();
-  const [mode, setMode] = useState(() => localStorage.getItem('mode')); // null | 'individual' | 'batch'
-  const [students, setStudents] = useState(() => {
-    const saved = localStorage.getItem('students');
-    return saved ? JSON.parse(saved) : [];
-  }); // array of student names
+  // State is simplified. Students array and Mode states removed.
   const [customizations, setCustomizations] = useState(() => {
     const saved = localStorage.getItem('studentCustomizations');
     return saved ? JSON.parse(saved) : {};
@@ -38,21 +34,8 @@ function App() {
     }
   }, [getClassId]);
 
-  // Save mode to localStorage
-  useEffect(() => {
-    if (mode) {
-      localStorage.setItem('mode', mode);
-    } else {
-      localStorage.removeItem('mode');
-    }
-  }, [mode]);
+  // Save customizations internally
 
-  // Save students to localStorage
-  useEffect(() => {
-    if (students && students.length > 0) {
-      localStorage.setItem('students', JSON.stringify(students));
-    }
-  }, [students]);
 
   // Sync isAppReady from PlayCanvas
   useEffect(() => {
@@ -69,24 +52,15 @@ function App() {
   // Sync state between tabs
   useEffect(() => {
     const handleStorage = (e) => {
-      if (e.key === 'students' && e.newValue) {
-        try { setStudents(JSON.parse(e.newValue)); } catch { }
-      }
       if (e.key === 'studentCustomizations' && e.newValue) {
         try { setCustomizations(JSON.parse(e.newValue)); } catch { }
-      }
-      if (e.key === 'mode' && e.newValue) {
-        setMode(e.newValue);
       }
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  const handleStudentSubmit = (finalMode) => {
-    setMode(finalMode);
-    // Removed automatic setShowBackPopup(true);
-  };
+
 
   if (loading) return null; // Wait for auth initialization
 
@@ -116,22 +90,12 @@ function App() {
         <Route path="/" element={
           user ? (
             <>
-              {mode === null ? (
-                <StudentPopup
-                  setMode={handleStudentSubmit}
-                  setStudents={setStudents}
-                />
-              ) : (
-                <StudentDashboard
-                  mode={mode}
-                  setMode={setMode}
-                  students={students}
+              <StudentDashboard
                   customizations={customizations}
                   setCustomizations={setCustomizations}
                   setShowBackPopup={setShowBackPopup}
-                  // setShowBackTextPopup={setShowBackTextPopup} // COMMENTED: Back text feature disabled
-                />
-              )}
+                // setShowBackTextPopup={setShowBackTextPopup} // COMMENTED: Back text feature disabled
+              />
             </>
           ) : (
             <Navigate to="/login" replace />

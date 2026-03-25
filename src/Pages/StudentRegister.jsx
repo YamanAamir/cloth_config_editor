@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Card, Typography, message, Layout, Alert } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { Package } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { registerUser } from '../api/api';
 
@@ -12,45 +13,18 @@ const StudentRegister = () => {
     const [loading, setLoading] = useState(false);
     const [decodedData, setDecodedData] = useState(null);
     const [tokenError, setTokenError] = useState(false);
+    const [useManualCode, setUseManualCode] = useState(false);
     const [form] = Form.useForm();
 
-    // Extract and decode token from URL
-    // useEffect(() => {
-    //     const queryParams = new URLSearchParams(location.search);
-    //     const token = queryParams.get('token');
-
-    //     if (!token) {
-    //         setTokenError(true);
-    //         setDecodedData(null);
-    //         return;
-    //     }
-
-    //     try {
-    //         const jsonString = atob(token);
-    //         const data = JSON.parse(jsonString);
-    //         if (data.school_id != null && data.class_id != null) {
-    //             setDecodedData({ ...data, token });
-    //             setTokenError(false);
-    //         } else {
-    //             setTokenError(true);
-    //             setDecodedData(null);
-    //         }
-    //     } catch (error) {
-    //         console.error('Failed to decode token', error);
-    //         setTokenError(true);
-    //         setDecodedData(null);
-    //     }
-    // }, [location.search]);
     useEffect(() => {
         const queryParams = new URLSearchParams(location.search);
-
-        // support both ?token=xxx and ?xxx
         const rawQuery = location.search.replace(/^\?/, '');
         const token = queryParams.get('token') || rawQuery;
 
-        if (!token) {
-            setTokenError(true);
+        if (!token || token.length < 5) {
+            setTokenError(true); // Keep tokenError for the "invalid link" message
             setDecodedData(null);
+            setUseManualCode(true);
             return;
         }
 
@@ -61,29 +35,33 @@ const StudentRegister = () => {
             if (data.school_id != null && data.class_id != null) {
                 setDecodedData({ ...data, token });
                 setTokenError(false);
+                setUseManualCode(false);
             } else {
                 setTokenError(true);
                 setDecodedData(null);
+                setUseManualCode(true); // If token is invalid, allow manual code
             }
         } catch (error) {
             console.error('Failed to decode token', error);
             setTokenError(true);
             setDecodedData(null);
+            setUseManualCode(true);
         }
     }, [location.search]);
 
     const onFinish = async (values) => {
-        if (!decodedData) return;
+        const payload = {
+            name: values.name,
+            email: values.email,
+            password: values.password,
+            school_id: decodedData?.school_id,
+            class_id: decodedData?.class_id || values.classCode, // Support manual code
+            token: decodedData?.token || 'manual',
+        };
+
         setLoading(true);
         try {
-            await registerUser({
-                name: values.name,
-                email: values.email,
-                password: values.password,
-                school_id: decodedData.school_id,
-                class_id: decodedData.class_id,
-                token: decodedData.token,
-            });
+            await registerUser(payload);
             message.success('Registration successful! You can now log in.');
             navigate('/login');
         } catch (error) {
@@ -93,8 +71,10 @@ const StudentRegister = () => {
         }
     };
 
-    // No token or invalid token
-    if (tokenError || (!decodedData && location.search)) {
+    // If tokenError is true AND we are not using manual code (meaning it was a bad token link)
+    // OR if there's no decodedData and we're not using manual code (meaning still processing or no token at all)
+    // This block handles cases where a token was provided but was invalid, or no token was provided and we're not yet in manual code mode.
+    if (tokenError && !useManualCode) {
         return (
             <Layout style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <div className="fade-in" style={{ width: '100%', maxWidth: 440, padding: '0 20px' }}>
@@ -107,11 +87,14 @@ const StudentRegister = () => {
                             description={
                                 !location.search
                                     ? 'Get a registration link from your class representative to join your class.'
-                                    : 'This link is invalid or expired. Ask your class rep for a new link.'
+                                    : 'This link is invalid or expired. Ask your class rep for a new link, or enter your class code below.'
                             }
                             style={{ marginBottom: 24, textAlign: 'left' }}
                         />
-                        <Button type="primary" block onClick={() => navigate('/login')}>
+                        <Button type="primary" block onClick={() => setUseManualCode(true)}>
+                            Enter Class Code Manually
+                        </Button>
+                        <Button type="link" block onClick={() => navigate('/login')} style={{ marginTop: 8 }}>
                             Go to Login
                         </Button>
                     </Card>
@@ -120,8 +103,8 @@ const StudentRegister = () => {
         );
     }
 
-    // Still resolving token (initial load with token)
-    if (location.search && decodedData === null && !tokenError) {
+    // Still resolving token (initial load with token) and not yet decided to use manual code
+    if (location.search && decodedData === null && !tokenError && !useManualCode) {
         return (
             <Layout style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <Card className="glass-card" style={{ border: 'none' }}>
@@ -131,14 +114,14 @@ const StudentRegister = () => {
         );
     }
 
-    // Valid token: show registration form
+    // Valid token or using manual code: show registration form
     return (
         <Layout style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <div className="fade-in" style={{ width: '100%', maxWidth: 400, padding: '0 20px' }}>
                 <Card className="glass-card" style={{ border: 'none', textAlign: 'center' }}>
                     <Title level={2} style={{ marginBottom: 8, color: '#006d75' }}>Join Your Class</Title>
                     <Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>
-                        Register as a student for your class
+                        {useManualCode ? 'Enter your class code to register' : 'Register as a student for your class'}
                     </Text>
 
                     <Form
@@ -148,6 +131,15 @@ const StudentRegister = () => {
                         onFinish={onFinish}
                         size="large"
                     >
+                        {useManualCode && (
+                            <Form.Item
+                                name="classCode"
+                                rules={[{ required: true, message: 'Please enter your class code' }]}
+                            >
+                                <Input prefix={<Package className="w-4 h-4" />} placeholder="Class Code" />
+                            </Form.Item>
+                        )}
+
                         <Form.Item
                             name="name"
                             rules={[{ required: true, message: 'Please enter your full name' }]}
