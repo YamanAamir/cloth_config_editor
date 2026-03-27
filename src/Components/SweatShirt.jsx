@@ -909,8 +909,8 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
         </>
       )}
 
-      {/* Test Component - Always mounted to broadcast back design, but hidden if not in pressure tab */}
-      <div className={activeTab === "pressure" ? "mt-10" : "hidden"}>
+      {/* Test Component - visible only in pressure tab, always mounted for back design broadcast */}
+      <div className={activeTab === "pressure" ? "mt-10" : ""} style={activeTab !== "pressure" ? { visibility: 'hidden', position: 'absolute', pointerEvents: 'none', height: 0, overflow: 'hidden' } : {}}>
         <Test
           postEx="SweatShirt:"
           pressureOptions={pressureOptions}

@@ -4,12 +4,13 @@ import { X } from 'lucide-react';
 
 const BackDesignPopup = ({ onFinish, customizations, setCustomizations, students, backDesigns }) => {
     const [activeTab, setActiveTab] = useState('T-SHIRT');
+console.log("backDesignsasdad",backDesigns);
 
     const productTabs = [
-        { name: 'T-SHIRT', postEx: 'T-Shirt: ' },
-        { name: 'SWEATSHIRT', postEx: 'SweatShirt: ' },
-        { name: 'HOODIE', postEx: 'Hoodie: ' },
-        { name: 'ZIPPERHOODIE', postEx: 'ZipperHoodie: ' },
+        { name: 'T-SHIRT', postEx: 'T-Shirt:' },
+        { name: 'SWEATSHIRT', postEx: 'SweatShirt:' },
+        { name: 'HOODIE', postEx: 'Hoodie:' },
+        { name: 'ZIPPERHOODIE', postEx: 'ZipperHoodie:' },
     ];
 
     // ✅ Apply API backDesign to all students automatically on mount
@@ -61,7 +62,36 @@ const BackDesignPopup = ({ onFinish, customizations, setCustomizations, students
 
     // Handle manual updates from Test component if needed
     const handleUpdate = (update) => {
-        if (update.backDesign) {
+        // Send canvas to PlayCanvas iframes for ALL garment types
+        if (update.canvasBase64) {
+            const { diffuse, opacity, emissive } = update.canvasBase64;
+
+            // Also broadcast for all other garment types with their prefixes
+            const allPrefixes = ['T-Shirt:', 'SweatShirt:', 'Hoodie:', 'ZipperHoodie:'];
+            ['preview-iframe', 'preview-iframe2'].forEach((id) => {
+                const iframe = document.getElementById(id);
+                if (iframe?.contentWindow) {
+                    // Send for current active tab (already prefixed in diffuse/opacity)
+                    if (diffuse) iframe.contentWindow.postMessage(diffuse, '*');
+                    if (opacity) iframe.contentWindow.postMessage(opacity, '*');
+                    if (emissive) iframe.contentWindow.postMessage(emissive, '*');
+
+                    // Also send for all other garment types
+                    allPrefixes.forEach(prefix => {
+                        if (prefix !== currentTab.postEx) {
+                            const rawDiffuse = update.canvasBase64.rawData?.diffuse;
+                            const rawOpacity = update.canvasBase64.rawData?.opacity;
+                            const rawEmissive = update.canvasBase64.rawData?.emissive;
+                            if (rawDiffuse) iframe.contentWindow.postMessage(prefix + 'back_diffuse: ' + rawDiffuse, '*');
+                            if (rawOpacity) iframe.contentWindow.postMessage(prefix + 'back_opacity: ' + rawOpacity, '*');
+                            if (rawEmissive) iframe.contentWindow.postMessage(prefix + 'back_emissive: ' + rawEmissive, '*');
+                        }
+                    });
+                }
+            });
+        }
+
+        if (update.backDesign !== undefined) {
             setCustomizations(prev => {
                 const nextCustom = { ...prev };
                 students.forEach(student => {
@@ -116,6 +146,7 @@ const BackDesignPopup = ({ onFinish, customizations, setCustomizations, students
                             pressureOptions={{ backDesign: currentBackDesign }}
                             onUpdate={handleUpdate}
                             backDesigns={backDesigns}
+                            designColor={backDesigns?.designColor}
                         />
                     </div>
                 </div>

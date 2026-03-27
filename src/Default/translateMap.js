@@ -136,5 +136,18 @@ export const TRANSLATE_MAP = {
     "Australia": "Australien",
     "Mexico": "Mexico",
 
+    // Copy Design Popup
+    "Copy Design?": "Kopier design?",
+    "Haan, Copy Karo": "Ja, kopier",
+    "Nahi, Alag Rakho": "Nej, hold adskilt",
+
+    // Save Design Modal
+    "Select Garments to Save": "Vælg beklædningsgenstande at gemme",
+    "Select karein jo order mein jaane chahiye": "Vælg dem der skal med i ordren",
+    "Select items to include in your order": "Vælg varer der skal med i din ordre",
+    "Save Karein": "Gem",
+    "Cancel": "Annuller",
+    "Kam az kam ek garment select karein.": "Vælg mindst ét beklædningsstykke.",
+    "Pehle koi garment configure karein.": "Konfigurer mindst ét beklædningsstykke først.",
 
 };

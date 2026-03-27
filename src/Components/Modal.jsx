@@ -26,14 +26,11 @@ const QuoteModal = ({
   // Helper: Check if a garment has been actually configured (differs from defaults)
   const isGarmentConfigured = (garmentType, garmentData) => {
     const defaults = defaultSelections[garmentType];
-    if (!defaults) return true; // No default known → treat as configured
+    if (!defaults) return true;
 
-    // Check color
-    if (garmentData.selectedColor && garmentData.selectedColor !== defaults.selectedColor) return true;
-    // Check size
-    if (garmentData.selectedSize && garmentData.selectedSize !== defaults.selectedSize) return true;
+    // Color aur Size global sync hain — inhe configured nahi maante
+    // Sirf pressureOptions mein actual design changes hone par configured maano
 
-    // Check pressureOptions deeply
     const currentPO = garmentData.pressureOptions || {};
     const defaultPO = defaults.pressureOptions || {};
 
@@ -41,37 +38,31 @@ const QuoteModal = ({
       const currentVal = currentPO[key];
       const defaultVal = defaultPO[key];
 
-      // Handle arrays (e.g. backTexts)
       if (Array.isArray(currentVal)) {
         if (currentVal.length > 0) return true;
         continue;
       }
-      // Handle objects (e.g. backDesign)
       if (currentVal !== null && typeof currentVal === 'object') {
         if (JSON.stringify(currentVal) !== JSON.stringify(defaultVal)) return true;
         continue;
       }
-      // Handle strings/primitives
       if (currentVal !== '' && currentVal !== null && currentVal !== undefined && currentVal !== defaultVal) {
         return true;
       }
     }
 
-    return false; // Nothing changed from defaults
+    return false;
   };
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   
-  // ✨ NEW: Track which garments are selected for purchase
+  // Track which garments are selected for purchase — start empty, user explicitly selects
   const [selectedGarments, setSelectedGarments] = useState(() => {
-    // Initially select all configured garments
     const configured = {};
     Object.entries(selectedOptions).forEach(([type, options]) => {
-      if (isGarmentConfigured(type, options)) {
-        configured[type] = true;
-      }
+      configured[type] = isGarmentConfigured(type, options);
     });
     return configured;
   });
@@ -212,6 +203,9 @@ const QuoteModal = ({
   };
 
   const dynamicPrice = calculateTotalPrice();
+
+  // Balance due = selected garments price - already paid amount
+  const computedBalanceDue = Math.max(0, dynamicPrice - amountPaid);
 
   // ✨ NEW: Toggle garment selection
   const toggleGarmentSelection = (garmentType) => {
@@ -693,7 +687,7 @@ const QuoteModal = ({
       }));
 
       // Check if balance exists
-      if (balanceDue <= 0) {
+      if (computedBalanceDue <= 0) {
         // Just save the order
         const saveResponse = await placeOrder({
           student_id: studentId,
@@ -706,7 +700,6 @@ const QuoteModal = ({
         if (saveResponse.data?.success) {
           message.success("Order details updated successfully!");
           setOrderComplete(true);
-          // We don't need a Stripe redirect
           return;
         }
       }
@@ -721,7 +714,7 @@ const QuoteModal = ({
 
       const stripeResponse = await createCheckoutSession({
         orderData: tempOrderData,
-        amount: balanceDue
+        amount: computedBalanceDue
       });
 
       if (stripeResponse.data?.success && stripeResponse.data?.url) {
@@ -1412,13 +1405,13 @@ const QuoteModal = ({
                 </div>
                 <div className="text-right pl-6 border-l border-green-200 ml-6">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">
-                    {balanceDue <= 0 ? 'STATUS' : 'BALANCE DUE'}
+                    {computedBalanceDue <= 0 ? 'STATUS' : 'BALANCE DUE'}
                   </span>
                   <div className="flex items-baseline justify-end">
                     <span className="text-2xl font-black bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
-                      {balanceDue <= 0 ? (paymentStatus === 'paid' ? 'PAID' : 'FREE') : balanceDue}
+                      {computedBalanceDue <= 0 ? (paymentStatus === 'paid' ? 'PAID' : 'FREE') : computedBalanceDue}
                     </span>
-                    {balanceDue > 0 && <span className="text-sm font-bold text-green-600 ml-1">DKK</span>}
+                    {computedBalanceDue > 0 && <span className="text-sm font-bold text-green-600 ml-1">DKK</span>}
                   </div>
                 </div>
               </div>
@@ -1482,7 +1475,7 @@ const QuoteModal = ({
                       </>
                     ) : (
                       <>
-                        {balanceDue <= 0 ? (
+                        {computedBalanceDue <= 0 ? (
                           <>
                             <CheckCircle className="w-4 h-4 mr-1" />
                             Save and finalize design

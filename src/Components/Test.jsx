@@ -45,7 +45,7 @@ const CANVAS_HEIGHT = 400;
 //   { name: 'Design 8', url: design8 },
 // ];
 
-export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) {
+export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, designColor }) {
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const [objects, setObjects] = useState([]);
@@ -62,21 +62,53 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) 
   const user = userStr ? JSON.parse(userStr) : null;
   const getClassId = user?.class_id;
 
+  // Keep designColor in ref so draw() always gets latest value (avoids stale closure)
+  // Priority: prop > backDesigns store value
+  const designColorRef = useRef(designColor);
+  useEffect(() => {
+    designColorRef.current = designColor || backDesigns?.designColor;
+  }, [designColor, backDesigns]);
+
 
   useEffect(() => {
     if (getClassId) {
       fetchBackDesigns({ class_id: getClassId });
     }
   }, [getClassId]);
+console.log("backDesignasdasqwqs",backDesigns);
+
+  // Helper: load image via blob URL to avoid canvas taint from CORS
+  const loadImageSafe = (src, callback) => {
+    fetch(src)
+      .then(res => res.blob())
+      .then(blob => {
+        const blobUrl = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+          callback(img);
+          URL.revokeObjectURL(blobUrl);
+        };
+        img.onerror = () => {
+          // fallback: try direct load without crossOrigin
+          const img2 = new Image();
+          img2.onload = () => callback(img2);
+          img2.src = src;
+        };
+        img.src = blobUrl;
+      })
+      .catch(() => {
+        // fallback: direct load
+        const img = new Image();
+        img.onload = () => callback(img);
+        img.src = src;
+      });
+  };
 
   // Load saved backDesign when pressureOptions change
   useEffect(() => {
     if (pressureOptions?.backDesign) {
       const config = pressureOptions.backDesign;
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = config.src;
-      img.onload = () => {
+      loadImageSafe(config.src, (img) => {
         setObjects([{
           id: 'uploadedImage',
           type: 'image',
@@ -87,20 +119,14 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) 
           locked: config.locked,
         }]);
         setSelectedId('uploadedImage');
-      };
+      });
     } else {
       setObjects([]);
       setSelectedId(null);
     }
   }, [pressureOptions]);
  const selectPredefinedDesign = async (url, design) => {
-    console.log("🎯 Auto Selected Design:", design);
-    
-    const img = new Image();
-    img.crossOrigin = "anonymous"; // allow CORS
-    img.src = url;
-
-    img.onload = async () => {
+    loadImageSafe(url, async (img) => {
       const scale = Math.min(
         (CANVAS_WIDTH * 0.75) / img.width,
         (CANVAS_HEIGHT * 0.65) / img.height
@@ -121,37 +147,17 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) 
       setObjects([newImageObj]);
       setSelectedId('uploadedImage');
 
-      try {
-        // Convert the image URL into a Blob/File if needed
-        const response = await fetch(url, { mode: 'cors' });
-        const blob = await response.blob();
-        const file = new File([blob], url.split("/").pop(), { type: blob.type });
-
-        onUpdate({
-          backDesign: {
-            pos: newImageObj.pos,
-            size: newImageObj.size,
-            angle: newImageObj.angle,
-            locked: newImageObj.locked,
-            src: url,
-            fileObj: file,
-            designId: design?.id
-          }
-        });
-      } catch (error) {
-        console.error("Error fetching image:", error);
-        onUpdate({
-          backDesign: {
-            pos: newImageObj.pos,
-            size: newImageObj.size,
-            angle: newImageObj.angle,
-            locked: newImageObj.locked,
-            src: url,
-            designId: design?.id
-          }
-        });
-      }
-    };
+      onUpdate({
+        backDesign: {
+          pos: newImageObj.pos,
+          size: newImageObj.size,
+          angle: newImageObj.angle,
+          locked: newImageObj.locked,
+          src: url,
+          designId: design?.id
+        }
+      });
+    });
   };
   // Auto-select predefined design when backDesigns object is available
   useEffect(() => {
@@ -162,7 +168,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) 
     if (!pressureOptions?.backDesign && backDesigns && objects.length === 0) {
       const design = backDesigns;
       const img = `${BASE_URL}${design.file_path.replace(/\\/g, "/")}`;
-      console.log("🎯 Auto-selecting design:", design.name);
+      console.log("🎯 Auto-selecting design:", design.name, img);
       selectPredefinedDesign(img, design);
     }
   }, [backDesigns, pressureOptions, objects.length, selectPredefinedDesign]);
@@ -202,13 +208,12 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) 
       ctx.restore();
     });
 
-    // ── Opacity Mask Generation (White = Opaque, Black = Transparent) ──
+    // ── Opacity Mask Generation ──
     const opacityCanvas = document.createElement("canvas");
     opacityCanvas.width = CANVAS_WIDTH;
     opacityCanvas.height = CANVAS_HEIGHT;
     const octx = opacityCanvas.getContext("2d");
 
-    // 1. Draw all objects (with Inverted Colors for mask)
     octx.filter = "invert(100%)";
     objects.forEach(obj => {
       octx.save();
@@ -517,6 +522,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady }) 
     setRotating(false);
   };
   console.log("backDesigns", backDesigns);
+  console.log("canvasRefasasa", canvasRef);
 
   return (
     <div className="p-0 max-w-2xl mx-auto">

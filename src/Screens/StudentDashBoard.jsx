@@ -105,8 +105,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         const defaults = DEFAULT_SELECTIONS[garmentType];
         if (!defaults) return true;
 
-        if (garmentData.selectedColor && garmentData.selectedColor !== defaults.selectedColor) return true;
-        if (garmentData.selectedSize && garmentData.selectedSize !== defaults.selectedSize) return true;
+        // Color aur Size sync hote hain globally — inhe "configured" nahi maante
+        // Sirf pressureOptions mein actual design changes hone par configured maano
 
         const currentPO = garmentData.pressureOptions || {};
         const defaultPO = defaults.pressureOptions || {};
@@ -114,6 +114,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         for (const key of Object.keys(currentPO)) {
             const currentVal = currentPO[key];
             const defaultVal = defaultPO[key];
+
             if (Array.isArray(currentVal)) {
                 if (currentVal.length > 0) return true;
                 continue;
@@ -135,13 +136,18 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
     const [undoAvailable, setUndoAvailable] = useState(false);
     const [searchParams] = useSearchParams();
-    const packageName = searchParams.get("package"); // "standard"
+    const packageName = searchParams.get("package");
     const program = searchParams.get("program");
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [globalEmblem, setGlobalEmblem] = useState({ name: 'Guld', value: 'Guld', color: '#FCD34D' });
     const [isAppReady, setIsAppReady] = useState(false);
     const [isIframeLoaded, setIsIframeLoaded] = useState(false);
     const [extraCoverReset, setExtraCoverReset] = useState(false)
+
+    // Garment switch copy popup state
+    const [copyDesignPrompt, setCopyDesignPrompt] = useState(null); // { from, to }
+    // Track which garments user has explicitly added to order
+    const [orderedGarments, setOrderedGarments] = useState({});
     const [sizeFlag, setSizeFlag] = useState(true)
     const [errors, setErrors] = useState({});
     const [isLocked, setIsLocked] = useState(false);
@@ -178,6 +184,11 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
     const userStr = localStorage.getItem("user");
     const user = userStr ? JSON.parse(userStr) : null;
     const school_id = user?.school_id;
+    useEffect(() => {
+        if (school_id) {
+            fetchLogos({ page: 1, limit: 100, school_id });
+        }
+    }, [school_id, fetchLogos]);
 
     // --- Real-time Socket Updates ---
     const userId = user?.id;
@@ -308,26 +319,14 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         setAllSelections(prev => {
             const next = JSON.parse(JSON.stringify(prev));
 
-            // Sync Color with allowed restrictions for bottom wear
+            // Color — sirf active garment pe apply hoga (sync band)
             if (updates.selectedColor) {
-                const colorValue = updates.selectedColor;
-                const allowedShortsColors = ["heather grey", "black", "navy", "white"];
-                Object.keys(next).forEach(cat => {
-                    if (cat === 'SHORTS' || cat === 'SWEATPANTS') {
-                        if (allowedShortsColors.includes(colorValue.toLowerCase())) {
-                            next[cat].selectedColor = colorValue;
-                        }
-                    } else {
-                        next[cat].selectedColor = colorValue;
-                    }
-                });
+                next[category].selectedColor = updates.selectedColor;
             }
 
-            // Sync Size across all products
+            // Size — sirf active garment pe apply hoga (sync band)
             if (updates.selectedSize) {
-                Object.keys(next).forEach(cat => {
-                    next[cat].selectedSize = updates.selectedSize;
-                });
+                next[category].selectedSize = updates.selectedSize;
             }
 
             // Sync Pressure Options with positional mapping
@@ -458,29 +457,39 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         }
     };
 
-    const handleSaveOrder = async () => {
+    // Save Design — garment selection modal
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [saveGarmentSelection, setSaveGarmentSelection] = useState({});
+
+    const handleSaveClick = () => {
         if (isLocked && !isAdmin) {
             message.warning("Order is locked and cannot be saved.");
             return;
         }
-
-        setIsSaving(true);
-        try {
-            const configuredEntries = Object.entries(allSelections).filter(
-                ([type, options]) => isGarmentConfigured(type, options)
-            );
-
-            if (configuredEntries.length === 0) {
-                message.warning("Please configure at least one garment before saving.");
-                setIsSaving(false);
-                return;
+        // Build list of configured garments for user to pick from
+        const configured = {};
+        Object.entries(allSelections).forEach(([type, options]) => {
+            if (isGarmentConfigured(type, options)) {
+                configured[type] = true; // pre-select all configured
             }
+        });
+        if (Object.keys(configured).length === 0) {
+            message.warning("Pehle koi garment configure karein.");
+            return;
+        }
+        setSaveGarmentSelection(configured);
+        setShowSaveModal(true);
+    };
 
-            const garments = configuredEntries.map(([type, options]) => ({
+    const handleSaveOrder = async (selectedTypes) => {
+        setIsSaving(true);
+        setShowSaveModal(false);
+        try {
+            const garments = selectedTypes.map(type => ({
                 product_type: type,
-                selectedColor: options.selectedColor,
-                selectedSize: options.selectedSize,
-                design_config: options.pressureOptions || {}
+                selectedColor: allSelections[type].selectedColor,
+                selectedSize: allSelections[type].selectedSize,
+                design_config: allSelections[type].pressureOptions || {}
             }));
 
             const response = await placeOrder({
@@ -493,7 +502,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
 
             if (response.data?.success) {
                 message.success("Design saved successfully!");
-                // Refresh history
                 const resHistory = await getMyOrderHistory();
                 if (resHistory.data?.success) setDbHistory(resHistory.data.data);
             }
@@ -611,9 +619,99 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             setAllSelections(customizations[selectedStudent]);
         }
     }, [selectedStudent, customizations]);
-
+    console.log("logosasasad", logos);
     return (
         <>
+            {/* ── Copy Design Prompt Modal ── */}
+            {copyDesignPrompt && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-100">
+                        <h3 className="text-lg font-bold text-slate-800 mb-2">
+                            Copy Design?
+                        </h3>
+                        <p className="text-sm text-slate-500 mb-6">
+                            You configured <span className="font-bold text-green-700">{copyDesignPrompt.from}</span>.
+                            Copy this design to <span className="font-bold text-green-700">{copyDesignPrompt.to}</span> as well?
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    // Copy pressureOptions from source to target
+                                    const sourceData = allSelections[copyDesignPrompt.from];
+                                    setAllSelections(prev => ({
+                                        ...prev,
+                                        [copyDesignPrompt.to]: {
+                                            ...prev[copyDesignPrompt.to],
+                                            pressureOptions: { ...sourceData.pressureOptions }
+                                        }
+                                    }));
+                                    setActiveMenu(copyDesignPrompt.to);
+                                    setCopyDesignPrompt(null);
+                                }}
+                                className="flex-1 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-all"
+                            >
+                                Haan, Copy Karo
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setActiveMenu(copyDesignPrompt.to);
+                                    setCopyDesignPrompt(null);
+                                }}
+                                className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
+                            >
+                                Nahi, Alag Rakho
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Save Design — Garment Selection Modal ── */}
+            {showSaveModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-100">
+                        <h3 className="text-lg font-bold text-slate-800 mb-1">Select Garments to Save</h3>
+                        <p className="text-sm text-slate-500 mb-5">Select items to include in your order</p>
+                        <div className="space-y-3 mb-6">
+                            {Object.entries(saveGarmentSelection).map(([type, checked]) => (
+                                <label key={type} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-green-300 cursor-pointer transition-all">
+                                    <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={() => setSaveGarmentSelection(prev => ({ ...prev, [type]: !prev[type] }))}
+                                        className="w-4 h-4 accent-green-600"
+                                    />
+                                    <span className="text-sm font-semibold text-slate-700">{type}</span>
+                                    <span className="ml-auto text-xs font-bold text-green-600">{GARMENT_PRICES[type]} DKK</span>
+                                </label>
+                            ))}
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    const selected = Object.entries(saveGarmentSelection)
+                                        .filter(([, v]) => v).map(([k]) => k);
+                                    if (selected.length === 0) {
+                                        message.warning("Kam az kam ek garment select karein.");
+                                        return;
+                                    }
+                                    handleSaveOrder(selected);
+                                }}
+                                className="flex-1 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-all"
+                            >
+                                Save Karein
+                            </button>
+                            <button
+                                onClick={() => setShowSaveModal(false)}
+                                className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
                 {/* Global Header */}
                 <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-40">
@@ -647,7 +745,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                             </button>
                         )}
                         <button
-                            onClick={handleSaveOrder}
+                            onClick={handleSaveClick}
                             disabled={isSaving || (isLocked && !isAdmin)}
                             className={`flex items-center space-x-2 px-3 py-2 ${isSaving ? 'bg-slate-100' : 'bg-green-600 hover:bg-green-700'} text-white rounded-xl transition-all font-medium text-sm shadow-sm disabled:opacity-50`}
                         >
@@ -693,54 +791,80 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                 </header>
 
                 {/* Status Bar for Locked / Deadline / Progress */}
-                <div className="bg-slate-800 text-white px-6 py-2 flex items-center justify-between shadow-inner">
-                    <div className="flex items-center space-x-6">
-                        <div className="flex items-center space-x-2">
-                            <Package className="w-4 h-4 text-green-400" />
-                            <span className="text-sm">
-                                {Object.entries(allSelections).filter(([type, options]) => isGarmentConfigured(type, options)).length} Items Configured
+                <div className="bg-white border-b border-slate-200 px-6 py-2 flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-4 flex-wrap">
+                        {/* Items configured */}
+                        <div className="flex items-center gap-1.5">
+                            <Package className="w-3.5 h-3.5 text-green-600" />
+                            <span className="text-xs font-semibold text-slate-600">
+                                {Object.entries(allSelections).filter(([type, options]) => isGarmentConfigured(type, options)).length} configured
                             </span>
                         </div>
-                        {editDeadline && (
-                            <div className="flex items-center space-x-2">
-                                <History className="w-4 h-4 text-yellow-400" />
-                                <span className={`text-sm ${new Date() > editDeadline ? 'text-red-400 font-bold' : ''}`}>
-                                    Edit Window: {editDeadline.toLocaleDateString()} {new Date() > editDeadline && '(Expired)'}
-                                </span>
-                            </div>
-                        )}
-                        <div className="flex items-center space-x-4">
-                            <div className="flex flex-col items-end">
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Configuration Total</span>
-                                <span className="text-sm font-bold text-white">{dynamicPrice} DKK</span>
-                            </div>
-                            {amountPaid > 0 && (
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[10px] text-green-400 font-bold uppercase tracking-wider">Paid</span>
-                                    <span className="text-sm font-bold text-green-400">{amountPaid} DKK</span>
-                                </div>
-                            )}
-                            <Tag color={paymentStatus === 'paid' ? 'success' : (paymentStatus === 'partial' ? 'warning' : 'default')} style={{ margin: 0 }}>
-                                {paymentStatus.toUpperCase()}
-                            </Tag>
+
+                        {/* Divider */}
+                        <div className="w-px h-4 bg-slate-200" />
+
+                        {/* Price */}
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-slate-400 font-medium">Total</span>
+                            <span className="text-xs font-bold text-slate-700">{dynamicPrice} DKK</span>
                         </div>
-                        {isLocked && (
-                            <div className="flex items-center space-x-2 bg-red-600/50 px-3 py-1 rounded-xl border border-red-500/50 animate-pulse">
-                                <Lock className="w-3.5 h-3.5" />
-                                <span className="text-xs font-bold uppercase tracking-widest">
-                                    {new Date() > editDeadline ? 'Window Expired' : (new Date() > deadline ? 'Deadline Passed' : 'Order Locked')}
-                                </span>
-                            </div>
+
+                        {/* Paid */}
+                        {amountPaid > 0 && (
+                            <>
+                                <div className="w-px h-4 bg-slate-200" />
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-xs text-slate-400 font-medium">Paid</span>
+                                    <span className="text-xs font-bold text-green-600">{amountPaid} DKK</span>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Payment status badge */}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                            paymentStatus === 'paid' ? 'bg-green-100 text-green-700' :
+                            paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-slate-100 text-slate-500'
+                        }`}>
+                            {paymentStatus}
+                        </span>
+
+                        {/* Edit deadline */}
+                        {editDeadline && (
+                            <>
+                                <div className="w-px h-4 bg-slate-200" />
+                                <div className="flex items-center gap-1.5">
+                                    <History className="w-3.5 h-3.5 text-yellow-500" />
+                                    <span className={`text-xs font-semibold ${new Date() > editDeadline ? 'text-red-500' : 'text-slate-500'}`}>
+                                        Edit: {editDeadline.toLocaleDateString()} {new Date() > editDeadline && '· Expired'}
+                                    </span>
+                                </div>
+                            </>
                         )}
                     </div>
-                    {isAdmin && isLocked && (
-                        <button
-                            onClick={handleAdminUnlock}
-                            className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg text-xs font-bold transition-all border border-white/10"
-                        >
-                            Admin Bypass: Unlock Order
-                        </button>
-                    )}
+
+                    <div className="flex items-center gap-3">
+                        {/* Locked badge */}
+                        {isLocked && (
+                            <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 px-2.5 py-1 rounded-lg">
+                                <Lock className="w-3 h-3 text-red-500" />
+                                <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider">
+                                    {editDeadline && new Date() > editDeadline ? 'Window Expired' : deadline && new Date() > deadline ? 'Deadline Passed' : 'Locked'}
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Admin unlock */}
+                        {isAdmin && isLocked && (
+                            <button
+                                onClick={handleAdminUnlock}
+                                className="text-xs font-bold text-blue-600 hover:text-blue-700 underline"
+                            >
+                                Unlock
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="hidden md:flex h-[calc(100vh-80px)] w-full relative">
@@ -757,7 +881,19 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                             <button
                                                 key={index}
                                                 onClick={() => {
-                                                    setActiveMenu(item.name);
+                                                    // Agar current garment configured hai aur naya garment configured nahi
+                                                    // toh copy karne ka poochho
+                                                    const currentConfigured = isGarmentConfigured(activeMenu, allSelections[activeMenu]);
+                                                    const targetConfigured = isGarmentConfigured(item.name, allSelections[item.name]);
+                                                    if (
+                                                        item.name !== activeMenu &&
+                                                        currentConfigured &&
+                                                        !targetConfigured
+                                                    ) {
+                                                        setCopyDesignPrompt({ from: activeMenu, to: item.name });
+                                                    } else {
+                                                        setActiveMenu(item.name);
+                                                    }
                                                 }}
                                                 className={`flex items-center px-2 py-3 rounded-xl transition-all duration-200 group w-full ${activeMenu === item.name
                                                     ? 'bg-gradient-to-r from-green-50 to-green-50 border border-green-200 shadow-sm'

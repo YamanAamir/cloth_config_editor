@@ -245,15 +245,36 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
     setShowFlagModal(false);
   };
 
-  const selectLogo = (logoName) => {
+  const selectLogo = (logoName, logoId) => {
     onUpdate({
       pressureOptions: {
         ...pressureOptions,
         [currentField]: logoName,
+        selectedLogoId: logoId, // save logo ID for order
       },
     });
     setShowFlagModal(false);
   };
+
+  // Auto-select if only one logo exists and none selected yet
+  useEffect(() => {
+    if (logos && logos.length === 1) {
+      const allLogoFields = [
+        'rightChestLogoPredefined', 'leftChestLogoPredefined',
+        'rightSleeveLogoPredefined', 'leftSleeveLogoPredefined'
+      ];
+      const anySelected = allLogoFields.some(f => pressureOptions[f]);
+      if (!anySelected) {
+        onUpdate({
+          pressureOptions: {
+            ...pressureOptions,
+            rightChestLogoPredefined: logos[0].name,
+            selectedLogoId: logos[0].id,
+          },
+        });
+      }
+    }
+  }, [logos]);
 
   const clearField = (field) => {
     onUpdate({
@@ -912,8 +933,8 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
         </>
       )}
 
-      {/* Test Component - Always mounted to broadcast back design, but hidden if not in pressure tab */}
-      <div className={activeTab === "pressure" ? "mt-10" : "hidden"}>
+      {/* Test Component - visible only in pressure tab, but always mounted for back design broadcast */}
+      <div className={activeTab === "pressure" ? "mt-10" : ""} style={activeTab !== "pressure" ? { visibility: 'hidden', position: 'absolute', pointerEvents: 'none', height: 0, overflow: 'hidden' } : {}}>
         <Test
           postEx="T-Shirt:"
           pressureOptions={pressureOptions}
@@ -924,7 +945,6 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
               ["preview-iframe", "preview-iframe2"].forEach((id) => {
                 const iframe = document.getElementById(id);
                 if (iframe?.contentWindow) {
-                  // Message for backward compatibility
                   iframe.contentWindow.postMessage(diffuse, "*");
                   iframe.contentWindow.postMessage(opacity, "*");
                   if (emissive) iframe.contentWindow.postMessage(emissive, "*");
@@ -937,6 +957,27 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                   ...pressureOptions,
                   backDesign: update.backDesign,
                 },
+              });
+            }
+          }}
+        />
+      </div>
+      {/* Always-on hidden Test for back design broadcast */}
+      <div style={{ visibility: 'hidden', position: 'absolute', pointerEvents: 'none', height: 0, overflow: 'hidden' }}>
+        <Test
+          postEx="T-Shirt:"
+          pressureOptions={pressureOptions}
+          isAppReady={isAppReady}
+          onUpdate={(update) => {
+            if (update.canvasBase64) {
+              const { diffuse, opacity, emissive } = update.canvasBase64;
+              ["preview-iframe", "preview-iframe2"].forEach((id) => {
+                const iframe = document.getElementById(id);
+                if (iframe?.contentWindow) {
+                  iframe.contentWindow.postMessage(diffuse, "*");
+                  iframe.contentWindow.postMessage(opacity, "*");
+                  if (emissive) iframe.contentWindow.postMessage(emissive, "*");
+                }
               });
             }
           }}
@@ -987,7 +1028,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                   {logos && logos.map((logo) => (
                     <button
                       key={logo.id}
-                      onClick={() => selectLogo(logo.name)}
+                      onClick={() => selectLogo(logo.name, logo.id)}
                       className="group relative flex flex-col items-center p-2 rounded-3xl transition-all duration-300 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50"
                     >
                       <div className="w-full aspect-square mb-4 flex items-center justify-center bg-white rounded-2xl border border-slate-100 shadow-sm group-hover:border-green-200 group-hover:-translate-y-2 transition-all duration-500 p-5 overflow-hidden">

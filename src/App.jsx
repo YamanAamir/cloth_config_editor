@@ -21,6 +21,7 @@ function App() {
     return saved ? JSON.parse(saved) : {};
   }); // student-specific customizations
   const [showBackPopup, setShowBackPopup] = useState(false);
+  const [students, setStudents] = useState([]);
   // const [showBackTextPopup, setShowBackTextPopup] = useState(false); // COMMENTED: Back text feature disabled
   const [isAppReady, setIsAppReady] = useState(false);
   const { fetchBackDesigns, backDesigns } = useBackDesignStore();
