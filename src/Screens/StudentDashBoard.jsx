@@ -164,6 +164,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
     const [amountPaid, setAmountPaid] = useState(0);
     const [paymentStatus, setPaymentStatus] = useState('unpaid');
     const [editDeadline, setEditDeadline] = useState(null);
+    const [classStatus, setClassStatus] = useState(null); // tracking.class_status
 
     // 3. Derived State
     const calculateTotalPrice = () => {
@@ -204,6 +205,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                 setPaymentStatus(order.payment_status || 'unpaid');
                 if (order.edit_deadline) setEditDeadline(new Date(order.edit_deadline));
                 if (order.class?.change_deadline) setDeadline(new Date(order.class.change_deadline));
+                if (order.tracking?.class_status) setClassStatus(order.tracking.class_status);
                 if (order.delivery_details) {
                     const details = typeof order.delivery_details === 'string'
                         ? JSON.parse(order.delivery_details) : order.delivery_details;
@@ -801,7 +803,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                             </span>
                         </div>
 
-                        {/* Divider */}
                         <div className="w-px h-4 bg-slate-200" />
 
                         {/* Price */}
@@ -829,6 +830,27 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                         }`}>
                             {paymentStatus}
                         </span>
+
+                        {/* Class tracking status */}
+                        {classStatus && (() => {
+                            const statusMap = {
+                                active:           { label: 'Order in progress',              color: 'bg-blue-100 text-blue-700' },
+                                orders_locked:    { label: 'Order locked – going to production', color: 'bg-orange-100 text-orange-700' },
+                                production_ready: { label: 'Being produced',                 color: 'bg-purple-100 text-purple-700' },
+                                shipped:          { label: 'Shipped – check email for tracking', color: 'bg-indigo-100 text-indigo-700' },
+                                completed:        { label: 'Delivered',                      color: 'bg-green-100 text-green-700' },
+                            };
+                            const s = statusMap[classStatus];
+                            if (!s) return null;
+                            return (
+                                <>
+                                    <div className="w-px h-4 bg-slate-200" />
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wider ${s.color}`}>
+                                        {s.label}
+                                    </span>
+                                </>
+                            );
+                        })()}
 
                         {/* Edit deadline */}
                         {editDeadline && (

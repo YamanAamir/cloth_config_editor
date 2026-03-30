@@ -686,15 +686,23 @@ const QuoteModal = ({
         design_config: options.pressureOptions || {}
       }));
 
+      // Extract logo_id from any configured garment's pressureOptions
+      let logo_id = null;
+      for (const [, options] of configuredEntries) {
+        if (options.pressureOptions?.selectedLogoId) {
+          logo_id = options.pressureOptions.selectedLogoId;
+          break;
+        }
+      }
+
       // Check if balance exists
       if (computedBalanceDue <= 0) {
-        // Just save the order
         const saveResponse = await placeOrder({
           student_id: studentId,
           class_id: classId,
           garments,
           delivery_details: customerDetails,
-          logo_id: null
+          logo_id
         });
 
         if (saveResponse.data?.success) {
@@ -709,7 +717,8 @@ const QuoteModal = ({
         student_id: studentId,
         class_id: classId,
         garments: garments,
-        delivery_details: customerDetails
+        delivery_details: customerDetails,
+        logo_id
       };
 
       const stripeResponse = await createCheckoutSession({

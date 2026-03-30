@@ -224,11 +224,12 @@ const Shorts = ({ data, onUpdate, isAppReady, logos }) => {
     setShowFlagModal(false);
   };
 
-  const selectLogo = (logoName) => {
+  const selectLogo = (logoName, logoId) => {
     onUpdate({
       pressureOptions: {
         ...pressureOptions,
         [currentField]: logoName,
+        selectedLogoId: logoId,
       },
     });
     setShowFlagModal(false);
