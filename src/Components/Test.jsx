@@ -208,13 +208,12 @@ console.log("backDesignasdasqwqs",backDesigns);
       ctx.restore();
     });
 
-    // ── Opacity Mask Generation ──
+    // ── Opacity Mask (pure black/white: bright bg → black, dark design → white) ──
     const opacityCanvas = document.createElement("canvas");
     opacityCanvas.width = CANVAS_WIDTH;
     opacityCanvas.height = CANVAS_HEIGHT;
     const octx = opacityCanvas.getContext("2d");
-
-    octx.filter = "invert(100%)";
+    // No background fill — transparent canvas, empty areas = black (no print)
     objects.forEach(obj => {
       octx.save();
       octx.translate(obj.pos.x, obj.pos.y);
@@ -224,7 +223,16 @@ console.log("backDesignasdasqwqs",backDesigns);
       }
       octx.restore();
     });
-    octx.filter = "none";
+    const imgData = octx.getImageData(0, 0, opacityCanvas.width, opacityCanvas.height);
+    for (let i = 0; i < imgData.data.length; i += 4) {
+      const brightness = 0.299 * imgData.data[i] + 0.587 * imgData.data[i + 1] + 0.114 * imgData.data[i + 2];
+      const alpha = imgData.data[i + 3];
+      // Transparent pixels (empty canvas) → black, bright pixels (white bg) → black, dark pixels (design) → white
+      const bw = (alpha < 10 || brightness > 128) ? 0 : 255;
+      imgData.data[i] = imgData.data[i + 1] = imgData.data[i + 2] = bw;
+      imgData.data[i + 3] = 255;
+    }
+    octx.putImageData(imgData, 0, 0);
 
     let diffuseBase64 = "";
     let opacityBase64 = "";
