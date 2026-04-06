@@ -5,6 +5,8 @@ export const loginUser = (data) => api.post('/auth/student-login', data);
 export const registerUser = (data) => api.post('/auth/register', data);
 export const sidebarMenus = (data) => api.get('/auth/sidebar-menus', data);
 export const setUserPassword = (data) => api.post('/auth/set-password', data);
+export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
+export const resetPassword = (data) => api.post('/auth/reset-password', data);
 
 // School APIs
 export const getAllSchools = (params = {}) => api.post('/admin/schools', params);
@@ -78,3 +80,11 @@ export const lockOrder = (orderId) => api.put(`/admin/orders/${orderId}/lock`);
 
 // Stripe Payment
 export const createCheckoutSession = (data) => api.post('/payment/create-checkout-session', data);
+
+// Settings (public)
+export const getPublicSettings = () => api.get('/student/settings');
+
+// Student Profile
+export const getStudentProfile = () => api.get('/student/profile');
+export const updateStudentProfile = (data) => api.put('/student/profile', data);
+export const changePasswordAuth = (data) => api.put('/auth/change-password', data);

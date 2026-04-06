@@ -5,6 +5,7 @@ import { X, Printer, Download, Mail, CheckCircle, Package, Star, User, CreditCar
 import { useRef } from 'react';
 import { useEffect } from 'react';
 import { placeOrder, createCheckoutSession } from '../api/api';
+import useSettingsStore from '../store/settingsStore';
 // const stripePromise = loadStripe("pk_test_51S0HgS2ZnQzLDaK40M9tlj1n72wtQNsUNhG986xbE6bfHxWmFfOMJfWGAbg4QrAlFtnhVCtOajoIqUbRgSBnRnkb00iMo1bD1o");
 
 const QuoteModal = ({ 
@@ -177,19 +178,20 @@ const QuoteModal = ({
 
   const [orderDate, setOrderDate] = useState(`ORD-${Date.now().toString()}`);
 
+  // Garment prices from backend settings (with fallback) — must be before any early return
+  const { getGarmentPrice } = useSettingsStore();
+  const GARMENT_PRICES = {
+    'T-SHIRT':      getGarmentPrice('T-SHIRT')      || 1200,
+    'SWEATSHIRT':   getGarmentPrice('SWEATSHIRT')   || 1500,
+    'HOODIE':       getGarmentPrice('HOODIE')        || 2000,
+    'ZIPPERHOODIE': getGarmentPrice('ZIPPERHOODIE') || 2200,
+    'SWEATPANTS':   getGarmentPrice('SWEATPANTS')   || 2000,
+    'SHORTS':       getGarmentPrice('SHORTS')        || 1500,
+  };
+
   if (!isOpen) return null;
 
   const steps = orderComplete ? ['Thank You'] : ['Order Overview', 'Delivery Information', 'Order Confirmation'];
-
-  // ✨ NEW: Base prices for each garment type
-  const GARMENT_PRICES = {
-    'T-SHIRT': 200,
-    'SWEATSHIRT': 350,
-    'HOODIE': 450,
-    'ZIPPERHOODIE': 500,
-    'SWEATPANTS': 300,
-    'SHORTS': 250
-  };
 
   // ✨ NEW: Calculate dynamic total price
   const calculateTotalPrice = () => {

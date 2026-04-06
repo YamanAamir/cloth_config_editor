@@ -1,6 +1,6 @@
 // StudentDashboard.jsx (full fixed code with iframe src fixed to use null instead of empty string)
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { message, Tag } from 'antd';
+import { message, Tag, Dropdown, Drawer, Avatar, Divider, Form, Input, Switch } from 'antd';
 import img1 from '../assets/menuimages/1.png';
 import img2 from '../assets/menuimages/2.png';
 import img3 from '../assets/menuimages/3.png';
@@ -17,11 +17,12 @@ import SweatShirt from '../Components/SweatShirt';
 import QuoteModal from '../Components/Modal';
 import HistoryModal from '../Components/HistoryModal';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { GraduationCap, ChevronUp, ChevronDown, LogOut, Settings, LayoutGrid, Lock, History, Package } from 'lucide-react';
+import { GraduationCap, ChevronUp, ChevronDown, LogOut, Settings, LayoutGrid, Lock, History, Package, User } from 'lucide-react';
 import StudentPopup from '../Components/Popup';
 import useLogoStore from '../store/logoStore';
+import useSettingsStore from '../store/settingsStore';
 import { useAuth } from '../context/AuthContext';
-import { getMyOrder, getMyOrderHistory, placeOrder, unlockOrder, lockOrder, deleteHistory } from '../api/api';
+import { getMyOrder, getMyOrderHistory, placeOrder, unlockOrder, lockOrder, deleteHistory, getStudentProfile, updateStudentProfile, changePasswordAuth } from '../api/api';
 import useSocket from '../hooks/useSocket';
 
 const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup /*, setShowBackTextPopup */ }) => { // COMMENTED: Back text feature disabled
@@ -92,13 +93,18 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         }
     };
 
+    const { fetchSettings, getGarmentPrice, getVat } = useSettingsStore();
+
+    // Fetch settings on mount
+    useEffect(() => { fetchSettings(); }, []);
+
     const GARMENT_PRICES = {
-        'T-SHIRT': 200,
-        'SWEATSHIRT': 350,
-        'HOODIE': 450,
-        'ZIPPERHOODIE': 500,
-        'SWEATPANTS': 300,
-        'SHORTS': 250
+        'T-SHIRT':      getGarmentPrice('T-SHIRT')      || 1200,
+        'SWEATSHIRT':   getGarmentPrice('SWEATSHIRT')   || 1500,
+        'HOODIE':       getGarmentPrice('HOODIE')        || 2000,
+        'ZIPPERHOODIE': getGarmentPrice('ZIPPERHOODIE') || 2200,
+        'SWEATPANTS':   getGarmentPrice('SWEATPANTS')   || 2000,
+        'SHORTS':       getGarmentPrice('SHORTS')        || 1500,
     };
 
     const isGarmentConfigured = (garmentType, garmentData) => {
@@ -133,6 +139,12 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
     // 2. State
     const [allSelections, setAllSelections] = useState(DEFAULT_SELECTIONS);
     const [activeMenu, setActiveMenu] = useState('T-SHIRT');
+    const [backDesignKey, setBackDesignKey] = useState(0); // force Test remount on page switch
+    const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
+    const [profileData, setProfileData] = useState(null);
+    const [profileTab, setProfileTab] = useState('info'); // 'info' | 'edit' | 'password'
+    const [profileSaving, setProfileSaving] = useState(false);
+    const [profileEditForm] = Form.useForm();
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
     const [undoAvailable, setUndoAvailable] = useState(false);
     const [searchParams] = useSearchParams();
@@ -177,7 +189,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         return total;
     };
 
-    const dynamicPrice = calculateTotalPrice();
+    const subtotal = calculateTotalPrice();
+    const vatPct = getVat(); // e.g. 10
+    const vatAmount = Math.round(subtotal * vatPct / 100);
+    const dynamicPrice = subtotal + vatAmount;
     const balanceDue = Math.max(0, dynamicPrice - amountPaid);
 
 
@@ -567,7 +582,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                     iframe.contentWindow.postMessage('Tilvælg:no', "*");
 
                     // 2. Initial state sync for the new model
-                    // We send these with a slight delay to ensure the PlayCanvas app has processed the Page switch
                     setTimeout(() => {
                         const currentData = allSelections[activeMenu];
                         if (currentData) {
@@ -588,7 +602,9 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                 if (selectedSize) iframe.contentWindow.postMessage(`${prefix}size:${selectedSize}`, "*");
                             }
                         }
-                    }, 150);
+                        // Force Test component to remount and re-send back design
+                        setBackDesignKey(k => k + 1);
+                    }, 300);
                 }
             });
         }
@@ -782,13 +798,40 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                             <span className="sm:hidden text-[10px]">Text</span>
                         </button> */}
 
-                        <button
-                            onClick={handleLogout}
-                            className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl transition-all font-medium text-sm"
+                        <Dropdown
+                            menu={{
+                                items: [
+                                    {
+                                        key: 'profile',
+                                        label: 'Profile',
+                                        icon: <User />,
+                                        onClick: () => setProfileDrawerOpen(true),
+                                    },
+                                    { type: 'divider' },
+                                    {
+                                        key: 'logout',
+                                        label: 'Log out',
+                                        icon: <LogOut className="w-3.5 h-3.5" />,
+                                        danger: true,
+                                        onClick: handleLogout,
+                                    },
+                                ],
+                            }}
+                            trigger={['click']}
+                            placement="bottomRight"
                         >
-                            <LogOut className="w-4 h-4" />
-                            <span className="hidden sm:inline">Log Out</span>
-                        </button>
+                            <button className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-slate-100 transition-all">
+                                <Avatar
+                                    size={34}
+                                    style={{ backgroundColor: '#16a34a', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}
+                                >
+                                    {user?.name?.charAt(0)?.toUpperCase() || 'S'}
+                                </Avatar>
+                                <span className="hidden sm:inline text-sm font-semibold text-slate-700 max-w-[100px] truncate">
+                                    {user?.name || 'Student'}
+                                </span>
+                            </button>
+                        </Dropdown>
                     </div>
                 </header>
 
@@ -938,23 +981,30 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                             <div className="flex-1 bg-white/50 secondDiv overflow-y-auto custom-scrollbar-premium">
                                 <div className="p-6 space-y-8">
 
-                                    {activeMenu === 'T-SHIRT' && <Tshirt isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} />}
-                                    {activeMenu === "SWEATSHIRT" && <SweatShirt isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} />}
-                                    {activeMenu === "HOODIE" && <Hoodie isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} />}
-                                    {activeMenu === "ZIPPERHOODIE" && <ZippedHoodie isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} />}
-                                    {activeMenu === "SWEATPANTS" && <SweatPants isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} />}
-                                    {activeMenu === "SHORTS" && <Shorts isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} />}
+                                    {activeMenu === 'T-SHIRT' && <Tshirt key={`tshirt-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} />}
+                                    {activeMenu === "SWEATSHIRT" && <SweatShirt key={`sweatshirt-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} />}
+                                    {activeMenu === "HOODIE" && <Hoodie key={`hoodie-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} />}
+                                    {activeMenu === "ZIPPERHOODIE" && <ZippedHoodie key={`zipper-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} />}
+                                    {activeMenu === "SWEATPANTS" && <SweatPants key={`sweatpants-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} />}
+                                    {activeMenu === "SHORTS" && <Shorts key={`shorts-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} />}
                                 </div>
                             </div>
                         </div>
                         <div className=" border-slate-200 p-6 bg-white/50 backdrop-blur-sm">
-                            <div className="flex justify-between items-center mb-4">
-                                <span className="text-sm font-medium text-slate-600">Total Price</span>
-                                <div className="text-right">
-                                    <div className="text-2xl font-bold text-slate-900">
-                                        {dynamicPrice} DKK
+                            <div className="mb-4 space-y-1.5">
+                                <div className="flex justify-between text-xs text-slate-500">
+                                    <span>Subtotal</span>
+                                    <span>{subtotal} DKK</span>
+                                </div>
+                                {vatPct > 0 && (
+                                    <div className="flex justify-between text-xs text-slate-500">
+                                        <span>VAT ({vatPct}%)</span>
+                                        <span>{vatAmount} DKK</span>
                                     </div>
-                                    <div className="text-xs text-slate-500"> Service fee included</div>
+                                )}
+                                <div className="flex justify-between items-center pt-1.5 border-t border-slate-200">
+                                    <span className="text-sm font-semibold text-slate-700">Total</span>
+                                    <span className="text-2xl font-bold text-slate-900">{dynamicPrice} DKK</span>
                                 </div>
                             </div>
                             <button
@@ -1141,13 +1191,20 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                         </div>
                         {/* Fixed Footer - Always visible at bottom */}
                         <div className="border-t border-slate-200 p-4 bg-white/90 backdrop-blur-sm flex-shrink-0">
-                            <div className="flex justify-between items-center mb-3">
-                                <span className="text-sm font-medium text-slate-600">Total Price</span>
-                                <div className="text-right">
-                                    <div className="text-xl font-bold text-slate-900">
-                                        {dynamicPrice} DKK
+                            <div className="mb-3 space-y-1">
+                                <div className="flex justify-between text-xs text-slate-500">
+                                    <span>Subtotal</span>
+                                    <span>{subtotal} DKK</span>
+                                </div>
+                                {vatPct > 0 && (
+                                    <div className="flex justify-between text-xs text-slate-500">
+                                        <span>VAT ({vatPct}%)</span>
+                                        <span>{vatAmount} DKK</span>
                                     </div>
-                                    <div className="text-xs text-slate-500">Service fee included</div>
+                                )}
+                                <div className="flex justify-between items-center pt-1 border-t border-slate-200">
+                                    <span className="text-sm font-semibold text-slate-700">Total</span>
+                                    <span className="text-xl font-bold text-slate-900">{dynamicPrice} DKK</span>
                                 </div>
                             </div>
                             <div className="flex space-x-3 mb-4">
@@ -1205,6 +1262,167 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                     onRevert={handleRevertToVersion}
                     onHistoryUpdated={fetchHistoryData}
                 />
+
+                {/* ── Profile Drawer ── */}
+                <Drawer
+                    title={null}
+                    placement="right"
+                    width={360}
+                    open={profileDrawerOpen}
+                    onClose={() => { setProfileDrawerOpen(false); setProfileTab('info'); }}
+                    styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column', height: '100%' } }}
+                    afterOpenChange={(open) => {
+                        if (open) {
+                            getStudentProfile().then(r => {
+                                if (r.data?.success) {
+                                    const d = r.data.data;
+                                    setProfileData(d);
+                                    profileEditForm.setFieldsValue({
+                                        name: d.name,
+                                        phone_number: d.phone_number || '',
+                                        year_of_birth: d.year_of_birth || '',
+                                        consent_production: d.consent_production,
+                                        consent_marketing: d.consent_marketing,
+                                    });
+                                }
+                            }).catch(() => {});
+                        }
+                    }}
+                >
+                    {/* Header */}
+                    <div className="bg-gradient-to-br from-green-600 to-green-700 px-6 py-8 text-center flex-shrink-0">
+                        <Avatar size={72} style={{ backgroundColor: '#fff', color: '#16a34a', fontSize: 28, fontWeight: 700 }}>
+                            {user?.name?.charAt(0)?.toUpperCase() || 'S'}
+                        </Avatar>
+                        <h2 className="text-white font-bold text-lg mt-3">{profileData?.name || user?.name}</h2>
+                        <p className="text-green-100 text-sm">{profileData?.email || user?.email}</p>
+                        {profileData?.class?.name && (
+                            <span className="inline-block mt-2 bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                                {profileData.class.name}
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="flex border-b border-slate-200 flex-shrink-0">
+                        {[['info', 'Info'], ['edit', 'Edit'], ['password', 'Password']].map(([key, label]) => (
+                            <button key={key} onClick={() => setProfileTab(key)}
+                                className={`flex-1 py-2.5 text-xs font-bold transition-all ${profileTab === key ? 'border-b-2 border-green-600 text-green-700' : 'text-slate-500 hover:text-slate-700'}`}>
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 overflow-y-auto px-6 py-5">
+
+                        {/* INFO TAB */}
+                        {profileTab === 'info' && (
+                            <div className="space-y-4">
+                                {[
+                                    ['Email', profileData?.email],
+                                    ['Phone', profileData?.phone_number || '—'],
+                                    ['Year of Birth', profileData?.year_of_birth || '—'],
+                                    ['School', profileData?.school?.name || '—'],
+                                    ['Class', profileData?.class?.name || '—'],
+                                    ['Order Status', paymentStatus?.toUpperCase()],
+                                    ['Amount Paid', amountPaid > 0 ? `${amountPaid} DKK` : '—'],
+                                ].map(([label, val]) => (
+                                    <div key={label}>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{label}</p>
+                                        <p className="text-sm font-semibold text-slate-700">{val}</p>
+                                    </div>
+                                ))}
+                                {/* <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Consent</p>
+                                    <p className="text-xs text-slate-600">Production: {profileData?.consent_production ? '✅' : '❌'}</p>
+                                    <p className="text-xs text-slate-600">Marketing: {profileData?.consent_marketing ? '✅' : '❌'}</p>
+                                </div> */}
+                            </div>
+                        )}
+
+                        {/* EDIT TAB */}
+                        {profileTab === 'edit' && (
+                            <Form form={profileEditForm} layout="vertical" size="middle"
+                                onFinish={async (vals) => {
+                                    setProfileSaving(true);
+                                    try {
+                                        const r = await updateStudentProfile(vals);
+                                        if (r.data?.success) {
+                                            message.success('Profile updated!');
+                                            setProfileData(r.data.data);
+                                        }
+                                    } catch { message.error('Update failed'); }
+                                    finally { setProfileSaving(false); }
+                                }}
+                            >
+                                <Form.Item label="Name" name="name" rules={[{ required: true }]}>
+                                    <Input />
+                                </Form.Item>
+                                <Form.Item label="Phone" name="phone_number">
+                                    <Input placeholder="+45 00 00 00 00" />
+                                </Form.Item>
+                                <Form.Item label="Year of Birth" name="year_of_birth">
+                                    <Input placeholder="2000" type="number" />
+                                </Form.Item>
+                                {/* <Form.Item label="Production Consent" name="consent_production" valuePropName="checked">
+                                    <Switch />
+                                </Form.Item>
+                                <Form.Item label="Marketing Consent" name="consent_marketing" valuePropName="checked">
+                                    <Switch />
+                                </Form.Item> */}
+                                <Form.Item>
+                                    <button type="submit" disabled={profileSaving}
+                                        className="w-full py-2.5 bg-green-600 text-white rounded-xl font-semibold text-sm hover:bg-green-700 transition-all disabled:opacity-50">
+                                        {profileSaving ? 'Saving...' : 'Save Changes'}
+                                    </button>
+                                </Form.Item>
+                            </Form>
+                        )}
+
+                        {/* PASSWORD TAB */}
+                        {profileTab === 'password' && (
+                            <Form layout="vertical" size="middle"
+                                onFinish={async (vals) => {
+                                    if (vals.newPassword !== vals.confirmPassword) {
+                                        message.error('Passwords do not match'); return;
+                                    }
+                                    setProfileSaving(true);
+                                    try {
+                                        await changePasswordAuth({ currentPassword: vals.currentPassword, newPassword: vals.newPassword });
+                                        message.success('Password changed!');
+                                    } catch (e) { message.error(e.response?.data?.message || 'Failed'); }
+                                    finally { setProfileSaving(false); }
+                                }}
+                            >
+                                <Form.Item label="Current Password" name="currentPassword" rules={[{ required: true }]}>
+                                    <Input.Password />
+                                </Form.Item>
+                                <Form.Item label="New Password" name="newPassword" rules={[{ required: true, min: 6 }]}>
+                                    <Input.Password />
+                                </Form.Item>
+                                <Form.Item label="Confirm Password" name="confirmPassword" rules={[{ required: true }]}>
+                                    <Input.Password />
+                                </Form.Item>
+                                <Form.Item>
+                                    <button type="submit" disabled={profileSaving}
+                                        className="w-full py-2.5 bg-green-600 text-white rounded-xl font-semibold text-sm hover:bg-green-700 transition-all disabled:opacity-50">
+                                        {profileSaving ? 'Updating...' : 'Change Password'}
+                                    </button>
+                                </Form.Item>
+                            </Form>
+                        )}
+                    </div>
+
+                    <Divider style={{ margin: 0 }} />
+                    <div className="px-6 py-4 flex-shrink-0">
+                        <button onClick={() => { setProfileDrawerOpen(false); handleLogout(); }}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-50 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-100 transition-all border border-red-100">
+                            <LogOut className="w-4 h-4" />
+                            Log out
+                        </button>
+                    </div>
+                </Drawer>
             </div>
         </>
     );

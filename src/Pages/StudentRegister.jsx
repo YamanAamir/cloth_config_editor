@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Form, Input, Button, Card, Typography, message, Layout, Alert } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { Package } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { registerUser } from '../api/api';
+import { registerUser, setUserPassword } from '../api/api';
 
 const { Title, Text } = Typography;
 
@@ -14,7 +14,11 @@ const StudentRegister = () => {
     const [decodedData, setDecodedData] = useState(null);
     const [tokenError, setTokenError] = useState(false);
     const [useManualCode, setUseManualCode] = useState(false);
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
+    const [fpLoading, setFpLoading] = useState(false);
+    const submittingRef = useRef(false); // prevent duplicate submissions
     const [form] = Form.useForm();
+    const [fpForm] = Form.useForm();
 
     useEffect(() => {
         const queryParams = new URLSearchParams(location.search);
@@ -50,12 +54,16 @@ const StudentRegister = () => {
     }, [location.search]);
 
     const onFinish = async (values) => {
+        // Prevent duplicate submissions
+        if (submittingRef.current) return;
+        submittingRef.current = true;
+
         const payload = {
             name: values.name,
             email: values.email,
             password: values.password,
             school_id: decodedData?.school_id,
-            class_id: decodedData?.class_id || values.classCode, // Support manual code
+            class_id: decodedData?.class_id || values.classCode,
             token: decodedData?.token || 'manual',
         };
 
@@ -66,8 +74,23 @@ const StudentRegister = () => {
             navigate('/login');
         } catch (error) {
             message.error(error.response?.data?.message || 'Registration failed');
+            submittingRef.current = false; // allow retry on error
         } finally {
             setLoading(false);
+        }
+    };
+
+    const onForgotPassword = async (values) => {
+        setFpLoading(true);
+        try {
+            await setUserPassword({ email: values.fpEmail, password: values.newPassword });
+            message.success('Password updated successfully! You can now log in.');
+            setShowForgotPassword(false);
+            fpForm.resetFields();
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Failed to reset password');
+        } finally {
+            setFpLoading(false);
         }
     };
 
@@ -177,6 +200,51 @@ const StudentRegister = () => {
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         Already have an account? <a href="/login">Log in</a>
                     </Text>
+                    <div style={{ marginTop: 12 }}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            Forgot password?{' '}
+                            <a onClick={() => setShowForgotPassword(!showForgotPassword)}>
+                                Reset it
+                            </a>
+                        </Text>
+                    </div>
+
+                    {showForgotPassword && (
+                        <div style={{ marginTop: 16, textAlign: 'left', borderTop: '1px solid #f0f0f0', paddingTop: 16 }}>
+                            <Text strong style={{ fontSize: 13 }}>Reset Password</Text>
+                            <Form
+                                form={fpForm}
+                                layout="vertical"
+                                onFinish={onForgotPassword}
+                                size="middle"
+                                style={{ marginTop: 12 }}
+                            >
+                                <Form.Item
+                                    name="fpEmail"
+                                    rules={[
+                                        { required: true, message: 'Enter your email' },
+                                        { type: 'email', message: 'Invalid email' },
+                                    ]}
+                                >
+                                    <Input prefix={<MailOutlined />} placeholder="Your email" />
+                                </Form.Item>
+                                <Form.Item
+                                    name="newPassword"
+                                    rules={[
+                                        { required: true, message: 'Enter new password' },
+                                        { min: 6, message: 'Min 6 characters' },
+                                    ]}
+                                >
+                                    <Input.Password prefix={<LockOutlined />} placeholder="New password" />
+                                </Form.Item>
+                                <Form.Item>
+                                    <Button type="primary" htmlType="submit" loading={fpLoading} block>
+                                        Update Password
+                                    </Button>
+                                </Form.Item>
+                            </Form>
+                        </div>
+                    )}
                 </Card>
             </div>
         </Layout>
