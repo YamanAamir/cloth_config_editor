@@ -65,6 +65,7 @@ const StudentRegister = () => {
             school_id: decodedData?.school_id,
             class_id: decodedData?.class_id || values.classCode,
             token: decodedData?.token || 'manual',
+            consent_marketing: values.consent_marketing === true,
         };
 
         setLoading(true);
@@ -188,6 +189,15 @@ const StudentRegister = () => {
                             ]}
                         >
                             <Input.Password prefix={<LockOutlined />} placeholder="Password" />
+                        </Form.Item>
+
+                        <Form.Item name="consent_marketing" valuePropName="checked" initialValue={false}>
+                            <label className="flex items-start gap-2 cursor-pointer text-left">
+                                <input type="checkbox" className="mt-0.5 accent-green-600 w-4 h-4 flex-shrink-0" />
+                                <span className="text-xs text-slate-500 leading-relaxed">
+                                    I agree to receive marketing emails from StudentLife (optional)
+                                </span>
+                            </label>
                         </Form.Item>
 
                         <Form.Item>

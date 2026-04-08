@@ -271,6 +271,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
       pressureOptions: {
         ...pressureOptions,
         [`${area}Type`]: type,
+        [`${area}Text`]: "", // clear text when flag/logo selected
         ...(type === "flag"
           ? {
             [`${area}LogoPredefined`]: "",
@@ -527,187 +528,57 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
             {["rightChest", "leftChest"].map((area) => (
               <div key={area} className="bg-white rounded-lg p-4 mb-4">
                 <h3 className="font-semibold text-gray-900 mb-3">
-                  {area === "bottomChest"
-                    ? "Bottom Chest"
-                    : `${area.replace("Chest", " Chest")}:`}
+                  {area === "rightChest" ? "Right Chest:" : "Left Chest:"}
                 </h3>
-                <div className="space-y-6">
-                  {/* Free text */}
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">
-                      Free text
-                    </label>
+                <div className="space-y-3">
+                  <div className="flex rounded-lg overflow-hidden border border-gray-200">
+                    {["text", "flag", "logo"].map((tab) => (
+                      <button key={tab} type="button"
+                        onClick={() => {
+                          if (tab === "text") {
+                            onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Type`]: "", [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" } });
+                          } else { handleTypeChange(area, tab); }
+                        }}
+                        className={`flex-1 py-2 text-xs font-bold capitalize transition-all ${
+                          pressureOptions[`${area}Type`] === tab || (tab === "text" && !pressureOptions[`${area}Type`])
+                            ? "bg-green-700 text-white" : "bg-white text-gray-500 hover:bg-gray-50"
+                        }`}
+                      >
+                        {tab === "text" ? "Text" : tab === "flag" ? "Flag" : "Logo"}
+                        {(tab === "text" && pressureOptions[`${area}Text`]) || (tab === "flag" && pressureOptions[`${area}Flag`]) || (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? " ✓" : ""}
+                      </button>
+                    ))}
+                  </div>
+                  {!pressureOptions[`${area}Type`] && (
                     <div className="flex flex-wrap gap-2">
-                      <input
-                        type="text"
-                        value={pressureOptions[`${area}Text`]}
-                        onChange={(e) =>
-                          onUpdate({
-                            pressureOptions: {
-                              ...pressureOptions,
-                              [`${area}Text`]: e.target.value,
-                            },
-                          })
-                        }
-                        placeholder="Enter text"
-                        maxLength={10}
+                      <input type="text" value={pressureOptions[`${area}Text`]}
+                        onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
+                        placeholder="Enter text" maxLength={25}
                         className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
                       />
                       {pressureOptions[`${area}Text`] && (
-                        <button
-                          onClick={() => clearField(`${area}Text`)}
-                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
-                          title="Clear text"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                        <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>
                       )}
                     </div>
-                  </div>
-
-                  {/* Radio Buttons: Flag or Logo */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Select Type
-                    </label>
-                    <div className="flex gap-6">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`${area}Type`}
-                          checked={pressureOptions[`${area}Type`] === "flag"}
-                          onChange={() => handleTypeChange(area, "flag")}
-                          className="w-5 h-5 text-green-600 focus:ring-green-500"
-                        />
-                        <span className="text-sm text-gray-700">Flag</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`${area}Type`}
-                          checked={pressureOptions[`${area}Type`] === "logo"}
-                          onChange={() => handleTypeChange(area, "logo")}
-                          className="w-5 h-5 text-green-600 focus:ring-green-500"
-                        />
-                        <span className="text-sm text-gray-700">Logo</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Flag Options */}
+                  )}
                   {pressureOptions[`${area}Type`] === "flag" && (
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">
-                        Predefined flag
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        <input
-                          type="text"
-                          value={getFlagDisplay(pressureOptions[`${area}Flag`])}
-                          readOnly
-                          placeholder="Select flag"
-                          className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
-                          onClick={() => handleFlagSelect(`${area}Flag`)}
-                        />
-                        <button
-                          onClick={() => handleFlagSelect(`${area}Flag`)}
-                          className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium text-sm"
-                        >
-                          Select
-                        </button>
-                        {pressureOptions[`${area}Flag`] && (
-                          <button
-                            onClick={() => clearField(`${area}Flag`)}
-                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
-                            title="Clear flag"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
+                    <div className="flex flex-wrap gap-2">
+                      <input type="text" value={getFlagDisplay(pressureOptions[`${area}Flag`])} readOnly placeholder="Select flag"
+                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                        onClick={() => handleFlagSelect(`${area}Flag`)}
+                      />
+                      <button onClick={() => handleFlagSelect(`${area}Flag`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
+                      {pressureOptions[`${area}Flag`] && <button onClick={() => clearField(`${area}Flag`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
                     </div>
                   )}
-
-                  {/* Logo Options */}
                   {pressureOptions[`${area}Type`] === "logo" && (
-                    <div className="space-y-4">
-                      {/* Predefined Logo */}
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1">
-                          Predefined Logo
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          <input
-                            type="text"
-                            value={getLogoDisplay(
-                              pressureOptions[`${area}LogoPredefined`],
-                            )}
-                            readOnly
-                            placeholder="Select logo"
-                            className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
-                            onClick={() =>
-                              handleFlagSelect(`${area}LogoPredefined`)
-                            }
-                          />
-                          <button
-                            onClick={() =>
-                              handleFlagSelect(`${area}LogoPredefined`)
-                            }
-                            className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium text-sm"
-                          >
-                            Select
-                          </button>
-                          {pressureOptions[`${area}LogoPredefined`] && (
-                            <button
-                              onClick={() =>
-                                clearField(`${area}LogoPredefined`)
-                              }
-                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
-                              title="Clear logo"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Custom Logo */}
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1">
-                          Or upload custom logo
-                        </label>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files[0];
-                              if (!file) return;
-                              const reader = new FileReader();
-                              reader.onload = (ev) => {
-                                onUpdate({
-                                  pressureOptions: {
-                                    ...pressureOptions,
-                                    [`${area}LogoCustom`]: ev.target.result,
-                                    [`${area}LogoPredefined`]: "",
-                                  },
-                                });
-                              };
-                              reader.readAsDataURL(file);
-                            }}
-                            className="flex-1 min-w-[150px] text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                          />
-                          {pressureOptions[`${area}LogoCustom`] && (
-                            <button
-                              onClick={() => clearField(`${area}LogoCustom`)}
-                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
-                              title="Remove custom logo"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                    <div className="flex flex-wrap gap-2">
+                      <input type="text" value={getLogoDisplay(pressureOptions[`${area}LogoPredefined`])} readOnly placeholder="Select logo"
+                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                        onClick={() => handleFlagSelect(`${area}LogoPredefined`)}
+                      />
+                      <button onClick={() => handleFlagSelect(`${area}LogoPredefined`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
+                      {pressureOptions[`${area}LogoPredefined`] && <button onClick={() => clearField(`${area}LogoPredefined`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
                     </div>
                   )}
                 </div>
@@ -736,16 +607,24 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                       <input
                         type="text"
                         value={pressureOptions[`${area}Text`]}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const val = e.target.value;
                           onUpdate({
                             pressureOptions: {
                               ...pressureOptions,
-                              [`${area}Text`]: e.target.value,
+                              [`${area}Text`]: val,
+                              // clear flag/logo when text is typed
+                              ...(val ? {
+                                [`${area}Type`]: "",
+                                [`${area}Flag`]: "",
+                                [`${area}LogoPredefined`]: "",
+                                [`${area}LogoCustom`]: "",
+                              } : {}),
                             },
-                          })
-                        }
+                          });
+                        }}
                         placeholder="Enter text"
-                        maxLength={10}
+                        maxLength={25}
                         className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
                       />
                       {pressureOptions[`${area}Text`] && (
@@ -1046,3 +925,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
 };
 
 export default SweatShirt;
+
+
+
+

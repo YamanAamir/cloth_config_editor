@@ -780,14 +780,14 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                 <span className="hidden sm:inline">History</span>
                             </button>
                         )}
-                        <button
+                        {/* <button
                             onClick={() => setShowBackPopup(true)}
                             className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-900 transition-all font-medium text-sm shadow-md"
                         >
                             <Settings className="w-4 h-4" />
                             <span className="hidden sm:inline">Design Back</span>
                             <span className="sm:hidden text-[10px]">Back</span>
-                        </button>
+                        </button> */}
                         {/* COMMENTED: Back text feature disabled */}
                         {/* <button
                             onClick={() => setShowBackTextPopup(true)}
@@ -1363,7 +1363,16 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                     <Input placeholder="+45 00 00 00 00" />
                                 </Form.Item>
                                 <Form.Item label="Year of Birth" name="year_of_birth">
-                                    <Input placeholder="2000" type="number" />
+                                    <select
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:border-green-500"
+                                        onChange={(e) => profileEditForm.setFieldValue('year_of_birth', e.target.value)}
+                                        value={profileEditForm.getFieldValue('year_of_birth') || ''}
+                                    >
+                                        <option value="">Select year</option>
+                                        {Array.from({ length: new Date().getFullYear() - 1949 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                                            <option key={y} value={y}>{y}</option>
+                                        ))}
+                                    </select>
                                 </Form.Item>
                                 {/* <Form.Item label="Production Consent" name="consent_production" valuePropName="checked">
                                     <Switch />

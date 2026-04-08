@@ -271,6 +271,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
       pressureOptions: {
         ...pressureOptions,
         [`${area}Type`]: type,
+        [`${area}Text`]: "", // clear text when flag/logo selected
         ...(type === "flag"
           ? {
             [`${area}LogoPredefined`]: "",
@@ -542,8 +543,9 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
                     : `${area.replace("Chest", " Chest")}:`}
                 </h3>
                 <div className="space-y-6">
-                  {/* Free text */}
-                  <div>
+                  {/* Choose ONE: Text OR Flag/Logo */}
+                  {/* Text section */}
+                  <div className={pressureOptions[`${area}Type`] ? "opacity-40 pointer-events-none" : ""}>
                     <label className="block text-sm text-gray-600 mb-1">
                       Free text
                     </label>
@@ -551,16 +553,23 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
                       <input
                         type="text"
                         value={pressureOptions[`${area}Text`]}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const val = e.target.value;
                           onUpdate({
                             pressureOptions: {
                               ...pressureOptions,
-                              [`${area}Text`]: e.target.value,
+                              [`${area}Text`]: val,
+                              ...(val ? {
+                                [`${area}Type`]: "",
+                                [`${area}Flag`]: "",
+                                [`${area}LogoPredefined`]: "",
+                                [`${area}LogoCustom`]: "",
+                              } : {}),
                             },
-                          })
-                        }
+                          });
+                        }}
                         placeholder="Enter text"
-                        maxLength={10}
+                        maxLength={25}
                         className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
                       />
                       {pressureOptions[`${area}Text`] && (
@@ -575,8 +584,15 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
                     </div>
                   </div>
 
-                  {/* Radio Buttons: Flag or Logo */}
-                  <div>
+                  {/* Divider */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-px bg-gray-200" />
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">OR</span>
+                    <div className="flex-1 h-px bg-gray-200" />
+                  </div>
+
+                  {/* Flag/Logo section */}
+                  <div className={pressureOptions[`${area}Text`] ? "opacity-40 pointer-events-none" : ""}>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Select Type
                     </label>
@@ -746,16 +762,24 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
                        <input
                         type="text"
                         value={pressureOptions[`${area}Text`]}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const val = e.target.value;
                           onUpdate({
                             pressureOptions: {
                               ...pressureOptions,
-                              [`${area}Text`]: e.target.value,
+                              [`${area}Text`]: val,
+                              // clear flag/logo when text is typed
+                              ...(val ? {
+                                [`${area}Type`]: "",
+                                [`${area}Flag`]: "",
+                                [`${area}LogoPredefined`]: "",
+                                [`${area}LogoCustom`]: "",
+                              } : {}),
                             },
-                          })
-                        }
+                          });
+                        }}
                         placeholder="Enter text"
-                        maxLength={10}
+                        maxLength={25}
                         className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
                       />
                       {pressureOptions[`${area}Text`] && (
@@ -1055,3 +1079,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
 };
 
 export default ZippedHoodie;
+
+
+
+
