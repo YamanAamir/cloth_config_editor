@@ -36,8 +36,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             pressureOptions: {
                 rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '',
                 leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '',
-                rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
-                leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
+                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
+                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
                 backDesign: null,
             }
         },
@@ -47,8 +47,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             pressureOptions: {
                 rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '',
                 leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '',
-                rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
-                leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
+                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
+                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
                 backDesign: null,
             }
         },
@@ -59,8 +59,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                 rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '',
                 leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '',
                 bottomChestText: '', bottomChestFlag: '', bottomChestLogoPredefined: '', bottomChestLogoCustom: '', bottomChestType: '',
-                rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
-                leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
+                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
+                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
                 backDesign: null,
             }
         },
@@ -70,8 +70,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             pressureOptions: {
                 rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '',
                 leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '',
-                rightSleeveText: '', rightSleeveFlag: '', rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
-                leftSleeveText: '', leftSleeveFlag: '', leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
+                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
+                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
                 backDesign: null,
             }
         },
@@ -327,6 +327,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
     }, [selectedStudent, customizations]);
 
     const handleUpdateSelection = (category, updates) => {
+        console.log("HANDLE UPDATE:", category, updates);
+        
         if (isLocked && !isAdmin) {
             message.warning("Editing is locked after the deadline.");
             return;
@@ -334,6 +336,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
 
         // 1. Update LOCAL state immediately for responsive UI
         setAllSelections(prev => {
+            console.log("PREV STATE:", prev[category]);
             const next = JSON.parse(JSON.stringify(prev));
 
             // Color — sirf active garment pe apply hoga (sync band)
@@ -349,7 +352,17 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             // Sync Pressure Options with positional mapping
             if (updates.pressureOptions) {
                 const pUpdates = updates.pressureOptions;
-                Object.keys(pUpdates).forEach(key => {
+                
+                // For SHORTS, apply updates directly without cross-category sync
+                if (category === 'SHORTS') {
+                    Object.keys(pUpdates).forEach(key => {
+                        if (next[category].pressureOptions) {
+                            next[category].pressureOptions[key] = pUpdates[key];
+                        }
+                    });
+                } else {
+                    // Original complex mapping logic for other categories
+                    Object.keys(pUpdates).forEach(key => {
                     if (key === 'backDesign') {
                         const val = pUpdates[key];
                         ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'].forEach(cat => {
@@ -386,7 +399,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                             });
                         });
                     }
-                });
+                    });
+                }
             }
 
             // Apply any non-sync updates directly
@@ -413,6 +427,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                 return updated;
             });
 
+            console.log("NEXT STATE:", next[category]);
             return next;
         });
     };

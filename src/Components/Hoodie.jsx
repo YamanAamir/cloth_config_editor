@@ -1,1080 +1,311 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import cog from "../assets/menuimages/cogwheel-pen.png";
 import plus from "../assets/menuimages/shirt-plus.png";
 import Test from "./Test";
-import logo1 from "../assets/Universitylogo/logo1.png";
-import logo2 from "../assets/Universitylogo/logo2.png";
-import logo3 from "../assets/Universitylogo/logo3.jpg";
-import logo4 from "../assets/Universitylogo/logo4.png";
 import { BASE_URL } from "../utils/const";
+import { ALL_FLAGS } from "../utils/flags";
 import { X, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 
 const Hoodie = ({ data, onUpdate, isAppReady, logos }) => {
   const [activeTab, setActiveTab] = useState("size");
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [currentField, setCurrentField] = useState("");
-
-  // Defaults
   const selectedColor = data?.selectedColor || "Red";
   const selectedSize = data?.selectedSize || "";
-
   const pressureOptions = data?.pressureOptions || {
-    rightChestText: "",
-    rightChestFlag: "",
-    rightChestLogoPredefined: "",
-    rightChestLogoCustom: "",
-    rightChestType: "", // 'flag' | 'logo' | ''
-
-    leftChestText: "",
-    leftChestFlag: "",
-    leftChestLogoPredefined: "",
-    leftChestLogoCustom: "",
-    leftChestType: "",
-
-    bottomChestText: "",
-    bottomChestFlag: "",
-    bottomChestLogoPredefined: "",
-    bottomChestLogoCustom: "",
-    bottomChestType: "",
-
-    rightSleeveText: "",
-    rightSleeveFlag: "",
-    rightSleeveLogoPredefined: "",
-    rightSleeveLogoCustom: "",
-    rightSleeveType: "",
-
-    leftSleeveText: "",
-    leftSleeveFlag: "",
-    leftSleeveLogoPredefined: "",
-    leftSleeveLogoCustom: "",
-    leftSleeveType: "",
-
+    rightChestText: "", rightChestFlag: "", rightChestLogoPredefined: "", rightChestLogoCustom: "", rightChestType: "",
+    leftChestText: "", leftChestFlag: "", leftChestLogoPredefined: "", leftChestLogoCustom: "", leftChestType: "",
+    bottomChestText: "", bottomChestFlag: "", bottomChestLogoPredefined: "", bottomChestLogoCustom: "", bottomChestType: "",
+    rightSleeveText: "", rightSleeveFlag: "", rightSleeveLogoPredefined: "", rightSleeveLogoCustom: "", rightSleeveType: "",
+    leftSleeveText: "", leftSleeveFlag: "", leftSleeveLogoPredefined: "", leftSleeveLogoCustom: "", leftSleeveType: "",
     backDesign: null,
   };
-
-  const countries = [
-    { name: "Denmark", flag: "https://flagcdn.com/w160/dk.png" },
-    { name: "United States", flag: "https://flagcdn.com/w160/us.png" },
-    { name: "United Kingdom", flag: "https://flagcdn.com/w160/gb.png" },
-    { name: "Germany", flag: "https://flagcdn.com/w160/de.png" },
-    { name: "France", flag: "https://flagcdn.com/w160/fr.png" },
-    { name: "Spain", flag: "https://flagcdn.com/w160/es.png" },
-    { name: "Italy", flag: "https://flagcdn.com/w160/it.png" },
-    { name: "Netherlands", flag: "https://flagcdn.com/w160/nl.png" },
-    { name: "Sweden", flag: "https://flagcdn.com/w160/se.png" },
-    { name: "Norway", flag: "https://flagcdn.com/w160/no.png" },
-    { name: "Finland", flag: "https://flagcdn.com/w160/fi.png" },
-    { name: "Poland", flag: "https://flagcdn.com/w160/pl.png" },
-    { name: "Japan", flag: "https://flagcdn.com/w160/jp.png" },
-    { name: "South Korea", flag: "https://flagcdn.com/w160/kr.png" },
-    { name: "China", flag: "https://flagcdn.com/w160/cn.png" },
-    { name: "India", flag: "https://flagcdn.com/w160/in.png" },
-    { name: "Brazil", flag: "https://flagcdn.com/w160/br.png" },
-    { name: "Canada", flag: "https://flagcdn.com/w160/ca.png" },
-    { name: "Australia", flag: "https://flagcdn.com/w160/au.png" },
-    { name: "Mexico", flag: "https://flagcdn.com/w160/mx.png" },
-  ];
-
-  const flagImages = {
-    Denmark: "https://flagcdn.com/w320/dk.png",
-    "United States": "https://flagcdn.com/w320/us.png",
-    "United Kingdom": "https://flagcdn.com/w320/gb.png",
-    Germany: "https://flagcdn.com/w320/de.png",
-    France: "https://flagcdn.com/w320/fr.png",
-    Spain: "https://flagcdn.com/w320/es.png",
-    Italy: "https://flagcdn.com/w320/it.png",
-    Netherlands: "https://flagcdn.com/w320/nl.png",
-    Sweden: "https://flagcdn.com/w320/se.png",
-    Norway: "https://flagcdn.com/w320/no.png",
-    Finland: "https://flagcdn.com/w320/fi.png",
-    Poland: "https://flagcdn.com/w320/pl.png",
-    Japan: "https://flagcdn.com/w320/jp.png",
-    "South Korea": "https://flagcdn.com/w320/kr.png",
-    China: "https://flagcdn.com/w320/cn.png",
-    India: "https://flagcdn.com/w320/in.png",
-    Brazil: "https://flagcdn.com/w320/br.png",
-    Canada: "https://flagcdn.com/w320/ca.png",
-    Australia: "https://flagcdn.com/w320/au.png",
-    Mexico: "https://flagcdn.com/w320/mx.png",
-  };
-
-  // const predefinedLogos = [
-  //   { name: "Logo 1", url: logo1 },
-  //   { name: "Logo 2", url: logo2 },
-  //   { name: "Logo 3", url: logo3 },
-  //   { name: "Logo 4", url: logo4 },
-  // ];
-
-  // CANVAS CONSTANTS
-  // const CANVAS_WIDTH = 300;
-  // const TEXT_HEIGHT = 80;
-  // const FLAG_HEIGHT = 210;
-  const CANVAS_WIDTH = 320;
-  const TEXT_HEIGHT = 120;
-  const FLAG_HEIGHT = 240;
-  const CANVAS_HEIGHT = TEXT_HEIGHT + FLAG_HEIGHT;
+  const countries = ALL_FLAGS;
+  const flagImages = Object.fromEntries(ALL_FLAGS.map(f => [f.name, f.flagHD || f.flag]));
+  const CANVAS_WIDTH = 320, TEXT_HEIGHT = 120, FLAG_HEIGHT = 240, CANVAS_HEIGHT = 360;
 
   const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false) => {
     const canvas = document.createElement("canvas");
-    canvas.width = CANVAS_WIDTH;
-    canvas.height = CANVAS_HEIGHT;
+    canvas.width = CANVAS_WIDTH; canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
-
-    // Use transparency instead of black background for cleaner blending
     if (text?.trim()) {
-      let fontSize = 48;
-      ctx.font = `bold ${fontSize}px Arial`;
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-
-      while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
-        fontSize -= 2;
-        ctx.font = `bold ${fontSize}px Arial`;
-      }
+      let fs = 48; ctx.font = `bold ${fs}px Arial`; ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fs > 28) { fs -= 2; ctx.font = `bold ${fs}px Arial`; }
       ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
     }
-
-    if (hasFlag || hasLogo) {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-    }
-
-    // Add black border (mask) if flag or logo is present
-    if (hasFlag || hasLogo) {
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 40;
-      ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
-    }
-
+    if (hasFlag || hasLogo) { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT); }
+    if (hasFlag || hasLogo) { ctx.strokeStyle = "#000000"; ctx.lineWidth = 40; ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10); }
     return canvas.toDataURL("image/png");
   };
 
-  const getDiffuseBase64 = (flag, logoPre, logoCustom, text, callback) => {
+  const getDiffuseBase64 = (flag, logoPre, logoCustom, text, callback, flag2 = "", flagCount = 1) => {
     const canvas = document.createElement("canvas");
-    canvas.width = CANVAS_WIDTH;
-    canvas.height = CANVAS_HEIGHT;
+    canvas.width = CANVAS_WIDTH; canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
-
     if (text?.trim()) {
-      let fontSize = 48;
-      ctx.font = `bold ${fontSize}px Arial`;
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-
-      while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
-        fontSize -= 2;
-        ctx.font = `bold ${fontSize}px Arial`;
-      }
+      let fs = 48; ctx.font = `bold ${fs}px Arial`; ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fs > 28) { fs -= 2; ctx.font = `bold ${fs}px Arial`; }
       ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
     }
-
-    const drawBorder = () => {
-      if (flag || logoPre || logoCustom) {
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 40;
-        ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
-      }
-    };
-
-    const finalize = () => {
-      drawBorder();
-      callback(canvas.toDataURL("image/png"));
-    };
-
+    const finalize = () => callback(canvas.toDataURL("image/png"));
+    const loadImg = (src) => new Promise((res, rej) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => res(i); i.onerror = () => rej(); i.src = src; });
     if (flag && flagImages[flag]) {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        ctx.drawImage(img, 0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-        finalize();
-      };
-      img.onerror = finalize;
-      img.src = flagImages[flag];
+      if (flag2 && flagImages[flag2]) {
+        Promise.all([loadImg(flagImages[flag]), loadImg(flagImages[flag2])]).then(([i1, i2]) => {
+          const gap = 10, fh = FLAG_HEIGHT / 2, fw = (CANVAS_WIDTH - gap) / 2, sx = (CANVAS_WIDTH - fw) / 2;
+          ctx.drawImage(i1, sx, TEXT_HEIGHT, fw, fh); ctx.drawImage(i2, sx, TEXT_HEIGHT + fh + gap, fw, fh - gap); finalize();
+        }).catch(finalize);
+      } else { loadImg(flagImages[flag]).then(i => { ctx.drawImage(i, 0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT); finalize(); }).catch(finalize); }
       return;
     }
-
-    let logoSrc = logoCustom;
-    if (!logoSrc && logoPre) {
-      const foundLogo = logos.find((l) => l.name === logoPre);
-      if (foundLogo?.file_path) {
-        const cleanPath = foundLogo.file_path.replace(/\\/g, "/");
-        logoSrc = `${BASE_URL}${cleanPath}`;
-      }
-    }
-
-    if (logoSrc) {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const ratio = Math.min(
-          CANVAS_WIDTH / img.width,
-          FLAG_HEIGHT / img.height
-        );
-        const w = img.width * ratio * 0.9;
-        const h = img.height * ratio * 0.9;
-        const x = (CANVAS_WIDTH - w) / 2;
-        const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
-        ctx.drawImage(img, x, y, w, h);
-        finalize();
-      };
-      img.onerror = finalize;
-      img.src = logoSrc;
-      return;
-    }
-
+    let src = logoCustom;
+    if (!src && logoPre) { const f = logos.find(l => l.name === logoPre); if (f?.file_path) src = `${BASE_URL}${f.file_path.replace(/\\/g, "/")}`; }
+    if (src) { loadImg(src).then(i => { const r = Math.min(CANVAS_WIDTH / i.width, FLAG_HEIGHT / i.height), w = i.width*r*0.9, h = i.height*r*0.9; ctx.drawImage(i, (CANVAS_WIDTH-w)/2, TEXT_HEIGHT+(FLAG_HEIGHT-h)/2, w, h); finalize(); }).catch(finalize); return; }
     finalize();
   };
 
-  const handleFlagSelect = (field) => {
-    setCurrentField(field);
-    setShowFlagModal(true);
-  };
-
-  const selectFlag = (countryName) => {
-    onUpdate({
-      pressureOptions: {
-        ...pressureOptions,
-        [currentField]: countryName,
-      },
-    });
-    setShowFlagModal(false);
-  };
-
-  const selectLogo = (logoName, logoId) => {
-    onUpdate({
-      pressureOptions: {
-        ...pressureOptions,
-        [currentField]: logoName,
-        selectedLogoId: logoId,
-      },
-    });
-    setShowFlagModal(false);
-  };
-
-  const clearField = (field) => {
-    onUpdate({
-      pressureOptions: {
-        ...pressureOptions,
-        [field]: "",
-      },
-    });
-  };
-
-  const getFlagDisplay = (countryName) => {
-    if (!countryName) return "";
-    const country = countries.find((c) => c.name === countryName);
-    return country ? `${country.flag} ${country.name}` : countryName;
-  };
-
-  const getLogoDisplay = (logoName) => logoName || "";
-
+  const handleFlagSelect = (field) => { setCurrentField(field); setShowFlagModal(true); };
+  const selectFlag = (name) => { onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: name } }); setShowFlagModal(false); };
+  const selectLogo = (name, id) => { onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: name, selectedLogoId: id } }); setShowFlagModal(false); };
+  const clearField = (field) => { onUpdate({ pressureOptions: { ...pressureOptions, [field]: "" } }); };
+  const getFlagDisplay = (n) => n || "";
+  const getLogoDisplay = (n) => n || "";
   const handleTypeChange = (area, type) => {
-    onUpdate({
-      pressureOptions: {
-        ...pressureOptions,
-        [`${area}Type`]: type,
-        [`${area}Text`]: "", // clear text when flag/logo selected
-        ...(type === "flag"
-          ? {
-            [`${area}LogoPredefined`]: "",
-            [`${area}LogoCustom`]: "",
-          }
-          : type === "logo"
-            ? {
-              [`${area}Flag`]: "",
-            }
-            : {
-              [`${area}Flag`]: "",
-              [`${area}LogoPredefined`]: "",
-              [`${area}LogoCustom`]: "",
-            }),
-      },
-    });
+    onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Type`]: type, [`${area}Text`]: "",
+      ...(type === "flag" ? { [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" } : type === "logo" ? { [`${area}Flag`]: "" } : { [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" }) } });
   };
-
-  // ── Effects ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    // const colorMap = {
-    //   red: "Hoodie:red",
-    //   orange: "Hoodie:orange",
-    //   lime: "Hoodie:lime",
-    //   kit: "Hoodie:kit",
-    //   "light blue": "Hoodie:light blue",
-    //   turquoise: "Hoodie:turquoise",
-    //   navy: "Hoodie:navy",
-    //   black: "Hoodie:black",
-    //   "white (black print)": "Hoodie:white",
-    // };
+    if (logos && logos.length === 1) {
+      const fs = ["rightChestLogoPredefined","leftChestLogoPredefined","bottomChestLogoPredefined","rightSleeveLogoPredefined","leftSleeveLogoPredefined"];
+      if (!fs.some(f => pressureOptions[f])) onUpdate({ pressureOptions: { ...pressureOptions, rightChestLogoPredefined: logos[0].name, selectedLogoId: logos[0].id } });
+    }
+  }, [logos]);
 
-    const colorMap = {
-      red: "Hoodie:red",
-      black: "Hoodie:black",
-      white: "Hoodie:white",
-      natural: "Hoodie:natural",
-      'heather grey': "Hoodie:heatherGrey",
-      navy: "Hoodie:navy",
-      'light pink': "Hoodie:lightPink",
-      'olive green': "Hoodie:oliveGreen",
-      blue: "Hoodie:blue",
-      purple: "Hoodie:purple",
-    };
-
-    const message = colorMap[selectedColor.toLowerCase()];
-    if (!message) return;
-
-    ["preview-iframe", "preview-iframe2"].forEach((id) => {
-      const iframe = document.getElementById(id);
-      if (iframe?.contentWindow) {
-        iframe.contentWindow.postMessage(message, "*");
-      }
-    });
+  useEffect(() => {
+    const m = { red:"Hoodie:red", black:"Hoodie:black", white:"Hoodie:white", natural:"Hoodie:natural", "heather grey":"Hoodie:heatherGrey", navy:"Hoodie:navy", "light pink":"Hoodie:lightPink", "olive green":"Hoodie:oliveGreen", blue:"Hoodie:blue", purple:"Hoodie:purple" };
+    const msg = m[selectedColor.toLowerCase()]; if (!msg) return;
+    ["preview-iframe","preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(msg, "*"); });
   }, [selectedColor, isAppReady]);
-
-
 
   useEffect(() => {
     if (!selectedSize) return;
-    const message = `Hoodie:size:${selectedSize}`;
-    ["preview-iframe", "preview-iframe2"].forEach((id) => {
-      const iframe = document.getElementById(id);
-      if (iframe?.contentWindow) {
-        iframe.contentWindow.postMessage(message, "*");
-      }
-    });
+    ["preview-iframe","preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(`Hoodie:size:${selectedSize}`, "*"); });
   }, [selectedSize, isAppReady]);
 
-  // Ref to track previous options to prevent unnecessary updates
-  const prevPressureOptionsRef = React.useRef({});
-
+  const prevRef = React.useRef({});
   useEffect(() => {
-    const areas = [
-      "rightChest",
-      "leftChest",
-      "bottomChest",
-      "rightSleeve",
-      "leftSleeve",
-    ];
-
-    areas.forEach((area) => {
-      const text = pressureOptions[`${area}Text`]?.trim() || "";
-      const flag = pressureOptions[`${area}Flag`] || "";
-      const logoPre = pressureOptions[`${area}LogoPredefined`] || "";
-      const logoCustom = pressureOptions[`${area}LogoCustom`] || "";
-      const type = pressureOptions[`${area}Type`] || "";
-
-      // Check if anything actually changed for this area
-      const prev = prevPressureOptionsRef.current[area] || {};
-      const hasChanged =
-        prev.text !== text ||
-        prev.flag !== flag ||
-        prev.logoPre !== logoPre ||
-        prev.logoCustom !== logoCustom ||
-        prev.type !== type;
-
-      if (!hasChanged) return;
-
-      // Update the ref for this area
-      prevPressureOptionsRef.current[area] = { text, flag, logoPre, logoCustom, type };
-
-      const hasText = text.length > 0;
-      const hasFlag = !!flag && type === "flag";
-      const hasLogo = !!(logoPre || logoCustom) && type === "logo";
-
-      // Emissive
+    ["rightChest","leftChest","bottomChest","rightSleeve","leftSleeve"].forEach(area => {
+      const text = pressureOptions[`${area}Text`]?.trim()||"", flag = pressureOptions[`${area}Flag`]||"", flag2 = pressureOptions[`${area}Flag2`]||"", flagCount = pressureOptions[`${area}FlagCount`]||1, logoPre = pressureOptions[`${area}LogoPredefined`]||"", logoCustom = pressureOptions[`${area}LogoCustom`]||"", type = pressureOptions[`${area}Type`]||"";
+      const p = prevRef.current[area]||{};
+      if (p.text===text&&p.flag===flag&&p.flag2===flag2&&p.flagCount===flagCount&&p.logoPre===logoPre&&p.logoCustom===logoCustom&&p.type===type) return;
+      prevRef.current[area] = {text,flag,flag2,flagCount,logoPre,logoCustom,type};
+      const hasFlag = !!flag&&type==="flag", hasLogo = !!(logoPre||logoCustom)&&type==="logo";
       const opacity = getEmissiveBase64(text, hasFlag, hasLogo);
-      ["preview-iframe", "preview-iframe2"].forEach((id) => {
-        const iframe = document.getElementById(id);
-        if (iframe?.contentWindow) {
-          const msg = `Hoodie:${area}_opacity: ${opacity}`;
-          iframe.contentWindow.postMessage(msg, "*");
-        }
-      });
-
-      // Diffuse
-      getDiffuseBase64(flag, logoPre, logoCustom, text, (diffuseBase) => {
-        ["preview-iframe", "preview-iframe2"].forEach((id) => {
-          const iframe = document.getElementById(id);
-          if (iframe?.contentWindow) {
-            const msg = `Hoodie:${area}_diffuse: ${diffuseBase}`;
-            iframe.contentWindow.postMessage(msg, "*");
-          }
-        });
-      });
+      ["preview-iframe","preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(`Hoodie:${area}_opacity: ${opacity}`, "*"); });
+      getDiffuseBase64(flag, logoPre, logoCustom, text, d => {
+        ["preview-iframe","preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(`Hoodie:${area}_diffuse: ${d}`, "*"); });
+      }, flag2, flagCount);
     });
   }, [isAppReady, pressureOptions]);
 
-  // const colors = [
-  //   { name: 'Red', value: '#DC143C', border: '#DC143C' },
-  //   { name: 'Orange', value: '#FF4500', border: '#FF4500' },
-  //   { name: 'Lime', value: '#C5D86D', border: '#C5D86D' },
-  //   { name: 'Kit', value: '#D4B896', border: '#D4B896' },
-  //   { name: 'Light blue', value: '#A8C5D6', border: '#A8C5D6' },
-  //   { name: 'Turquoise', value: '#0891B2', border: '#0891B2' },
-  //   { name: 'Navy', value: '#1F2937', border: '#1F2937' },
-  //   { name: 'Black', value: '#000000', border: '#000000' },
-  //   { name: 'White (black print)', value: '#FFFFFF', border: '#D1D5DB' },
-  // ];
+  const colors = [{name:"Red",value:"#E61709",border:"#E61709"},{name:"Black",value:"#120F14",border:"#120F14"},{name:"White",value:"#FFFFFF",border:"#D1D5DB"},{name:"Natural",value:"#FFFAD9",border:"#FFFAD9"},{name:"Heather Grey",value:"#D4D9DC",border:"#D4D9DC"},{name:"Navy",value:"#051734",border:"#051734"},{name:"Light Pink",value:"#F0A5C7",border:"#F0A5C7"},{name:"Olive Green",value:"#63673F",border:"#63673F"},{name:"Blue",value:"#0000FF",border:"#0000FF"},{name:"Purple",value:"#431279",border:"#431279"}];
+  const sizes = ["S","M","L","XL","2XL","3XL"];
 
-  const colors = [
-    { name: "Red", value: "#E61709", border: "#E61709" },
-    { name: "Black", value: "#120F14", border: "#120F14" },
-    { name: "White", value: "#FFFFFF", border: "#D1D5DB" },
-    { name: "Natural", value: "#FFFAD9", border: "#FFFAD9" },
-    { name: "Heather Grey", value: "#D4D9DC", border: "#D4D9DC" },
-    { name: "Navy", value: "#051734", border: "#051734" },
-    { name: "Light Pink", value: "#F0A5C7", border: "#F0A5C7" },
-    { name: "Olive Green", value: "#63673F", border: "#63673F" },
-    { name: "Blue", value: "#0000FF", border: "#0000FF" },
-    { name: "Purple", value: "#431279", border: "#431279" },
-  ];
-
-  const sizes = ["S", "M", "L", "XL", "2XL", "3XL"];
-
-  return (
-    <div className="max-w-md mx-auto p-6 bg-gray-50">
-      {/* Tab Navigation */}
-      <div className="flex gap-4 mb-8">
-        <button
-          onClick={() => setActiveTab("size")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeTab === "size"
-            ? "bg-white shadow-sm border-2 border-green-700"
-            : "bg-white border-2 border-transparent hover:border-gray-300"
-            }`}
-        >
-          <span className="font-medium text-gray-900">Size and color</span>
-          <img className="w-10" src={cog} alt="settings" />
-        </button>
-        <button
-          onClick={() => setActiveTab("pressure")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeTab === "pressure"
-            ? "bg-white shadow-sm border-2 border-green-700"
-            : "bg-white border-2 border-transparent hover:border-gray-300"
-            }`}
-        >
-          <span className="font-medium text-gray-900">Pressure</span>
-          <img className="w-10" src={plus} alt="add" />
-        </button>
+  const renderChestArea = (area) => (
+    <div key={area} className="bg-white rounded-lg p-4 mb-4">
+      <h3 className="font-semibold text-gray-900 mb-3">{area==="bottomChest"?"Bottom Chest:":area==="rightChest"?"Right Chest:":"Left Chest:"}</h3>
+      <div className="space-y-3">
+        <div className="flex rounded-lg overflow-hidden border border-gray-200">
+          {["text","flag","logo"].map(tab => (
+            <button key={tab} type="button"
+              onClick={() => { if (tab==="text") onUpdate({pressureOptions:{...pressureOptions,[`${area}Type`]:"",[`${area}Flag`]:"",[`${area}LogoPredefined`]:"",[`${area}LogoCustom`]:""}}); else handleTypeChange(area,tab); }}
+              className={`flex-1 py-2 text-xs font-bold capitalize transition-all ${pressureOptions[`${area}Type`]===tab||(tab==="text"&&!pressureOptions[`${area}Type`])?"bg-green-700 text-white":"bg-white text-gray-500 hover:bg-gray-50"}`}>
+              {tab==="text"?"Text":tab==="flag"?"Flag":"Logo"}{(tab==="text"&&pressureOptions[`${area}Text`])||(tab==="flag"&&pressureOptions[`${area}Flag`])||(tab==="logo"&&pressureOptions[`${area}LogoPredefined`])?" ✓":""}
+            </button>
+          ))}
+        </div>
+        {!pressureOptions[`${area}Type`] && (
+          <div className="flex flex-wrap gap-2">
+            <input type="text" value={pressureOptions[`${area}Text`]} onChange={e=>onUpdate({pressureOptions:{...pressureOptions,[`${area}Text`]:e.target.value}})} placeholder="Enter text" maxLength={25} className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"/>
+            {pressureOptions[`${area}Text`]&&<button onClick={()=>clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4"/></button>}
+          </div>
+        )}
+        {pressureOptions[`${area}Type`]==="flag"&&(
+          <div className="flex flex-wrap gap-2">
+            <input type="text" value={getFlagDisplay(pressureOptions[`${area}Flag`])} readOnly placeholder="Select flag" className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer" onClick={()=>handleFlagSelect(`${area}Flag`)}/>
+            <button onClick={()=>handleFlagSelect(`${area}Flag`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
+            {pressureOptions[`${area}Flag`]&&<button onClick={()=>clearField(`${area}Flag`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4"/></button>}
+          </div>
+        )}
+        {pressureOptions[`${area}Type`]==="logo"&&(
+          <div className="flex flex-wrap gap-2">
+            <input type="text" value={getLogoDisplay(pressureOptions[`${area}LogoPredefined`])} readOnly placeholder="Select logo" className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer" onClick={()=>handleFlagSelect(`${area}LogoPredefined`)}/>
+            <button onClick={()=>handleFlagSelect(`${area}LogoPredefined`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
+            {pressureOptions[`${area}LogoPredefined`]&&<button onClick={()=>clearField(`${area}LogoPredefined`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4"/></button>}
+          </div>
+        )}
       </div>
+    </div>
+  );
 
-      {activeTab === "size" ? (
-        <>
-          <h1 className="text-3xl font-bold mb-8 text-gray-900">Hoodie</h1>
-
-          {/* Color Section */}
-          <div className="mb-8">
-            <h2 className="text-sm font-semibold mb-4 text-gray-700">Color</h2>
-            <div className="grid grid-cols-4 gap-4">
-              {colors.map((color) => (
-                <div key={color.name} className="flex flex-col items-center">
-                  <button
-                    onClick={() => onUpdate({ selectedColor: color.name })}
-                    className="relative w-12 h-12 rounded-lg transition-all focus:outline-none"
-                    style={{
-                      backgroundColor: color.value,
-                      border:
-                        selectedColor === color.name
-                          ? `3px solid ${color.border}`
-                          : `1px solid ${color.border}`,
-                      boxShadow:
-                        selectedColor === color.name
-                          ? `0 0 0 2px white, 0 0 0 4px ${color.border}`
-                          : "none",
-                    }}
-                  >
-                    {selectedColor === color.name && (
-                      <div className="absolute inset-0 rounded-lg border-2 border-white pointer-events-none" />
-                    )}
-                  </button>
-                  <span className="text-xs mt-2 text-center text-gray-700">
-                    {color.name}
-                  </span>
+  const renderSleeveArea = (area) => (
+    <div key={area} className="bg-white rounded-lg p-4 mb-4">
+      <h3 className="font-semibold text-gray-900 mb-3">{area==="rightSleeve"?"Right Sleeve:":"Left Sleeve:"}</h3>
+      <div className="space-y-3">
+        <div className="flex rounded-lg overflow-hidden border border-gray-200">
+          {["text","flag","logo"].map(tab => (
+            <button key={tab} type="button"
+              onClick={() => { if (tab==="text") onUpdate({pressureOptions:{...pressureOptions,[`${area}Type`]:"",[`${area}Flag`]:"",[`${area}LogoPredefined`]:"",[`${area}LogoCustom`]:""}}); else handleTypeChange(area,tab); }}
+              className={`flex-1 py-2 text-xs font-bold capitalize transition-all ${pressureOptions[`${area}Type`]===tab||(tab==="text"&&!pressureOptions[`${area}Type`])?"bg-green-700 text-white":"bg-white text-gray-500 hover:bg-gray-50"}`}>
+              {tab==="text"?"Text":tab==="flag"?"Flag":"Logo"}{(tab==="text"&&pressureOptions[`${area}Text`])||(tab==="flag"&&pressureOptions[`${area}Flag`])||(tab==="logo"&&pressureOptions[`${area}LogoPredefined`])?" ✓":""}
+            </button>
+          ))}
+        </div>
+        {!pressureOptions[`${area}Type`] && (
+          <div className="flex flex-wrap gap-2">
+            <input type="text" value={pressureOptions[`${area}Text`]} onChange={e=>onUpdate({pressureOptions:{...pressureOptions,[`${area}Text`]:e.target.value}})} placeholder="Enter text" maxLength={25} className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"/>
+            {pressureOptions[`${area}Text`]&&<button onClick={()=>clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4"/></button>}
+          </div>
+        )}
+        {pressureOptions[`${area}Type`]==="flag"&&(
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-gray-600">Number of flags:</span>
+              <div className="flex rounded-lg overflow-hidden border border-gray-200">
+                {[1,2].map(n=>(
+                  <button key={n} type="button" onClick={()=>onUpdate({pressureOptions:{...pressureOptions,[`${area}FlagCount`]:n,...(n===1?{[`${area}Flag2`]:""}:{})}})}
+                    className={`px-4 py-1.5 text-xs font-bold transition-all ${(pressureOptions[`${area}FlagCount`]||1)===n?"bg-green-700 text-white":"bg-white text-gray-500 hover:bg-gray-50"}`}>{n}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">{Number(pressureOptions[`${area}FlagCount`]||1)===2?"Flag 1 (50% size)":"Flag"}</label>
+              <div className="flex flex-wrap gap-2">
+                <input type="text" value={getFlagDisplay(pressureOptions[`${area}Flag`])} readOnly placeholder="Select flag" className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer" onClick={()=>handleFlagSelect(`${area}Flag`)}/>
+                <button onClick={()=>handleFlagSelect(`${area}Flag`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
+                {pressureOptions[`${area}Flag`]&&<button onClick={()=>clearField(`${area}Flag`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4"/></button>}
+              </div>
+            </div>
+            {Number(pressureOptions[`${area}FlagCount`]||1)===2&&(
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Flag 2 (50% size)</label>
+                <div className="flex flex-wrap gap-2">
+                  <input type="text" value={getFlagDisplay(pressureOptions[`${area}Flag2`]||"")} readOnly placeholder="Select flag" className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer" onClick={()=>handleFlagSelect(`${area}Flag2`)}/>
+                  <button onClick={()=>handleFlagSelect(`${area}Flag2`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
+                  {pressureOptions[`${area}Flag2`]&&<button onClick={()=>clearField(`${area}Flag2`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4"/></button>}
                 </div>
-              ))}
+              </div>
+            )}
+          </div>
+        )}
+        {pressureOptions[`${area}Type`]==="logo"&&(
+          <div className="flex flex-wrap gap-2">
+            <input type="text" value={getLogoDisplay(pressureOptions[`${area}LogoPredefined`])} readOnly placeholder="Select logo" className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer" onClick={()=>handleFlagSelect(`${area}LogoPredefined`)}/>
+            <button onClick={()=>handleFlagSelect(`${area}LogoPredefined`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
+            {pressureOptions[`${area}LogoPredefined`]&&<button onClick={()=>clearField(`${area}LogoPredefined`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4"/></button>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const Modal = () => showFlagModal ? (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={()=>setShowFlagModal(false)}/>
+      <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col overflow-hidden border border-slate-200">
+        <div className="flex items-center justify-between px-8 py-7 border-b border-slate-50 bg-white/50 sticky top-0 z-10">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-green-50 rounded-2xl">{currentField.includes("Logo")?<ImageIcon className="w-6 h-6 text-green-600"/>:<Flag className="w-6 h-6 text-green-600"/>}</div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 leading-none">{currentField.includes("Logo")?"Select a Logo":"Choose a Flag"}</h2>
+              <p className="text-slate-500 text-sm mt-1.5 font-medium">{currentField.includes("Logo")?"Pick a symbol for your design":"Represent your country"}</p>
             </div>
           </div>
-
-          {/* Size Section */}
-          <div>
-            <h2 className="text-sm font-semibold mb-4 text-gray-700">Size</h2>
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {sizes.map((size) => (
-                <button
-                  key={size}
-                  onClick={() => onUpdate({ selectedSize: size })}
-                  className={`py-3 px-4 rounded-lg border-2 transition-all font-medium ${selectedSize === size
-                    ? "border-gray-900 bg-white text-gray-900"
-                    : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                    }`}
-                >
-                  {size}
+          <button onClick={()=>setShowFlagModal(false)} className="p-3 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-2xl transition-all group"><X className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300"/></button>
+        </div>
+        <div className="p-8 overflow-y-auto bg-slate-50/30">
+          {currentField.includes("Logo")?(
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+              {logos&&logos.map(logo=>(
+                <button key={logo.id} onClick={()=>selectLogo(logo.name,logo.id)} className="group relative flex flex-col items-center p-2 rounded-3xl hover:bg-white hover:shadow-xl transition-all duration-300">
+                  <div className="w-full aspect-square mb-4 flex items-center justify-center bg-white rounded-2xl border border-slate-100 shadow-sm group-hover:border-green-200 group-hover:-translate-y-2 transition-all duration-500 p-5 overflow-hidden">
+                    <img src={`${BASE_URL}${logo.file_path}`.replace(/\\/g,"/")} alt={logo.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"/>
+                  </div>
+                  <span className="text-xs font-bold text-slate-500 group-hover:text-green-700 truncate w-full px-2 text-center uppercase tracking-wider">{logo.name}</span>
+                </button>
+              ))}
+              {(!logos||logos.length===0)&&<div className="col-span-full py-20 text-center"><ImageIcon className="w-8 h-8 text-slate-400 mx-auto mb-4"/><p className="text-slate-400 font-bold">No logos found</p></div>}
+            </div>
+          ):(
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {countries.map(c=>(
+                <button key={c.name} onClick={()=>selectFlag(c.name)} className="group flex flex-col items-center gap-3 p-4 rounded-xl bg-white border border-slate-100 hover:border-green-300 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                  <div className="w-16 h-12 rounded-lg overflow-hidden shadow-sm bg-slate-100"><img src={c.flag} alt={c.name} className="w-full h-full object-cover"/></div>
+                  <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-900 uppercase tracking-wider text-center">{c.name}</span>
                 </button>
               ))}
             </div>
-            <a href="#" className="text-sm text-green-600 hover:underline">
-              Size guide
-            </a>
-          </div>
-        </>
-      ) : (
-        <>
-          <h1 className="text-3xl font-bold mb-8 text-gray-900">
-            Pressure Options
-          </h1>
-
-          {/* Chest Area */}
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Chest Area
-            </h2>
-
-            {["rightChest", "leftChest", "bottomChest"].map((area) => (
-              <div key={area} className="bg-white rounded-lg p-4 mb-4">
-                <h3 className="font-semibold text-gray-900 mb-3">
-                  {area === "bottomChest"
-                    ? "Bottom Chest"
-                    : `${area.replace("Chest", " Chest")}:`}
-                </h3>
-                <div className="space-y-6">
-                  {/* Choose ONE: Text OR Flag/Logo */}
-                  {/* Text section */}
-                  <div className={pressureOptions[`${area}Type`] ? "opacity-40 pointer-events-none" : ""}>
-                    <label className="block text-sm text-gray-600 mb-1">
-                      Free text
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      <input
-                        type="text"
-                        value={pressureOptions[`${area}Text`]}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          onUpdate({
-                            pressureOptions: {
-                              ...pressureOptions,
-                              [`${area}Text`]: val,
-                              ...(val ? {
-                                [`${area}Type`]: "",
-                                [`${area}Flag`]: "",
-                                [`${area}LogoPredefined`]: "",
-                                [`${area}LogoCustom`]: "",
-                              } : {}),
-                            },
-                          });
-                        }}
-                        placeholder="Enter text"
-                        maxLength={25}
-                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                      />
-                      {pressureOptions[`${area}Text`] && (
-                        <button
-                          onClick={() => clearField(`${area}Text`)}
-                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
-                          title="Clear text"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Divider */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px bg-gray-200" />
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">OR</span>
-                    <div className="flex-1 h-px bg-gray-200" />
-                  </div>
-
-                  {/* Flag/Logo section */}
-                  <div className={pressureOptions[`${area}Text`] ? "opacity-40 pointer-events-none" : ""}>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Select Type
-                    </label>
-                    <div className="flex gap-6">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`${area}Type`}
-                          checked={pressureOptions[`${area}Type`] === "flag"}
-                          onChange={() => handleTypeChange(area, "flag")}
-                          className="w-5 h-5 text-green-600 focus:ring-green-500"
-                        />
-                        <span className="text-sm text-gray-700">Flag</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`${area}Type`}
-                          checked={pressureOptions[`${area}Type`] === "logo"}
-                          onChange={() => handleTypeChange(area, "logo")}
-                          className="w-5 h-5 text-green-600 focus:ring-green-500"
-                        />
-                        <span className="text-sm text-gray-700">Logo</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Flag Options */}
-                  {pressureOptions[`${area}Type`] === "flag" && (
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">
-                        Predefined flag
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        <input
-                          type="text"
-                          value={getFlagDisplay(pressureOptions[`${area}Flag`])}
-                          readOnly
-                          placeholder="Select flag"
-                          className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
-                          onClick={() => handleFlagSelect(`${area}Flag`)}
-                        />
-                        <button
-                          onClick={() => handleFlagSelect(`${area}Flag`)}
-                          className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium text-sm"
-                        >
-                          Select
-                        </button>
-                        {pressureOptions[`${area}Flag`] && (
-                          <button
-                            onClick={() => clearField(`${area}Flag`)}
-                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
-                            title="Clear flag"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Logo Options */}
-                  {pressureOptions[`${area}Type`] === "logo" && (
-                    <div className="space-y-4">
-                      {/* Predefined Logo */}
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1">
-                          Predefined Logo
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          <input
-                            type="text"
-                            value={getLogoDisplay(
-                              pressureOptions[`${area}LogoPredefined`],
-                            )}
-                            readOnly
-                            placeholder="Select logo"
-                            className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
-                            onClick={() =>
-                              handleFlagSelect(`${area}LogoPredefined`)
-                            }
-                          />
-                          <button
-                            onClick={() =>
-                              handleFlagSelect(`${area}LogoPredefined`)
-                            }
-                            className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium text-sm"
-                          >
-                            Select
-                          </button>
-                          {pressureOptions[`${area}LogoPredefined`] && (
-                            <button
-                              onClick={() =>
-                                clearField(`${area}LogoPredefined`)
-                              }
-                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
-                              title="Clear logo"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Custom Logo */}
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1">
-                          Or upload custom logo
-                        </label>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files[0];
-                              if (!file) return;
-                              const reader = new FileReader();
-                              reader.onload = (ev) => {
-                                onUpdate({
-                                  pressureOptions: {
-                                    ...pressureOptions,
-                                    [`${area}LogoCustom`]: ev.target.result,
-                                    [`${area}LogoPredefined`]: "",
-                                  },
-                                });
-                              };
-                              reader.readAsDataURL(file);
-                            }}
-                            className="flex-1 min-w-[150px] text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                          />
-                          {pressureOptions[`${area}LogoCustom`] && (
-                            <button
-                              onClick={() => clearField(`${area}LogoCustom`)}
-                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
-                              title="Remove custom logo"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Sleeves */}
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Sleeves
-            </h2>
-
-            {["rightSleeve", "leftSleeve"].map((area) => (
-              <div key={area} className="bg-white rounded-lg p-4 mb-4">
-                <h3 className="font-semibold text-gray-900 mb-3">
-                  {area.replace("Sleeve", " Sleeve")}:
-                </h3>
-                <div className="space-y-6">
-                  {/* Free text */}
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">
-                      Free text
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                       <input
-                        type="text"
-                        value={pressureOptions[`${area}Text`]}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          onUpdate({
-                            pressureOptions: {
-                              ...pressureOptions,
-                              [`${area}Text`]: val,
-                              // clear flag/logo when text is typed
-                              ...(val ? {
-                                [`${area}Type`]: "",
-                                [`${area}Flag`]: "",
-                                [`${area}LogoPredefined`]: "",
-                                [`${area}LogoCustom`]: "",
-                              } : {}),
-                            },
-                          });
-                        }}
-                        placeholder="Enter text"
-                        maxLength={25}
-                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                      />
-                      {pressureOptions[`${area}Text`] && (
-                        <button
-                          onClick={() => clearField(`${area}Text`)}
-                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
-                          title="Clear text"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Radio Buttons */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Select Type
-                    </label>
-                    <div className="flex gap-6">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`${area}Type`}
-                          checked={pressureOptions[`${area}Type`] === "flag"}
-                          onChange={() => handleTypeChange(area, "flag")}
-                          className="w-5 h-5 text-green-600 focus:ring-green-500"
-                        />
-                        <span className="text-sm text-gray-700">Flag</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`${area}Type`}
-                          checked={pressureOptions[`${area}Type`] === "logo"}
-                          onChange={() => handleTypeChange(area, "logo")}
-                          className="w-5 h-5 text-green-600 focus:ring-green-500"
-                        />
-                        <span className="text-sm text-gray-700">Logo</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Flag */}
-                  {pressureOptions[`${area}Type`] === "flag" && (
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">
-                        Predefined flag
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        <input
-                          type="text"
-                          value={getFlagDisplay(pressureOptions[`${area}Flag`])}
-                          readOnly
-                          placeholder="Select flag"
-                          className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
-                          onClick={() => handleFlagSelect(`${area}Flag`)}
-                        />
-                        <button
-                          onClick={() => handleFlagSelect(`${area}Flag`)}
-                          className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium text-sm"
-                        >
-                          Select
-                        </button>
-                        {pressureOptions[`${area}Flag`] && (
-                          <button
-                            onClick={() => clearField(`${area}Flag`)}
-                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
-                            title="Clear flag"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Logo */}
-                  {pressureOptions[`${area}Type`] === "logo" && (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1">
-                          Predefined Logo
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          <input
-                            type="text"
-                            value={getLogoDisplay(
-                              pressureOptions[`${area}LogoPredefined`],
-                            )}
-                            readOnly
-                            placeholder="Select logo"
-                            className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
-                            onClick={() =>
-                              handleFlagSelect(`${area}LogoPredefined`)
-                            }
-                          />
-                          <button
-                            onClick={() =>
-                              handleFlagSelect(`${area}LogoPredefined`)
-                            }
-                            className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 transition-colors font-medium text-sm"
-                          >
-                            Select
-                          </button>
-                          {pressureOptions[`${area}LogoPredefined`] && (
-                            <button
-                              onClick={() =>
-                                clearField(`${area}LogoPredefined`)
-                              }
-                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
-                              title="Clear logo"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1">
-                          Or upload custom logo
-                        </label>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files[0];
-                              if (!file) return;
-                              const reader = new FileReader();
-                              reader.onload = (ev) => {
-                                onUpdate({
-                                  pressureOptions: {
-                                    ...pressureOptions,
-                                    [`${area}LogoCustom`]: ev.target.result,
-                                    [`${area}LogoPredefined`]: "",
-                                  },
-                                });
-                              };
-                              reader.readAsDataURL(file);
-                            }}
-                            className="flex-1 min-w-[150px] text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                          />
-                          {pressureOptions[`${area}LogoCustom`] && (
-                            <button
-                              onClick={() => clearField(`${area}LogoCustom`)}
-                              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
-                              title="Remove custom logo"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Test Component - visible only in pressure tab, always mounted for back design broadcast */}
-      <div className={activeTab === "pressure" ? "mt-10" : ""} style={activeTab !== "pressure" ? { visibility: 'hidden', position: 'absolute', pointerEvents: 'none', height: 0, overflow: 'hidden' } : {}}>
-        <Test
-          postEx="Hoodie:"
-          pressureOptions={pressureOptions}
-          isAppReady={isAppReady}
-          onUpdate={(update) => {
-            if (update.canvasBase64) {
-              const { diffuse, opacity, emissive } = update.canvasBase64;
-              ["preview-iframe", "preview-iframe2"].forEach((id) => {
-                const iframe = document.getElementById(id);
-                if (iframe?.contentWindow) {
-                  iframe.contentWindow.postMessage(diffuse, "*");
-                  iframe.contentWindow.postMessage(opacity, "*");
-                  if (emissive) iframe.contentWindow.postMessage(emissive, "*");
-                }
-              });
-            }
-            if (update.backDesign !== undefined) {
-              onUpdate({
-                pressureOptions: {
-                  ...pressureOptions,
-                  backDesign: update.backDesign,
-                },
-              });
-            }
-          }}
-        />
-      </div>
-
-      {/* Modal / Asset Picker */}
-      {showFlagModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300"
-            onClick={() => setShowFlagModal(false)}
-          />
-          <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
-            <div className="flex items-center justify-between px-8 py-7 border-b border-slate-50 bg-white/50 sticky top-0 z-10">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-green-50 rounded-2xl">
-                  {currentField.includes("Logo") ? (
-                    <ImageIcon className="w-6 h-6 text-green-600" />
-                  ) : (
-                    <Flag className="w-6 h-6 text-green-600" />
-                  )}
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 leading-none">
-                    {currentField.includes("Logo") ? "Select a Logo" : "Choose a Flag"}
-                  </h2>
-                  <p className="text-slate-500 text-sm mt-1.5 font-medium">
-                    {currentField.includes("Logo") ? "Pick a symbol for your design" : "Represent your country"}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowFlagModal(false)}
-                className="p-3 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-2xl transition-all duration-200 group"
-              >
-                <X className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
-              </button>
-            </div>
-            <div className="p-8 overflow-y-auto custom-scrollbar-premium bg-slate-50/30">
-              {currentField.includes("Logo") ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                  {logos && logos.map((logo) => (
-                    <button
-                      key={logo.id}
-                      onClick={() => selectLogo(logo.name)}
-                      className="group relative flex flex-col items-center p-2 rounded-3xl transition-all duration-300 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50"
-                    >
-                      <div className="w-full aspect-square mb-4 flex items-center justify-center bg-white rounded-2xl border border-slate-100 shadow-sm group-hover:border-green-200 group-hover:-translate-y-2 transition-all duration-500 p-5 overflow-hidden">
-                        <img
-                          src={`${BASE_URL}${logo.file_path}`.replace(/\\/g, '/')}
-                          alt={logo.name}
-                          className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
-                        />
-                        <div className="absolute inset-0 bg-green-600/0 group-hover:bg-green-600/5 transition-colors duration-300" />
-                      </div>
-                      <span className="text-xs font-bold text-slate-500 group-hover:text-green-700 truncate w-full px-2 text-center uppercase tracking-wider transition-colors">
-                        {logo.name}
-                      </span>
-                      <div className="absolute top-4 right-4 bg-green-600 rounded-full p-1 opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-300 shadow-lg">
-                        <X className="w-3 h-3 text-white rotate-45" />
-                      </div>
-                    </button>
-                  ))}
-                  {(!logos || logos.length === 0) && (
-                    <div className="col-span-full py-20 text-center">
-                      <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <ImageIcon className="w-8 h-8 text-slate-400" />
-                      </div>
-                      <p className="text-slate-400 font-bold text-lg">No logos found</p>
-                      <p className="text-slate-400/60 text-sm">Logos assigned to your class will appear here.</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {countries.map((country) => (
-                    <button
-                      key={country.name}
-                      onClick={() => selectFlag(country.name)}
-                      className="group flex flex-col items-center gap-3 p-4 rounded-xl bg-white border border-slate-100 hover:border-green-300 hover:shadow-lg hover:shadow-green-900/5 hover:-translate-y-1 transition-all duration-300"
-                    >
-                      <div className="relative w-16 h-12 rounded-lg overflow-hidden shadow-sm bg-slate-100 group-hover:ring-4 group-hover:ring-green-50 transition-all duration-300">
-                        <img
-                          src={country.flag}
-                          alt={country.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-900 leading-tight uppercase tracking-wider text-center">
-                        {country.name}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="px-8 py-5 border-t border-slate-50 bg-white flex justify-center items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">
-                Choose an asset to customize your placement
-              </p>
-            </div>
-          </div>
+          )}
         </div>
+        <div className="px-8 py-5 border-t border-slate-50 bg-white flex justify-center items-center gap-2">
+          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"/>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Choose an asset to customize your placement</p>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  return (
+    <div className="max-w-md mx-auto p-6 bg-gray-50">
+      <div className="flex gap-4 mb-8">
+        <button onClick={()=>setActiveTab("size")} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeTab==="size"?"bg-white shadow-sm border-2 border-green-700":"bg-white border-2 border-transparent hover:border-gray-300"}`}>
+          <span className="font-medium text-gray-900">Size and color</span><img className="w-10" src={cog} alt="settings"/>
+        </button>
+        <button onClick={()=>setActiveTab("pressure")} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeTab==="pressure"?"bg-white shadow-sm border-2 border-green-700":"bg-white border-2 border-transparent hover:border-gray-300"}`}>
+          <span className="font-medium text-gray-900">Pressure</span><img className="w-10" src={plus} alt="add"/>
+        </button>
+      </div>
+      {activeTab==="size"?(
+        <>
+          <h1 className="text-3xl font-bold mb-8 text-gray-900">Hoodie</h1>
+          <div className="mb-8">
+            <h2 className="text-sm font-semibold mb-4 text-gray-700">Color</h2>
+            <div className="grid grid-cols-4 gap-4">
+              {colors.map(c=>(
+                <div key={c.name} className="flex flex-col items-center">
+                  <button onClick={()=>onUpdate({selectedColor:c.name})} className="relative w-12 h-12 rounded-lg transition-all focus:outline-none" style={{backgroundColor:c.value,border:selectedColor===c.name?`3px solid ${c.border}`:`1px solid ${c.border}`,boxShadow:selectedColor===c.name?`0 0 0 2px white, 0 0 0 4px ${c.border}`:"none"}}>
+                    {selectedColor===c.name&&<div className="absolute inset-0 rounded-lg border-2 border-white pointer-events-none"/>}
+                  </button>
+                  <span className="text-xs mt-2 text-center text-gray-700">{c.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold mb-4 text-gray-700">Size</h2>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {sizes.map(s=><button key={s} onClick={()=>onUpdate({selectedSize:s})} className={`py-3 px-4 rounded-lg border-2 transition-all font-medium ${selectedSize===s?"border-gray-900 bg-white text-gray-900":"border-gray-300 bg-white text-gray-700 hover:border-gray-400"}`}>{s}</button>)}
+            </div>
+            <a href="#" className="text-sm text-green-600 hover:underline">Size guide</a>
+          </div>
+        </>
+      ):(
+        <>
+          <h1 className="text-3xl font-bold mb-8 text-gray-900">Pressure Options</h1>
+          <div className="mb-6"><h2 className="text-xl font-semibold text-gray-900 mb-4">Chest Area</h2>{["rightChest","leftChest","bottomChest"].map(renderChestArea)}</div>
+          <div className="mb-6"><h2 className="text-xl font-semibold text-gray-900 mb-4">Sleeves</h2>{["rightSleeve","leftSleeve"].map(renderSleeveArea)}</div>
+        </>
       )}
+      <div className={activeTab==="pressure"?"mt-10":""} style={activeTab!=="pressure"?{visibility:"hidden",position:"absolute",pointerEvents:"none",height:0,overflow:"hidden"}:{}}>
+        <Test postEx="Hoodie:" pressureOptions={pressureOptions} isAppReady={isAppReady} onUpdate={u=>{
+          if(u.canvasBase64){const{diffuse,opacity,emissive}=u.canvasBase64;["preview-iframe","preview-iframe2"].forEach(id=>{const f=document.getElementById(id);if(f?.contentWindow){f.contentWindow.postMessage(diffuse,"*");f.contentWindow.postMessage(opacity,"*");if(emissive)f.contentWindow.postMessage(emissive,"*");}});}
+          if(u.backDesign!==undefined)onUpdate({pressureOptions:{...pressureOptions,backDesign:u.backDesign}});
+        }}/>
+      </div>
+      <Modal/>
     </div>
   );
 };
 
 export default Hoodie;
-
-
-
-

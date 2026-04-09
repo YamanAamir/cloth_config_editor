@@ -106,17 +106,109 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
   };
 
 
-  const getDiffuseBase64 = (flag, logoPre, logoCustom, text, callback) => {
+  // const getDiffuseBase64 = (flag, logoPre, logoCustom, text, callback, flag2 = "", flagCount = 1) => {
+  //   const canvas = document.createElement("canvas");
+  //   canvas.width = CANVAS_WIDTH;
+  //   canvas.height = CANVAS_HEIGHT;
+  //   const ctx = canvas.getContext("2d");
+
+  //   if (text?.trim()) {
+  //     let fontSize = 48;
+  //     ctx.font = `bold ${fontSize}px Arial`;
+  //     ctx.fillStyle = "#ffffff";
+  //     ctx.textAlign = "center";
+  //     ctx.textBaseline = "middle";
+
+  //     while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+  //       fontSize -= 2;
+  //       ctx.font = `bold ${fontSize}px Arial`;
+  //     }
+  //     ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+  //   }
+
+  //   const drawBorder = () => {
+  //     if (flag || logoPre || logoCustom) {
+  //       ctx.strokeStyle = "#ffffff";
+  //       ctx.lineWidth = 40;
+  //       ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+  //     }
+  //   };
+
+  //   const finalize = () => {
+  //     drawBorder();
+  //     callback(canvas.toDataURL("image/png"));
+  //   };
+
+  //   if (flag && flagImages[flag]) {
+  //     const flagW = flagCount === 2 ? CANVAS_WIDTH / 2 : CANVAS_WIDTH;
+  //     const img1 = new Image();
+  //     img1.crossOrigin = "anonymous";
+  //     img1.onload = () => {
+  //       ctx.drawImage(img1, 0, TEXT_HEIGHT, flagW, FLAG_HEIGHT);
+  //       if (flagCount === 2 && flag2 && flagImages[flag2]) {
+  //         const img2 = new Image();
+  //         img2.crossOrigin = "anonymous";
+  //         img2.onload = () => {
+  //           ctx.drawImage(img2, flagW, TEXT_HEIGHT, flagW, FLAG_HEIGHT);
+  //           finalize();
+  //         };
+  //         img2.onerror = finalize;
+  //         img2.src = flagImages[flag2];
+  //       } else {
+  //         finalize();
+  //       }
+  //     };
+  //     img1.onerror = finalize;
+  //     img1.src = flagImages[flag];
+  //     return;
+  //   }
+
+  //   let logoSrc = logoCustom;
+  //   if (!logoSrc && logoPre) {
+  //     const foundLogo = logos.find((l) => l.name === logoPre);
+  //     if (foundLogo?.file_path) {
+  //       const cleanPath = foundLogo.file_path.replace(/\\/g, "/");
+  //       logoSrc = `${BASE_URL}${cleanPath}`;
+  //     }
+  //   }
+
+  //   if (logoSrc) {
+  //     const img = new Image();
+  //     img.crossOrigin = "anonymous";
+  //     img.onload = () => {
+  //       const ratio = Math.min(
+  //         CANVAS_WIDTH / img.width,
+  //         FLAG_HEIGHT / img.height
+  //       );
+  //       const w = img.width * ratio * 0.9;
+  //       const h = img.height * ratio * 0.9;
+  //       const x = (CANVAS_WIDTH - w) / 2;
+  //       const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
+  //       ctx.drawImage(img, x, y, w, h);
+  //       finalize();
+  //     };
+  //     img.onerror = finalize;
+  //     img.src = logoSrc;
+  //     return;
+  //   }
+
+  //   finalize();
+  // };
+  const getDiffuseBase64 = (
+    flag,
+    logoPre,
+    logoCustom,
+    text,
+    callback,
+    flag2 = "",
+    flagCount = 1
+  ) => {
     const canvas = document.createElement("canvas");
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
 
-    // Remove solid black background to avoid black borders around customization
-    // ctx.fillStyle = "#000000";
-    // ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-
+    // ---------- TEXT ----------
     if (text?.trim()) {
       let fontSize = 48;
       ctx.font = `bold ${fontSize}px Arial`;
@@ -124,70 +216,86 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
-      while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+      while (
+        ctx.measureText(text).width > CANVAS_WIDTH - 80 &&
+        fontSize > 28
+      ) {
         fontSize -= 2;
         ctx.font = `bold ${fontSize}px Arial`;
       }
+
       ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
     }
 
-    const drawBorder = () => {
-      if (flag || logoPre || logoCustom) {
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 40;
-        ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
-      }
-    };
-
     const finalize = () => {
-      drawBorder();
       callback(canvas.toDataURL("image/png"));
     };
 
+    // ---------- FLAGS ----------
+    const loadImage = (src) =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = () => reject();
+        img.src = src;
+      });
+
     if (flag && flagImages[flag]) {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        ctx.drawImage(img, 0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-        finalize();
-      };
-      img.onerror = finalize;
-      img.src = flagImages[flag];
-      return;
-    }
+      // 2 flags => split 50% / 50%
+      if (flag2 && flagImages[flag2]) {
+        Promise.all([
+          loadImage(flagImages[flag]),
+          loadImage(flagImages[flag2]),
+        ])
+          .then(([img1, img2]) => {
+            const gap = 10; // gap between flags
+            const flagH = FLAG_HEIGHT / 2;
+            const flagW = (CANVAS_WIDTH - gap) / 2; // 50% width with gap
+            const startX = (CANVAS_WIDTH - flagW) / 2; // center horizontally
 
-    let logoSrc = logoCustom;
-    if (!logoSrc && logoPre) {
-      const foundLogo = logos.find((l) => l.name === logoPre);
-      if (foundLogo?.file_path) {
-        const cleanPath = foundLogo.file_path.replace(/\\/g, "/");
-        logoSrc = `${BASE_URL}${cleanPath}`;
+            // top
+            ctx.drawImage(
+              img1,
+              startX,
+              TEXT_HEIGHT,
+              flagW,
+              flagH
+            );
+
+            // bottom
+            ctx.drawImage(
+              img2,
+              startX,
+              TEXT_HEIGHT + flagH + gap,
+              flagW,
+              flagH - gap
+            );
+
+            finalize();
+          })
+          .catch(finalize);
+      } else {
+        // single flag => original full height
+        loadImage(flagImages[flag])
+          .then((img) => {
+            ctx.drawImage(
+              img,
+              0,
+              TEXT_HEIGHT,
+              CANVAS_WIDTH,
+              FLAG_HEIGHT
+            );
+            finalize();
+          })
+          .catch(finalize);
       }
-    }
 
-    if (logoSrc) {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const ratio = Math.min(
-          CANVAS_WIDTH / img.width,
-          FLAG_HEIGHT / img.height
-        );
-        const w = img.width * ratio * 0.9;
-        const h = img.height * ratio * 0.9;
-        const x = (CANVAS_WIDTH - w) / 2;
-        const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
-        ctx.drawImage(img, x, y, w, h);
-        finalize();
-      };
-      img.onerror = finalize;
-      img.src = logoSrc;
       return;
     }
 
     finalize();
   };
-
 
   const handleFlagSelect = (field) => {
     setCurrentField(field);
@@ -341,6 +449,8 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
     areas.forEach((area) => {
       const text = pressureOptions[`${area}Text`]?.trim() || "";
       const flag = pressureOptions[`${area}Flag`] || "";
+      const flag2 = pressureOptions[`${area}Flag2`] || "";
+      const flagCount = pressureOptions[`${area}FlagCount`] || 1;
       const logoPre = pressureOptions[`${area}LogoPredefined`] || "";
       const logoCustom = pressureOptions[`${area}LogoCustom`] || "";
       const type = pressureOptions[`${area}Type`] || "";
@@ -350,6 +460,8 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
       const hasChanged =
         prev.text !== text ||
         prev.flag !== flag ||
+        prev.flag2 !== flag2 ||
+        prev.flagCount !== flagCount ||
         prev.logoPre !== logoPre ||
         prev.logoCustom !== logoCustom ||
         prev.type !== type;
@@ -357,7 +469,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
       if (!hasChanged) return;
 
       // Update the ref for this area
-      prevPressureOptionsRef.current[area] = { text, flag, logoPre, logoCustom, type };
+      prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type };
 
       const hasText = text.length > 0;
       const hasFlag = !!flag && type === "flag";
@@ -368,13 +480,12 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
       ["preview-iframe", "preview-iframe2"].forEach((id) => {
         const iframe = document.getElementById(id);
         if (iframe?.contentWindow) {
-          // Optimized message format to avoid browser protocol detection errors
           const msg = `T-Shirt:${area}_opacity: ${opacity}`;
           iframe.contentWindow.postMessage(msg, "*");
         }
       });
 
-      // Diffuse
+      // Diffuse — pass flag2 and flagCount
       getDiffuseBase64(flag, logoPre, logoCustom, text, (diffuseBase) => {
         ["preview-iframe", "preview-iframe2"].forEach((id) => {
           const iframe = document.getElementById(id);
@@ -383,7 +494,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
             iframe.contentWindow.postMessage(msg, "*");
           }
         });
-      });
+      }, flag2, flagCount);
     });
   }, [isAppReady, pressureOptions]);
 
@@ -530,16 +641,15 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                             handleTypeChange(area, tab);
                           }
                         }}
-                        className={`flex-1 py-2 text-xs font-bold capitalize transition-all ${
-                          pressureOptions[`${area}Type`] === tab || (tab === "text" && !pressureOptions[`${area}Type`])
-                            ? "bg-green-700 text-white"
-                            : "bg-white text-gray-500 hover:bg-gray-50"
-                        }`}
+                        className={`flex-1 py-2 text-xs font-bold capitalize transition-all ${pressureOptions[`${area}Type`] === tab || (tab === "text" && !pressureOptions[`${area}Type`])
+                          ? "bg-green-700 text-white"
+                          : "bg-white text-gray-500 hover:bg-gray-50"
+                          }`}
                       >
                         {tab === "text" ? "Text" : tab === "flag" ? "Flag" : "Logo"}
                         {(tab === "text" && pressureOptions[`${area}Text`]) ||
-                         (tab === "flag" && pressureOptions[`${area}Flag`]) ||
-                         (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? " ✓" : ""}
+                          (tab === "flag" && pressureOptions[`${area}Flag`]) ||
+                          (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? " ✓" : ""}
                       </button>
                     ))}
                   </div>
@@ -604,6 +714,13 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
 
             {["rightSleeve", "leftSleeve"].map((area) => (
               <div key={area} className="bg-white rounded-lg p-4 mb-4">
+                {
+                  console.log(
+                    area,
+                    pressureOptions[`${area}FlagCount`],
+                    Number(pressureOptions[`${area}FlagCount`] || 1)
+                  )
+                }
                 <h3 className="font-semibold text-gray-900 mb-3">
                   {area === "rightSleeve" ? "Right Sleeve:" : "Left Sleeve:"}
                 </h3>
@@ -616,10 +733,9 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                             onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Type`]: "", [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" } });
                           } else { handleTypeChange(area, tab); }
                         }}
-                        className={`flex-1 py-2 text-xs font-bold capitalize transition-all ${
-                          pressureOptions[`${area}Type`] === tab || (tab === "text" && !pressureOptions[`${area}Type`])
-                            ? "bg-green-700 text-white" : "bg-white text-gray-500 hover:bg-gray-50"
-                        }`}
+                        className={`flex-1 py-2 text-xs font-bold capitalize transition-all ${pressureOptions[`${area}Type`] === tab || (tab === "text" && !pressureOptions[`${area}Type`])
+                          ? "bg-green-700 text-white" : "bg-white text-gray-500 hover:bg-gray-50"
+                          }`}
                       >
                         {tab === "text" ? "Text" : tab === "flag" ? "Flag" : "Logo"}
                         {(tab === "text" && pressureOptions[`${area}Text`]) || (tab === "flag" && pressureOptions[`${area}Flag`]) || (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? " ✓" : ""}
@@ -639,13 +755,65 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                     </div>
                   )}
                   {pressureOptions[`${area}Type`] === "flag" && (
-                    <div className="flex flex-wrap gap-2">
-                      <input type="text" value={getFlagDisplay(pressureOptions[`${area}Flag`])} readOnly placeholder="Select flag"
-                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
-                        onClick={() => handleFlagSelect(`${area}Flag`)}
-                      />
-                      <button onClick={() => handleFlagSelect(`${area}Flag`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
-                      {pressureOptions[`${area}Flag`] && <button onClick={() => clearField(`${area}Flag`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
+                    <div className="space-y-3">
+                      {/* 1 or 2 flags toggle */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-gray-600">Number of flags:</span>
+                        <div className="flex rounded-lg overflow-hidden border border-gray-200">
+                          {[1, 2].map((n) => (
+                            <button key={n} type="button"
+                              onClick={() => {
+                                console.log("clicked", n);
+
+                                const updatedOptions = {
+                                  ...pressureOptions,
+                                  [`${area}FlagCount`]: n,
+                                  ...(n === 1 ? { [`${area}Flag2`]: "" } : {}),
+                                };
+
+                                console.log("updatedOptions", updatedOptions);
+
+                                onUpdate({
+                                  pressureOptions: updatedOptions,
+                                });
+                              }}
+                              className={`px-4 py-1.5 text-xs font-bold transition-all ${(pressureOptions[`${area}FlagCount`] || 1) === n
+                                ? "bg-green-700 text-white" : "bg-white text-gray-500 hover:bg-gray-50"
+                                }`}
+                            >{n}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Flag 1 */}
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">
+                          {(Number(pressureOptions[`${area}FlagCount`] || 1) === 2) ? "Flag 1 (50% size)" : "Flag"}
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          <input type="text" value={getFlagDisplay(pressureOptions[`${area}Flag`])} readOnly placeholder="Select flag"
+                            className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                            onClick={() => handleFlagSelect(`${area}Flag`)}
+                          />
+                          <button onClick={() => handleFlagSelect(`${area}Flag`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
+                          {pressureOptions[`${area}Flag`] && <button onClick={() => clearField(`${area}Flag`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
+                        </div>
+                      </div>
+
+                      {/* Flag 2 — only if count = 2 */}
+                      {(Number(pressureOptions[`${area}FlagCount`] || 1) === 2) && (
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Flag 2 (50% size)</label>
+                          <div className="flex flex-wrap gap-2">
+                            <input type="text" value={getFlagDisplay(pressureOptions[`${area}Flag2`] || "")} readOnly placeholder="Select flag"
+                              className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                              onClick={() => handleFlagSelect(`${area}Flag2`)}
+                            />
+                            <button onClick={() => handleFlagSelect(`${area}Flag2`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
+                            {pressureOptions[`${area}Flag2`] && <button onClick={() => clearField(`${area}Flag2`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                   {pressureOptions[`${area}Type`] === "logo" && (
