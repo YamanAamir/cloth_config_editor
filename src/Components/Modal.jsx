@@ -179,7 +179,7 @@ const QuoteModal = ({
   const [orderDate, setOrderDate] = useState(`ORD-${Date.now().toString()}`);
 
   // Garment prices from backend settings (with fallback) — must be before any early return
-  const { getGarmentPrice } = useSettingsStore();
+  const { getGarmentPrice, getVat } = useSettingsStore();
   const GARMENT_PRICES = {
     'T-SHIRT':      getGarmentPrice('T-SHIRT')      || 1200,
     'SWEATSHIRT':   getGarmentPrice('SWEATSHIRT')   || 1500,
@@ -205,9 +205,15 @@ const QuoteModal = ({
   };
 
   const dynamicPrice = calculateTotalPrice();
+  
+  // VAT calculation
+  const subtotal = dynamicPrice;
+  const vatPct = getVat(); // e.g. 10
+  const vatAmount = Math.round(subtotal * vatPct / 100);
+  const totalWithVat = subtotal + vatAmount;
 
-  // Balance due = selected garments price - already paid amount
-  const computedBalanceDue = Math.max(0, dynamicPrice - amountPaid);
+  // Balance due = total with VAT - already paid amount
+  const computedBalanceDue = Math.max(0, totalWithVat - amountPaid);
 
   // ✨ NEW: Toggle garment selection
   const toggleGarmentSelection = (garmentType) => {
@@ -729,7 +735,7 @@ const QuoteModal = ({
       });
 
       if (stripeResponse.data?.success && stripeResponse.data?.url) {
-        window.location.href = stripeResponse.data.url;
+        // window.location.href = stripeResponse.data.url;
         return;
       } else {
         if (stripeResponse.data?.message) {
@@ -1226,6 +1232,56 @@ const QuoteModal = ({
             </div>
           </div>
         </div>
+
+        {/* Price Summary */}
+        <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:bg-blue-50 transition-colors duration-500"></div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center space-x-4 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+                <CreditCard className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-extrabold text-slate-800 tracking-tight">Order Total</h3>
+                <p className="text-sm text-slate-500 font-medium">Final pricing breakdown</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50/50 rounded-[1.5rem] p-6 border border-slate-100 space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-bold text-slate-600">Subtotal</span>
+                <span className="text-lg font-bold text-slate-800">{subtotal} DKK</span>
+              </div>
+              {vatPct > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-slate-600">VAT ({vatPct}%)</span>
+                  <span className="text-lg font-bold text-slate-800">{vatAmount} DKK</span>
+                </div>
+              )}
+              <div className="border-t border-slate-200 pt-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-bold text-slate-800">Total</span>
+                  <span className="text-2xl font-black text-green-600">{totalWithVat} DKK</span>
+                </div>
+              </div>
+              {amountPaid > 0 && (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-green-600">Amount Already Paid</span>
+                    <span className="text-lg font-bold text-green-600">-{amountPaid} DKK</span>
+                  </div>
+                  <div className="border-t border-slate-200 pt-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-bold text-slate-800">Balance Due</span>
+                      <span className="text-2xl font-black text-blue-600">{computedBalanceDue} DKK</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1398,8 +1454,18 @@ const QuoteModal = ({
               <div className="flex justify-between items-center">
                 <div className="flex-1">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-bold text-gray-500 uppercase">Configuration Total</span>
-                    <span className="text-sm font-bold text-gray-700">{dynamicPrice} DKK</span>
+                    <span className="text-xs font-bold text-gray-500 uppercase">Subtotal</span>
+                    <span className="text-sm font-bold text-gray-700">{subtotal} DKK</span>
+                  </div>
+                  {vatPct > 0 && (
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-gray-500 uppercase">VAT ({vatPct}%)</span>
+                      <span className="text-sm font-bold text-gray-700">{vatAmount} DKK</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center mb-1 pt-1 border-t border-gray-200">
+                    <span className="text-xs font-bold text-gray-700 uppercase">Total</span>
+                    <span className="text-lg font-bold text-gray-900">{totalWithVat} DKK</span>
                   </div>
                   {amountPaid > 0 && (
                     <div className="flex justify-between items-center mb-1">
@@ -1494,7 +1560,7 @@ const QuoteModal = ({
                         ) : (
                           <>
                             <CreditCard className="w-4 h-4 mr-1" />
-                            Approve order and pay
+                            Pay {computedBalanceDue} DKK
                           </>
                         )}
                       </>

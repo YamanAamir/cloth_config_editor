@@ -101,16 +101,33 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
       ctx.lineWidth = 40;
       ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
     }
-
-
     if (hasSecondAsset) {
-      ctx.globalAlpha = 1;         // 🔥 optional: full black (no transparency)
-      ctx.fillStyle = "#000000";   // ✅ white → black
-      ctx.fillRect(0, 0, CANVAS_WIDTH * 0.9, CANVAS_HEIGHT);
+      // 🔲 BLACK BASE
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 40;
-      ctx.strokeRect(0, 0, canvas.width  * 0.9, canvas.height);
+      ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+      // 🟦 WHITE BOXES WITH SIDE PADDING
+      const gap = 10;
+
+      const paddingX = 50; // 👈 adjust this (increase = more cut from sides)
+
+      const boxWidth = CANVAS_WIDTH - paddingX * 2;
+      const boxHeight = (CANVAS_HEIGHT - gap) / 2;
+
+      const x = paddingX; // 👈 shift boxes from left
+
+      // TOP BOX
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x, 0, boxWidth, boxHeight);
+
+      // BOTTOM BOX
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x, boxHeight + gap, boxWidth, boxHeight);
     }
     return canvas.toDataURL("image/png");
   };
@@ -218,6 +235,27 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
     canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
 
+    if (!flag && !flag2 && !logoPre && !logoCustom) {
+      // ONLY TEXT MODE
+      if (text?.trim()) {
+        let fontSize = 48;
+        ctx.font = `bold ${fontSize}px Arial`;
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+          fontSize -= 2;
+          ctx.font = `bold ${fontSize}px Arial`;
+        }
+
+        ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+      }
+
+      callback(canvas.toDataURL("image/png"));
+      return;
+    }
+    
     const hasTwoFlags =
       flag && flagImages[flag] && flag2 && flagImages[flag2];
 
@@ -262,15 +300,26 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
         loadImage(flagImages[flag2]),
       ])
         .then(([img1, img2]) => {
-          const gap = 2;
-          const flagW = CANVAS_WIDTH * 0.9;
-          const flagH = (CANVAS_HEIGHT - gap) / 2;
+          const gap = 10;
 
-          // TOP FLAG
-          ctx.drawImage(img1, 0, 0, flagW, flagH);
+          const boxWidth = CANVAS_WIDTH * 0.9;
+          const boxHeight = (CANVAS_HEIGHT - gap) / 2;
 
-          // BOTTOM FLAG
-          ctx.drawImage(img2, 0, flagH + gap, flagW, flagH);
+          const x = (CANVAS_WIDTH - boxWidth) / 2;
+
+          // 🔲 WHITE BOX 1 (TOP)
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(x, 0, boxWidth, boxHeight);
+
+          // 🔲 WHITE BOX 2 (BOTTOM)
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(x, boxHeight + gap, boxWidth, boxHeight);
+
+          // 🖼 FLAG 1
+          ctx.drawImage(img1, x, 0, boxWidth, boxHeight);
+
+          // 🖼 FLAG 2
+          ctx.drawImage(img2, x, boxHeight + gap, boxWidth, boxHeight);
 
           finalize();
         })
@@ -368,22 +417,20 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
     onUpdate({
       pressureOptions: {
         ...pressureOptions,
+
         [`${area}Type`]: type,
-        [`${area}Text`]: "", // clear text when flag/logo selected
-        ...(type === "flag"
-          ? {
-            [`${area}LogoPredefined`]: "",
-            [`${area}LogoCustom`]: "",
-          }
-          : type === "logo"
-            ? {
-              [`${area}Flag`]: "",
-            }
-            : {
-              [`${area}Flag`]: "",
-              [`${area}LogoPredefined`]: "",
-              [`${area}LogoCustom`]: "",
-            }),
+
+        // 🔥 ALWAYS RESET FLAGS COMPLETELY
+        [`${area}Flag`]: type === "flag" ? pressureOptions[`${area}Flag`] : "",
+        [`${area}Flag2`]: "",
+        [`${area}FlagCount`]: 1,
+
+        // TEXT
+        [`${area}Text`]: type === "" ? pressureOptions[`${area}Text`] : "",
+
+        // LOGO RESET
+        [`${area}LogoPredefined`]: type === "logo" ? pressureOptions[`${area}LogoPredefined`] : "",
+        [`${area}LogoCustom`]: type === "logo" ? pressureOptions[`${area}LogoCustom`] : "",
       },
     });
   };
@@ -643,11 +690,12 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
                         key={tab}
                         type="button"
                         onClick={() => {
-                          if (tab === "text") {
-                            onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Type`]: "", [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" } });
-                          } else {
-                            handleTypeChange(area, tab);
-                          }
+                          // if (tab === "text") {
+                          //   onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Type`]: "", [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" } });
+                          // } else {
+                          //   handleTypeChange(area, tab);
+                          // }
+                          handleTypeChange(area, tab === "text" ? "" : tab);
                         }}
                         className={`flex-1 py-2 text-xs font-bold capitalize transition-all ${pressureOptions[`${area}Type`] === tab || (tab === "text" && !pressureOptions[`${area}Type`])
                           ? "bg-green-700 text-white"

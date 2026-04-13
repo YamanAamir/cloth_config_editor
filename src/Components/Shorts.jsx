@@ -23,55 +23,142 @@ const Shorts = ({ data, onUpdate, isAppReady, logos }) => {
   const countries = ALL_FLAGS;
   const flagImages = Object.fromEntries(ALL_FLAGS.map(f => [f.name, f.flagHD || f.flag]));
 
-  const CANVAS_WIDTH = 320;
+  const BASE_CANVAS_WIDTH = 320;
   const TEXT_HEIGHT = 120;
   const FLAG_HEIGHT = 240;
+  
+  // 🔥 Dynamic dimensions based on flag count for optimal UI
+  const getEffectiveDimensions = (flagCount) => {
+    const DIMENSION_MAP = {
+      1: { 
+        width: BASE_CANVAS_WIDTH,           // Full width for single flag
+        flagHeight: FLAG_HEIGHT             // Full height for single flag
+      },
+      2: { 
+        width: BASE_CANVAS_WIDTH * 0.75,    // 75% width for dual flags (240px)
+        flagHeight: FLAG_HEIGHT * 0.6       // 60% height for dual flags (144px)
+      }
+    };
+    return DIMENSION_MAP[flagCount] || DIMENSION_MAP[1];
+  };
+  
   const CANVAS_HEIGHT = TEXT_HEIGHT + FLAG_HEIGHT;
 
-  const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false) => {
+  const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false, flagCount = 1) => {
     const canvas = document.createElement("canvas");
-    canvas.width = CANVAS_WIDTH; canvas.height = CANVAS_HEIGHT;
+    
+    // 🔥 Dynamic canvas dimensions based on flag count
+    const dimensions = getEffectiveDimensions(flagCount);
+    canvas.width = dimensions.width;
+    canvas.height = TEXT_HEIGHT + dimensions.flagHeight;
+    
     const ctx = canvas.getContext("2d");
     if (text?.trim()) {
       let fontSize = 48;
       ctx.font = `bold ${fontSize}px Arial`; ctx.fillStyle = "#ffffff";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+      while (ctx.measureText(text).width > dimensions.width - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
+      ctx.fillText(text, dimensions.width / 2, TEXT_HEIGHT / 2);
     }
-    if (hasFlag || hasLogo) { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT); }
+    if (hasFlag || hasLogo) { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, TEXT_HEIGHT, dimensions.width, dimensions.flagHeight); }
     if (hasFlag || hasLogo) { ctx.strokeStyle = "#000000"; ctx.lineWidth = 40; ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10); }
-    return canvas.toDataURL("image/png");
+    
+    try {
+      return canvas.toDataURL("image/png");
+    } catch (error) {
+      console.error("❌ Shorts getEmissiveBase64 tainted:", error);
+      const fallbackCanvas = document.createElement("canvas");
+      fallbackCanvas.width = dimensions.width; fallbackCanvas.height = TEXT_HEIGHT + dimensions.flagHeight;
+      const fallbackCtx = fallbackCanvas.getContext("2d");
+      fallbackCtx.fillStyle = "#f8f9fa"; fallbackCtx.fillRect(0, 0, fallbackCanvas.width, fallbackCanvas.height);
+      return fallbackCanvas.toDataURL("image/png");
+    }
   };
 
   const getDiffuseBase64 = (flag, logoPre, logoCustom, text, callback, flag2 = "", flagCount = 1) => {
     const canvas = document.createElement("canvas");
-    canvas.width = CANVAS_WIDTH; canvas.height = CANVAS_HEIGHT;
+    
+    // 🔥 Dynamic canvas dimensions based on flag count
+    const dimensions = getEffectiveDimensions(flagCount);
+    canvas.width = dimensions.width;
+    canvas.height = TEXT_HEIGHT + dimensions.flagHeight;
+    
     const ctx = canvas.getContext("2d");
     if (text?.trim()) {
       let fontSize = 48;
       ctx.font = `bold ${fontSize}px Arial`; ctx.fillStyle = "#ffffff";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+      while (ctx.measureText(text).width > dimensions.width - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
+      ctx.fillText(text, dimensions.width / 2, TEXT_HEIGHT / 2);
     }
-    const finalize = () => callback(canvas.toDataURL("image/png"));
+    const finalize = () => {
+      try {
+        const dataURL = canvas.toDataURL("image/png");
+        console.log("✅ Shorts canvas success");
+        callback(dataURL);
+      } catch (error) {
+        console.error("❌ Shorts canvas tainted:", error);
+        const fallbackCanvas = document.createElement("canvas");
+        fallbackCanvas.width = dimensions.width; fallbackCanvas.height = TEXT_HEIGHT + dimensions.flagHeight;
+        const fallbackCtx = fallbackCanvas.getContext("2d");
+        fallbackCtx.fillStyle = "#f8f9fa"; fallbackCtx.fillRect(0, 0, fallbackCanvas.width, fallbackCanvas.height);
+        fallbackCtx.fillStyle = "#6c757d"; fallbackCtx.font = "16px Arial"; fallbackCtx.textAlign = "center";
+        fallbackCtx.fillText("CORS Error", fallbackCanvas.width / 2, fallbackCanvas.height / 2);
+        callback(fallbackCanvas.toDataURL("image/png"));
+      }
+    };
     const loadImage = (src) => new Promise((resolve, reject) => {
-      const img = new Image(); img.crossOrigin = "anonymous";
-      img.onload = () => resolve(img); img.onerror = () => reject(); img.src = src;
+      const img = new Image(); 
+      
+      // 🔥 CRITICAL: Set crossOrigin BEFORE src to prevent canvas taint
+      img.crossOrigin = "anonymous";
+      
+      img.onload = () => {
+        console.log("✅ Shorts image loaded:", src);
+        resolve(img);
+      };
+      
+      img.onerror = (e) => {
+        console.error("❌ Shorts image failed:", src, e);
+        // Create fallback
+        const fallbackCanvas = document.createElement("canvas");
+        fallbackCanvas.width = 160; fallbackCanvas.height = 120;
+        const fallbackCtx = fallbackCanvas.getContext("2d");
+        fallbackCtx.fillStyle = "#f0f0f0"; fallbackCtx.fillRect(0, 0, 160, 120);
+        fallbackCtx.fillStyle = "#666"; fallbackCtx.font = "12px Arial"; fallbackCtx.textAlign = "center";
+        fallbackCtx.fillText("Image Error", 80, 60);
+        const fallbackImg = new Image();
+        fallbackImg.onload = () => resolve(fallbackImg);
+        fallbackImg.src = fallbackCanvas.toDataURL();
+      };
+      
+      img.src = src;
     });
     if (flag && flagImages[flag]) {
       if (flag2 && flagImages[flag2]) {
+        console.log("🔍 Loading dual flags:", flagImages[flag], flagImages[flag2]);
         Promise.all([loadImage(flagImages[flag]), loadImage(flagImages[flag2])])
           .then(([img1, img2]) => {
-            const gap = 10; const flagH = FLAG_HEIGHT / 2;
-            const flagW = (CANVAS_WIDTH - gap) / 2; const startX = (CANVAS_WIDTH - flagW) / 2;
-            ctx.drawImage(img1, startX, TEXT_HEIGHT, flagW, flagH);
-            ctx.drawImage(img2, startX, TEXT_HEIGHT + flagH + gap, flagW, flagH - gap);
+            // 🔥 Use effective dimensions with better spacing for legs
+            const halfHeight = (dimensions.flagHeight * 0.9) / 2;
+            const gap = dimensions.flagHeight * 0.1;
+            const flagW = (dimensions.width - gap) / 2; const startX = (dimensions.width - flagW) / 2;
+            ctx.drawImage(img1, startX, TEXT_HEIGHT, flagW, halfHeight);
+            ctx.drawImage(img2, startX, TEXT_HEIGHT + halfHeight + gap, flagW, halfHeight - gap);
             finalize();
-          }).catch(finalize);
+          }).catch((error) => {
+            console.error("❌ Dual flags failed:", error);
+            finalize();
+          });
       } else {
-        loadImage(flagImages[flag]).then(img => { ctx.drawImage(img, 0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT); finalize(); }).catch(finalize);
+        console.log("🔍 Loading single flag:", flagImages[flag]);
+        loadImage(flagImages[flag]).then(img => { 
+          ctx.drawImage(img, 0, TEXT_HEIGHT, dimensions.width, dimensions.flagHeight); 
+          finalize(); 
+        }).catch((error) => {
+          console.error("❌ Single flag failed:", flagImages[flag], error);
+          finalize();
+        });
       }
       return;
     }
@@ -81,12 +168,16 @@ const Shorts = ({ data, onUpdate, isAppReady, logos }) => {
       if (found?.file_path) logoSrc = `${BASE_URL}${found.file_path.replace(/\\/g, "/")}`;
     }
     if (logoSrc) {
+      console.log("🔍 Shorts loading logo:", logoSrc);
       loadImage(logoSrc).then(img => {
-        const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height);
+        const ratio = Math.min(dimensions.width / img.width, dimensions.flagHeight / img.height);
         const w = img.width * ratio * 0.9; const h = img.height * ratio * 0.9;
-        ctx.drawImage(img, (CANVAS_WIDTH - w) / 2, TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2, w, h);
+        ctx.drawImage(img, (dimensions.width - w) / 2, TEXT_HEIGHT + (dimensions.flagHeight - h) / 2, w, h);
         finalize();
-      }).catch(finalize);
+      }).catch((error) => {
+        console.error("❌ Shorts logo failed:", logoSrc, error);
+        finalize(); // Continue without logo
+      });
       return;
     }
     finalize();
@@ -161,7 +252,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos }) => {
       prevRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type };
       const hasFlag = !!flag && type === "flag";
       const hasLogo = !!(logoPre || logoCustom) && type === "logo";
-      const opacity = getEmissiveBase64(text, hasFlag, hasLogo);
+      const opacity = getEmissiveBase64(text, hasFlag, hasLogo, flagCount);
       ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(`Short:${area}_opacity: ${opacity}`, "*"); });
       getDiffuseBase64(flag, logoPre, logoCustom, text, diffuse => {
         ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(`Short:${area}_diffuse: ${diffuse}`, "*"); });
