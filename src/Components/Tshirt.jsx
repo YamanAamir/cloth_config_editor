@@ -69,7 +69,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
   const FLAG_HEIGHT = 240;
   const CANVAS_HEIGHT = TEXT_HEIGHT + FLAG_HEIGHT;
 
-  const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false) => {
+  const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false, hasSecondAsset = false) => {
     const canvas = document.createElement("canvas");
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
@@ -102,6 +102,16 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
       ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
     }
 
+
+    if (hasSecondAsset) {
+      ctx.globalAlpha = 1;         // 🔥 optional: full black (no transparency)
+      ctx.fillStyle = "#000000";   // ✅ white → black
+      ctx.fillRect(0, 0, CANVAS_WIDTH * 0.9, CANVAS_HEIGHT);
+
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 40;
+      ctx.strokeRect(0, 0, canvas.width  * 0.9, canvas.height);
+    }
     return canvas.toDataURL("image/png");
   };
 
@@ -208,9 +218,13 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
     canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
 
+    const hasTwoFlags =
+      flag && flagImages[flag] && flag2 && flagImages[flag2];
+
     // ---------- TEXT ----------
-    if (text?.trim()) {
+    if (text?.trim() && !hasTwoFlags) {
       let fontSize = 48;
+
       ctx.font = `bold ${fontSize}px Arial`;
       ctx.fillStyle = "#ffffff";
       ctx.textAlign = "center";
@@ -224,14 +238,14 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
         ctx.font = `bold ${fontSize}px Arial`;
       }
 
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+      const y = TEXT_HEIGHT / 2;
+      ctx.fillText(text, CANVAS_WIDTH / 2, y);
     }
 
     const finalize = () => {
       callback(canvas.toDataURL("image/png"));
     };
 
-    // ---------- FLAGS ----------
     const loadImage = (src) =>
       new Promise((resolve, reject) => {
         const img = new Image();
@@ -241,59 +255,49 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
         img.src = src;
       });
 
-    if (flag && flagImages[flag]) {
-      // 2 flags => split 50% / 50%
-      if (flag2 && flagImages[flag2]) {
-        Promise.all([
-          loadImage(flagImages[flag]),
-          loadImage(flagImages[flag2]),
-        ])
-          .then(([img1, img2]) => {
-            const gap = 10; // gap between flags
-            const flagH = FLAG_HEIGHT / 2;
-            const flagW = (CANVAS_WIDTH - gap) / 2; // 50% width with gap
-            const startX = (CANVAS_WIDTH - flagW) / 2; // center horizontally
+    // ---------- 2 FLAGS (FULL CANVAS FIX + NO CUTTING) ----------
+    if (hasTwoFlags) {
+      Promise.all([
+        loadImage(flagImages[flag]),
+        loadImage(flagImages[flag2]),
+      ])
+        .then(([img1, img2]) => {
+          const gap = 2;
+          const flagW = CANVAS_WIDTH * 0.9;
+          const flagH = (CANVAS_HEIGHT - gap) / 2;
 
-            // top
-            ctx.drawImage(
-              img1,
-              startX,
-              TEXT_HEIGHT,
-              flagW,
-              flagH
-            );
+          // TOP FLAG
+          ctx.drawImage(img1, 0, 0, flagW, flagH);
 
-            // bottom
-            ctx.drawImage(
-              img2,
-              startX,
-              TEXT_HEIGHT + flagH + gap,
-              flagW,
-              flagH - gap
-            );
+          // BOTTOM FLAG
+          ctx.drawImage(img2, 0, flagH + gap, flagW, flagH);
 
-            finalize();
-          })
-          .catch(finalize);
-      } else {
-        // single flag => original full height
-        loadImage(flagImages[flag])
-          .then((img) => {
-            ctx.drawImage(
-              img,
-              0,
-              TEXT_HEIGHT,
-              CANVAS_WIDTH,
-              FLAG_HEIGHT
-            );
-            finalize();
-          })
-          .catch(finalize);
-      }
+          finalize();
+        })
+        .catch(finalize);
 
       return;
     }
 
+    // ---------- SINGLE FLAG ----------
+    if (flag && flagImages[flag]) {
+      loadImage(flagImages[flag])
+        .then((img) => {
+          ctx.drawImage(
+            img,
+            0,
+            TEXT_HEIGHT,
+            CANVAS_WIDTH,
+            FLAG_HEIGHT
+          );
+          finalize();
+        })
+        .catch(finalize);
+
+      return;
+    }
+
+    // ---------- EMPTY ----------
     finalize();
   };
 
@@ -474,14 +478,16 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
       const hasText = text.length > 0;
       const hasFlag = !!flag && type === "flag";
       const hasLogo = !!(logoPre || logoCustom) && type === "logo";
-
+      const hasSecondAsset = !!flag2;
       // Emissive
-      const opacity = getEmissiveBase64(text, hasFlag, hasLogo);
+      const opacity = getEmissiveBase64(text, hasFlag, hasLogo, hasSecondAsset);
       ["preview-iframe", "preview-iframe2"].forEach((id) => {
         const iframe = document.getElementById(id);
         if (iframe?.contentWindow) {
           const msg = `T-Shirt:${area}_opacity: ${opacity}`;
           iframe.contentWindow.postMessage(msg, "*");
+          console.log("fahhh", msg);
+
         }
       });
 
@@ -492,6 +498,8 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
           if (iframe?.contentWindow) {
             const msg = `T-Shirt:${area}_diffuse: ${diffuseBase}`;
             iframe.contentWindow.postMessage(msg, "*");
+            console.log("fahhhhh", msg);
+
           }
         });
       }, flag2, flagCount);
