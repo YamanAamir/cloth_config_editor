@@ -30,72 +30,193 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
   const FLAG_HEIGHT = 240;
   const CANVAS_HEIGHT = TEXT_HEIGHT + FLAG_HEIGHT;
 
-  const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false) => {
+  const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false, hasSecondAsset = false) => {
     const canvas = document.createElement("canvas");
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
+
+    // Use transparency instead of black background for cleaner blending
     if (text?.trim()) {
       let fontSize = 48;
       ctx.font = `bold ${fontSize}px Arial`;
       ctx.fillStyle = "#ffffff";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
+
+      while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+        fontSize -= 2;
+        ctx.font = `bold ${fontSize}px Arial`;
+      }
       ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
     }
-    if (hasFlag || hasLogo) { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT); }
-    if (hasFlag || hasLogo) { ctx.strokeStyle = "#000000"; ctx.lineWidth = 40; ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10); }
+
+    if (hasFlag || hasLogo) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+    }
+
+    // Add black border (mask) if flag or logo is present
+    if (hasFlag || hasLogo) {
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 40;
+      ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+    }
+    if (hasSecondAsset) {
+      // 🔲 BLACK BASE
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 40;
+      ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+      const gap = 10;
+      const paddingX = 50;
+      const paddingTop = 20;     // 👈 ADD THIS
+      const paddingBottom = 20;  // 👈 ADD THIS
+
+      const availableHeight = CANVAS_HEIGHT - paddingTop - paddingBottom - gap;
+      const boxHeight = availableHeight / 2;
+      const boxWidth = CANVAS_WIDTH - paddingX * 2;
+      const x = paddingX;
+
+      // TOP BOX
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x, paddingTop, boxWidth, boxHeight);
+
+      // BOTTOM BOX
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x, paddingTop + boxHeight + gap, boxWidth, boxHeight);
+    }
     return canvas.toDataURL("image/png");
   };
 
-  const getDiffuseBase64 = (flag, logoPre, logoCustom, text, callback, flag2 = "", flagCount = 1) => {
+  const getDiffuseBase64 = (
+    flag,
+    logoPre,
+    logoCustom,
+    text,
+    callback,
+    flag2 = "",
+    flagCount = 1
+  ) => {
     const canvas = document.createElement("canvas");
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
-    if (text?.trim()) {
+
+    if (!flag && !flag2 && !logoPre && !logoCustom) {
+      // ONLY TEXT MODE
+      if (text?.trim()) {
+        let fontSize = 48;
+        ctx.font = `bold ${fontSize}px Arial`;
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+          fontSize -= 2;
+          ctx.font = `bold ${fontSize}px Arial`;
+        }
+
+        ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+      }
+
+      callback(canvas.toDataURL("image/png"));
+      return;
+    }
+
+    const hasTwoFlags =
+      flag && flagImages[flag] && flag2 && flagImages[flag2];
+
+    // ---------- TEXT ----------
+    if (text?.trim() && !hasTwoFlags) {
       let fontSize = 48;
+
       ctx.font = `bold ${fontSize}px Arial`;
       ctx.fillStyle = "#ffffff";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
-    }
-    const finalize = () => callback(canvas.toDataURL("image/png"));
-    const loadImage = (src) => new Promise((resolve, reject) => {
-      const img = new Image(); img.crossOrigin = "anonymous";
-      img.onload = () => resolve(img); img.onerror = () => reject(); img.src = src;
-    });
-    if (flag && flagImages[flag]) {
-      if (flag2 && flagImages[flag2]) {
-        Promise.all([loadImage(flagImages[flag]), loadImage(flagImages[flag2])])
-          .then(([img1, img2]) => {
-            const gap = 10; const flagH = FLAG_HEIGHT / 2; const flagW = (CANVAS_WIDTH - gap) / 2; const startX = (CANVAS_WIDTH - flagW) / 2;
-            ctx.drawImage(img1, startX, TEXT_HEIGHT, flagW, flagH);
-            ctx.drawImage(img2, startX, TEXT_HEIGHT + flagH + gap, flagW, flagH - gap);
-            finalize();
-          }).catch(finalize);
-      } else {
-        loadImage(flagImages[flag]).then((img) => { ctx.drawImage(img, 0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT); finalize(); }).catch(finalize);
+
+      while (
+        ctx.measureText(text).width > CANVAS_WIDTH - 80 &&
+        fontSize > 28
+      ) {
+        fontSize -= 2;
+        ctx.font = `bold ${fontSize}px Arial`;
       }
+
+      const y = TEXT_HEIGHT / 2;
+      ctx.fillText(text, CANVAS_WIDTH / 2, y);
+    }
+
+    const finalize = () => {
+      callback(canvas.toDataURL("image/png"));
+    };
+
+    const loadImage = (src) =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = () => reject();
+        img.src = src;
+      });
+
+    // ---------- 2 FLAGS (FULL CANVAS FIX + NO CUTTING) ----------
+    if (hasTwoFlags) {
+      Promise.all([
+        loadImage(flagImages[flag]),
+        loadImage(flagImages[flag2]),
+      ])
+        .then(([img1, img2]) => {
+          const gap = 10;
+          const boxWidth = CANVAS_WIDTH * 0.9;
+          const boxHeight = (CANVAS_HEIGHT - gap) / 2;
+          const x = (CANVAS_WIDTH - boxWidth) / 2;
+
+          // 🔲 WHITE BOX 1 (TOP)
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(x, 0, boxWidth, boxHeight);
+
+          // 🔲 WHITE BOX 2 (BOTTOM)
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(x, boxHeight + gap, boxWidth, boxHeight);
+
+          // 🖼 FLAG 1
+          ctx.drawImage(img1, x, 0, boxWidth, boxHeight);
+
+          // 🖼 FLAG 2
+          ctx.drawImage(img2, x, boxHeight + gap, boxWidth, boxHeight);
+
+          finalize();
+        })
+        .catch(finalize);
+
       return;
     }
-    let logoSrc = logoCustom;
-    if (!logoSrc && logoPre) {
-      const foundLogo = logos.find((l) => l.name === logoPre);
-      if (foundLogo?.file_path) logoSrc = `${BASE_URL}${foundLogo.file_path.replace(/\\/g, "/")}`;
-    }
-    if (logoSrc) {
-      loadImage(logoSrc).then((img) => {
-        const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height);
-        const w = img.width * ratio * 0.9; const h = img.height * ratio * 0.9;
-        ctx.drawImage(img, (CANVAS_WIDTH - w) / 2, TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2, w, h);
-        finalize();
-      }).catch(finalize);
+
+    // ---------- SINGLE FLAG ----------
+    if (flag && flagImages[flag]) {
+      loadImage(flagImages[flag])
+        .then((img) => {
+          ctx.drawImage(
+            img,
+            0,
+            TEXT_HEIGHT,
+            CANVAS_WIDTH,
+            FLAG_HEIGHT
+          );
+          finalize();
+        })
+        .catch(finalize);
+
       return;
     }
+
+    // ---------- EMPTY ----------
     finalize();
   };
 
@@ -111,10 +232,14 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
       pressureOptions: {
         ...pressureOptions,
         [`${area}Type`]: type,
-        [`${area}Text`]: "",
-        ...(type === "flag" ? { [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" }
-          : type === "logo" ? { [`${area}Flag`]: "" }
-          : { [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" }),
+        [`${area}Flag`]: type === "flag" ? pressureOptions[`${area}Flag`] : "",
+        [`${area}Flag2`]: "",
+        [`${area}FlagCount`]: 1,
+        // TEXT
+        [`${area}Text`]: type === "" ? pressureOptions[`${area}Text`] : "",
+        // LOGO RESET
+        [`${area}LogoPredefined`]: type === "logo" ? pressureOptions[`${area}LogoPredefined`] : "",
+        [`${area}LogoCustom`]: type === "logo" ? pressureOptions[`${area}LogoCustom`] : "",
       },
     });
   };
@@ -163,17 +288,32 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
       const logoPre = pressureOptions[`${area}LogoPredefined`] || "";
       const logoCustom = pressureOptions[`${area}LogoCustom`] || "";
       const type = pressureOptions[`${area}Type`] || "";
+
       const prev = prevPressureOptionsRef.current[area] || {};
-      const hasChanged = prev.text !== text || prev.flag !== flag || prev.flag2 !== flag2 || prev.flagCount !== flagCount || prev.logoPre !== logoPre || prev.logoCustom !== logoCustom || prev.type !== type;
-      if (!hasChanged) return;
+      if (
+        prev.text === text &&
+        prev.flag === flag &&
+        prev.flag2 === flag2 &&
+        prev.flagCount === flagCount &&
+        prev.logoPre === logoPre &&
+        prev.logoCustom === logoCustom &&
+        prev.type === type
+      ) return;
+
       prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type };
+
       const hasFlag = !!flag && type === "flag";
       const hasLogo = !!(logoPre || logoCustom) && type === "logo";
-      const opacity = getEmissiveBase64(text, hasFlag, hasLogo);
+      const hasTwoFlags = flagCount === 2 && flag && flag2;
+      const hasSecondAsset = !!flag2;
+
+      const opacity = getEmissiveBase64(text, hasFlag, hasLogo, hasTwoFlags, hasSecondAsset);
+
       ["preview-iframe", "preview-iframe2"].forEach((id) => {
         const iframe = document.getElementById(id);
         if (iframe?.contentWindow) iframe.contentWindow.postMessage(`ZipperHoodie:${area}_opacity: ${opacity}`, "*");
       });
+
       getDiffuseBase64(flag, logoPre, logoCustom, text, (diffuseBase) => {
         ["preview-iframe", "preview-iframe2"].forEach((id) => {
           const iframe = document.getElementById(id);

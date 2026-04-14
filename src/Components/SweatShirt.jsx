@@ -111,23 +111,30 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
       ctx.lineWidth = 40;
       ctx.strokeRect(0, 0, canvas.width, canvas.height);
 
-      // 🟦 WHITE BOXES WITH SIDE PADDING
       const gap = 10;
 
-      const paddingX = 50; // 👈 adjust this (increase = more cut from sides)
+      const paddingX = 50;
+      const paddingTop = 20;     // 👈 ADD THIS
+      const paddingBottom = 20;  // 👈 ADD THIS
+
+      const availableHeight = CANVAS_HEIGHT - paddingTop - paddingBottom - gap;
+      const boxHeight = availableHeight / 2;
 
       const boxWidth = CANVAS_WIDTH - paddingX * 2;
-      const boxHeight = (CANVAS_HEIGHT - gap) / 2;
+      const x = paddingX;// 👈 adjust this (increase = more cut from sides)
 
-      const x = paddingX; // 👈 shift boxes from left
+      // const boxWidth = CANVAS_WIDTH - paddingX * 2;
+      // const boxHeight = (CANVAS_HEIGHT - gap) / 2;
+
+      // const x = paddingX; // 👈 shift boxes from left
 
       // TOP BOX
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(x, 0, boxWidth, boxHeight);
+      ctx.fillRect(x, paddingTop, boxWidth, boxHeight);
 
       // BOTTOM BOX
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(x, boxHeight + gap, boxWidth, boxHeight);
+      ctx.fillRect(x, paddingTop + boxHeight + gap, boxWidth, boxHeight);
     }
     return canvas.toDataURL("image/png");
   };
@@ -255,7 +262,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
       callback(canvas.toDataURL("image/png"));
       return;
     }
-    
+
     const hasTwoFlags =
       flag && flagImages[flag] && flag2 && flagImages[flag2];
 
@@ -420,7 +427,6 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
 
         [`${area}Type`]: type,
 
-        // 🔥 ALWAYS RESET FLAGS COMPLETELY
         [`${area}Flag`]: type === "flag" ? pressureOptions[`${area}Flag`] : "",
         [`${area}Flag2`]: "",
         [`${area}FlagCount`]: 1,
