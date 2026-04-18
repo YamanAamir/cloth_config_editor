@@ -216,6 +216,44 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
       return;
     }
 
+    // ---------- LOGO ONLY ----------
+    let logoSrc = logoCustom;
+
+    if (!logoSrc && logoPre) {
+      const foundLogo = logos.find((l) => l.name === logoPre);
+      if (foundLogo?.file_path) {
+        let path = foundLogo.file_path.replace(/\\/g, "/");
+
+        if (path.startsWith("http")) {
+          logoSrc = path;
+        } else {
+          logoSrc = `${BASE_URL.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+        }
+      }
+    }
+
+    if (logoSrc) {
+      loadImage(logoSrc)
+        .then((img) => {
+          const ratio = Math.min(
+            CANVAS_WIDTH / img.width,
+            FLAG_HEIGHT / img.height
+          );
+
+          const w = img.width * ratio * 0.9;
+          const h = img.height * ratio * 0.9;
+
+          const x = (CANVAS_WIDTH - w) / 2;
+          const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
+
+          ctx.drawImage(img, x, y, w, h);
+          finalize();
+        })
+        .catch(finalize);
+
+      return; // ✅ important
+    }
+
     // ---------- EMPTY ----------
     finalize();
   };

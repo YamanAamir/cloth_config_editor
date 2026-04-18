@@ -88,3 +88,7 @@ export const getPublicSettings = () => api.get('/student/settings');
 export const getStudentProfile = () => api.get('/student/profile');
 export const updateStudentProfile = (data) => api.put('/student/profile', data);
 export const changePasswordAuth = (data) => api.put('/auth/change-password', data);
+
+// Order Reset Functions
+export const resetOrder = (orderId) => api.post(`/student/reset-order/${orderId}`);
+export const createFreshOrder = () => api.post('/student/create-fresh-order');

@@ -14,8 +14,9 @@ const useBackDesignStore = create((set) => ({
 
             if (data.success) {
                 set({
-                    // store as object directly
-                    backDesigns: String(data.data?.status) === "1" ? data.data : null,
+                    // Store the design regardless of approval status so students can see their submitted design
+                    // Only filter out if there's no design at all
+                    backDesigns: data.data || null,
                     loading: false,
                     error: null
                 });

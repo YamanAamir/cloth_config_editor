@@ -17,12 +17,12 @@ import SweatShirt from '../Components/SweatShirt';
 import QuoteModal from '../Components/Modal';
 import HistoryModal from '../Components/HistoryModal';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { GraduationCap, ChevronUp, ChevronDown, LogOut, Settings, LayoutGrid, Lock, History, Package, User } from 'lucide-react';
+import { GraduationCap, ChevronUp, ChevronDown, LogOut, Settings, LayoutGrid, Lock, History, Package, User, RefreshCw, RotateCcw } from 'lucide-react';
 import StudentPopup from '../Components/Popup';
 import useLogoStore from '../store/logoStore';
 import useSettingsStore from '../store/settingsStore';
 import { useAuth } from '../context/AuthContext';
-import { getMyOrder, getMyOrderHistory, placeOrder, unlockOrder, lockOrder, deleteHistory, getStudentProfile, updateStudentProfile, changePasswordAuth } from '../api/api';
+import { getMyOrder, getMyOrderHistory, placeOrder, unlockOrder, lockOrder, deleteHistory, getStudentProfile, updateStudentProfile, changePasswordAuth, getMyClassBackDesigns, resetOrder, createFreshOrder } from '../api/api';
 import useSocket from '../hooks/useSocket';
 
 const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup /*, setShowBackTextPopup */ }) => { // COMMENTED: Back text feature disabled
@@ -177,6 +177,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
     const [paymentStatus, setPaymentStatus] = useState('unpaid');
     const [editDeadline, setEditDeadline] = useState(null);
     const [classStatus, setClassStatus] = useState(null); // tracking.class_status
+    const [backDesignStatus, setBackDesignStatus] = useState(null); // back design approval status
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
+    const [showResetModal, setShowResetModal] = useState(false);
 
     // 3. Derived State
     const calculateTotalPrice = () => {
@@ -247,6 +251,105 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         }
     };
 
+    const fetchBackDesignStatus = async () => {
+        try {
+            const resBackDesigns = await getMyClassBackDesigns();
+            if (resBackDesigns.data?.success && resBackDesigns.data.data) {
+                const backDesigns = resBackDesigns.data.data;
+                // Find the most recent back design or the one that matches current class
+                const latestDesign = backDesigns.find(design => design.class_id === user?.class_id) || backDesigns[0];
+                if (latestDesign) {
+                    setBackDesignStatus(latestDesign.approval_status);
+                }
+            }
+        } catch (err) {
+            console.error("Error fetching back design status:", err);
+        }
+    };
+
+    const handleRefreshStatus = async () => {
+        setIsRefreshing(true);
+        try {
+            await Promise.all([
+                fetchOrderData(),
+                fetchHistoryData(),
+                fetchBackDesignStatus()
+            ]);
+            message.success("Status updated!");
+        } catch (err) {
+            console.error("Error refreshing status:", err);
+            message.error("Failed to refresh status");
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    const handleResetOrder = async () => {
+        console.log("🔄 Reset button clicked, orderId:", orderId);
+        
+        if (!orderId) {
+            message.error("No active order found to reset.");
+            return;
+        }
+
+        setIsResetting(true);
+        try {
+            console.log("🔄 Calling resetOrder API with orderId:", orderId);
+            const response = await resetOrder(orderId);
+            console.log("🔄 Reset response:", response);
+            
+            if (response.data?.success) {
+                message.success("Order reset successfully! Starting fresh design.");
+                
+                // Reset local state to defaults
+                setAllSelections(DEFAULT_SELECTIONS);
+                setCustomizations(prev => ({
+                    ...prev,
+                    [selectedStudent]: DEFAULT_SELECTIONS
+                }));
+                
+                // Refresh data
+                await fetchOrderData();
+                await fetchHistoryData();
+                
+                setShowResetModal(false);
+            }
+        } catch (err) {
+            console.error("Error resetting order:", err);
+            message.error(err.response?.data?.message || "Failed to reset order.");
+        } finally {
+            setIsResetting(false);
+        }
+    };
+
+    const handleCreateFreshOrder = async () => {
+        setIsResetting(true);
+        try {
+            const response = await createFreshOrder();
+            if (response.data?.success) {
+                message.success("Fresh order created! Start designing from scratch.");
+                
+                // Reset local state to defaults
+                setAllSelections(DEFAULT_SELECTIONS);
+                setCustomizations(prev => ({
+                    ...prev,
+                    [selectedStudent]: DEFAULT_SELECTIONS
+                }));
+                
+                // Refresh data
+                await fetchOrderData();
+                await fetchHistoryData();
+                
+                setShowResetModal(false);
+            }
+        } catch (err) {
+            console.error("Error creating fresh order:", err);
+            message.error(err.response?.data?.message || "Failed to create fresh order.");
+        } finally {
+            setIsResetting(false);
+        }
+    };
+
     const fetchHistoryData = async () => {
         try {
             const resHistory = await getMyOrderHistory();
@@ -266,6 +369,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             console.log('🔔 Real-time order update received:', data);
             fetchOrderData();
             fetchHistoryData();
+            fetchBackDesignStatus(); // Also refresh back design status
         }
     );
 
@@ -278,11 +382,27 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         }
     );
 
+    // Listen for back design approval updates
+    useSocket(
+        user?.class_id ? `back_design_update_${user.class_id}` : null,
+        `back_design_update_${user.class_id}`,
+        (data) => {
+            console.log('🔔 Real-time back design update received:', data);
+            fetchBackDesignStatus();
+            if (data.approval_status === 'approved') {
+                message.success('🎉 Your back design has been approved!');
+            } else if (data.approval_status === 'rejected') {
+                message.error('❌ Your back design has been rejected. Please contact your class representative.');
+            }
+        }
+    );
+
     // --- Fetch Existing Order & History ---
     useEffect(() => {
         if (user && user.role === 'student') {
             fetchOrderData();
             fetchHistoryData();
+            fetchBackDesignStatus();
         }
     }, []);
 
@@ -653,6 +773,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         }
     }, [selectedStudent, customizations]);
     console.log("logosasasad", logos);
+    console.log("🔄 Debug - showResetModal:", showResetModal, "orderId:", orderId, "isResetting:", isResetting);
     return (
         <>
             {/* ── Copy Design Prompt Modal ── */}
@@ -745,6 +866,49 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                 </div>
             )}
 
+            {/* ── Reset Order Modal ── */}
+            {showResetModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+                    <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-100">
+                        <h3 className="text-lg font-bold text-slate-800 mb-2">Reset Order</h3>
+                        <p className="text-sm text-slate-500 mb-6">
+                            This will clear all your current designs and start fresh. This action cannot be undone.
+                        </p>
+                        <div className="space-y-3 mb-6">
+                            <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                                <p className="text-sm text-orange-700 font-medium">⚠️ Warning</p>
+                                <p className="text-xs text-orange-600 mt-1">All current garment configurations will be lost</p>
+                            </div>
+                            <div className="text-xs text-slate-500">
+                                Debug: orderId = {orderId}
+                            </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    console.log("🔄 Reset Order button clicked in modal");
+                                    handleResetOrder();
+                                }}
+                                disabled={isResetting}
+                                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-all disabled:opacity-50"
+                            >
+                                {isResetting ? 'Resetting...' : 'Reset Order'}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    console.log("🔄 Cancel button clicked in modal");
+                                    setShowResetModal(false);
+                                }}
+                                disabled={isResetting}
+                                className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
                 {/* Global Header */}
                 <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-40">
@@ -767,6 +931,33 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                     </div>
 
                     <div className="flex items-center space-x-2 sm:space-x-4">
+                        {/* Refresh Status Button */}
+                        <button
+                            onClick={handleRefreshStatus}
+                            disabled={isRefreshing}
+                            className="flex items-center space-x-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all font-medium text-sm border border-blue-200 disabled:opacity-50"
+                            title="Refresh approval status"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+                        </button>
+
+                        {/* Reset Order Button */}
+                        {orderId && (
+                            <button
+                                onClick={() => {
+                                    console.log("🔄 Reset button clicked, orderId:", orderId, "isLocked:", isLocked, "isAdmin:", isAdmin);
+                                    setShowResetModal(true);
+                                }}
+                                disabled={isResetting || (isLocked && !isAdmin)}
+                                className="flex items-center space-x-2 px-3 py-2 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-all font-medium text-sm border border-orange-200 disabled:opacity-50"
+                                title="Reset order and start fresh"
+                            >
+                                <RotateCcw className={`w-4 h-4 ${isResetting ? 'animate-spin' : ''}`} />
+                                <span className="hidden sm:inline">Reset</span>
+                            </button>
+                        )}
+                        
                         {undoAvailable && (
                             <button
                                 onClick={handleUndo}
@@ -910,6 +1101,25 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                             );
                         })()}
 
+                        {/* Back Design Approval Status */}
+                        {backDesignStatus && (() => {
+                            const statusMap = {
+                                pending:  { label: 'Back Design: Pending Review', color: 'bg-yellow-100 text-yellow-700' },
+                                approved: { label: 'Back Design: Approved ✓',     color: 'bg-green-100 text-green-700' },
+                                rejected: { label: 'Back Design: Rejected',      color: 'bg-red-100 text-red-700' },
+                            };
+                            const s = statusMap[backDesignStatus];
+                            if (!s) return null;
+                            return (
+                                <>
+                                    <div className="w-px h-4 bg-slate-200" />
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wider ${s.color}`}>
+                                        {s.label}
+                                    </span>
+                                </>
+                            );
+                        })()}
+
                         {/* Edit deadline */}
                         {editDeadline && (
                             <>
@@ -947,7 +1157,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                     </div>
                 </div>
 
-                <div className="hidden md:flex h-[calc(100vh-80px)] w-full relative">
+                <div className="hidden md:flex h-[calc(95vh-80px)] w-full relative">
                     {/* Sidebar */}
                     <div className="flex flex-col h-full border-r border-slate-200 bg-white shadow-xl z-10 w-[600px] min-w-[500px]">
                         <div className='flex flex-1 min-h-0'>

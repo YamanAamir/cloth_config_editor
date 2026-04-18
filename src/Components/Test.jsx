@@ -72,10 +72,14 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
 
   useEffect(() => {
     if (getClassId) {
+      console.log("🔍 Fetching back designs for class:", getClassId);
       fetchBackDesigns({ class_id: getClassId });
     }
   }, [getClassId]);
-console.log("backDesignasdasqwqs",backDesigns);
+
+  console.log("🎨 Current backDesigns:", backDesigns);
+  console.log("🎨 Current pressureOptions.backDesign:", pressureOptions?.backDesign);
+  console.log("🎨 Current objects.length:", objects.length);
 
   // Helper: load image via blob URL to avoid canvas taint from CORS
   const loadImageSafe = (src, callback) => {
@@ -159,19 +163,58 @@ console.log("backDesignasdasqwqs",backDesigns);
       });
     });
   };
-  // Auto-select predefined design when backDesigns object is available
+  // Separate effect to handle when backDesigns becomes available after initial mount
   useEffect(() => {
-    // Only auto-select if:
-    // 1. No current design configured
-    // 2. backDesigns object exists (single design from API)
-    // 3. Objects array is empty (nothing on canvas)
-    if (!pressureOptions?.backDesign && backDesigns && objects.length === 0) {
+    console.log("🔄 BackDesigns availability changed:", {
+      backDesigns: backDesigns,
+      hasBackDesigns: !!backDesigns,
+      currentObjectsLength: objects.length,
+      currentPressureBackDesign: pressureOptions?.backDesign
+    });
+    
+    // If backDesigns just became available and we don't have any objects yet
+    if (backDesigns && objects.length === 0 && !pressureOptions?.backDesign) {
+      console.log("🚀 BackDesigns just became available, triggering auto-load");
       const design = backDesigns;
       const img = `${BASE_URL}${design.file_path.replace(/\\/g, "/")}`;
-      console.log("🎯 Auto-selecting design:", design.name, img);
-      selectPredefinedDesign(img, design);
+      console.log("🎯 Loading design from availability change:", design.name, img);
+      
+      loadImageSafe(img, async (imgObj) => {
+        console.log("✅ Image loaded from availability change");
+        const scale = Math.min(
+          (CANVAS_WIDTH * 0.75) / imgObj.width,
+          (CANVAS_HEIGHT * 0.65) / imgObj.height
+        );
+        const w = imgObj.width * scale;
+        const h = imgObj.height * scale;
+
+        const newImageObj = {
+          id: 'uploadedImage',
+          type: 'image',
+          srcObj: imgObj,
+          pos: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
+          size: { w, h },
+          angle: 0,
+          locked: false,
+        };
+
+        console.log("🎨 Setting objects from availability change:", newImageObj);
+        setObjects([newImageObj]);
+        setSelectedId('uploadedImage');
+
+        onUpdate({
+          backDesign: {
+            pos: newImageObj.pos,
+            size: newImageObj.size,
+            angle: newImageObj.angle,
+            locked: newImageObj.locked,
+            src: img,
+            designId: design?.id
+          }
+        });
+      });
     }
-  }, [backDesigns, pressureOptions, objects.length, selectPredefinedDesign]);
+  }, [backDesigns]); // Only watch backDesigns changes
 
   const getSelected = () => objects.find(o => o.id === selectedId);
 

@@ -350,8 +350,47 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
         })
         .catch(finalize);
 
-      return;
+      return; // ✅ important
     }
+
+    // ---------- LOGO ONLY ----------
+    let logoSrc = logoCustom;
+
+    if (!logoSrc && logoPre) {
+      const foundLogo = logos.find((l) => l.name === logoPre);
+      if (foundLogo?.file_path) {
+        let path = foundLogo.file_path.replace(/\\/g, "/");
+
+        if (path.startsWith("http")) {
+          logoSrc = path;
+        } else {
+          logoSrc = `${BASE_URL.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+        }
+      }
+    }
+
+    if (logoSrc) {
+      loadImage(logoSrc)
+        .then((img) => {
+          const ratio = Math.min(
+            CANVAS_WIDTH / img.width,
+            FLAG_HEIGHT / img.height
+          );
+
+          const w = img.width * ratio * 0.9;
+          const h = img.height * ratio * 0.9;
+
+          const x = (CANVAS_WIDTH - w) / 2;
+          const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
+
+          ctx.drawImage(img, x, y, w, h);
+          finalize();
+        })
+        .catch(finalize);
+
+      return; // ✅ important
+    }
+
 
     // ---------- EMPTY ----------
     finalize();
@@ -898,6 +937,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
       {/* Test Component - visible only in pressure tab, but always mounted for back design broadcast */}
       <div className={activeTab === "pressure" ? "mt-10" : ""} style={activeTab !== "pressure" ? { visibility: 'hidden', position: 'absolute', pointerEvents: 'none', height: 0, overflow: 'hidden' } : {}}>
         <Test
+          key={`sweatshirt-test-${JSON.stringify(pressureOptions?.backDesign)}`}
           postEx="SweatShirt:"
           pressureOptions={pressureOptions}
           isAppReady={isAppReady}
@@ -919,27 +959,6 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
                   ...pressureOptions,
                   backDesign: update.backDesign,
                 },
-              });
-            }
-          }}
-        />
-      </div>
-      {/* Always-on hidden Test for back design broadcast */}
-      <div style={{ visibility: 'hidden', position: 'absolute', pointerEvents: 'none', height: 0, overflow: 'hidden' }}>
-        <Test
-          postEx="SweatShirt:"
-          pressureOptions={pressureOptions}
-          isAppReady={isAppReady}
-          onUpdate={(update) => {
-            if (update.canvasBase64) {
-              const { diffuse, opacity, emissive } = update.canvasBase64;
-              ["preview-iframe", "preview-iframe2"].forEach((id) => {
-                const iframe = document.getElementById(id);
-                if (iframe?.contentWindow) {
-                  iframe.contentWindow.postMessage(diffuse, "*");
-                  iframe.contentWindow.postMessage(opacity, "*");
-                  if (emissive) iframe.contentWindow.postMessage(emissive, "*");
-                }
               });
             }
           }}

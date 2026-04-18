@@ -221,133 +221,130 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos }) => {
 
   //   finalize();
   // };
-  const getDiffuseBase64 = (
+  const getDiffuseBase64 = async (
     flag,
     logoPre,
     logoCustom,
     text,
     callback,
-    flag2 = "",
-    flagCount = 1
+    flag2 = ""
   ) => {
     const canvas = document.createElement("canvas");
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
 
-    if (!flag && !flag2 && !logoPre && !logoCustom) {
-      // ONLY TEXT MODE
-      if (text?.trim()) {
-        let fontSize = 48;
-        ctx.font = `bold ${fontSize}px Arial`;
-        ctx.fillStyle = "#ffffff";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-
-        while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
-          fontSize -= 2;
-          ctx.font = `bold ${fontSize}px Arial`;
-        }
-
-        ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
-      }
-
-      callback(canvas.toDataURL("image/png"));
-      return;
-    }
-    
-    const hasTwoFlags =
-      flag && flagImages[flag] && flag2 && flagImages[flag2];
-
-    // ---------- TEXT ----------
-    if (text?.trim() && !hasTwoFlags) {
+    // TEXT
+    if (text?.trim()) {
       let fontSize = 48;
-
       ctx.font = `bold ${fontSize}px Arial`;
       ctx.fillStyle = "#ffffff";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
-      while (
-        ctx.measureText(text).width > CANVAS_WIDTH - 80 &&
-        fontSize > 28
-      ) {
+      while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
         fontSize -= 2;
         ctx.font = `bold ${fontSize}px Arial`;
       }
 
-      const y = TEXT_HEIGHT / 2;
-      ctx.fillText(text, CANVAS_WIDTH / 2, y);
+      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
     }
 
-    const finalize = () => {
-      callback(canvas.toDataURL("image/png"));
-    };
+    try {
+      // PRIORITY: FLAG > LOGO
+      const flagDrawn = await drawFlags(ctx, flag, flag2);
 
+      if (!flagDrawn) {
+        await drawLogo(ctx, logoPre, logoCustom);
+      }
+    } catch (e) {
+      console.error("Render error:", e);
+    }
+
+    callback(canvas.toDataURL("image/png"));
+  };
+  const drawFlags = async (ctx, flag, flag2) => {
     const loadImage = (src) =>
-      new Promise((resolve, reject) => {
+      new Promise((res, rej) => {
         const img = new Image();
         img.crossOrigin = "anonymous";
-        img.onload = () => resolve(img);
-        img.onerror = () => reject();
+        img.onload = () => res(img);
+        img.onerror = rej;
         img.src = src;
       });
 
-    // ---------- 2 FLAGS (FULL CANVAS FIX + NO CUTTING) ----------
-    if (hasTwoFlags) {
-      Promise.all([
+    if (flag && flag2 && flagImages[flag] && flagImages[flag2]) {
+      const [img1, img2] = await Promise.all([
         loadImage(flagImages[flag]),
         loadImage(flagImages[flag2]),
-      ])
-        .then(([img1, img2]) => {
-          const gap = 10;
+      ]);
 
-          const boxWidth = CANVAS_WIDTH * 0.9;
-          const boxHeight = (CANVAS_HEIGHT - gap) / 2;
+      const gap = 10;
+      const boxWidth = CANVAS_WIDTH * 0.9;
+      const boxHeight = (CANVAS_HEIGHT - gap) / 2;
+      const x = (CANVAS_WIDTH - boxWidth) / 2;
 
-          const x = (CANVAS_WIDTH - boxWidth) / 2;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(x, 0, boxWidth, boxHeight);
+      ctx.fillRect(x, boxHeight + gap, boxWidth, boxHeight);
 
-          // 🔲 WHITE BOX 1 (TOP)
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(x, 0, boxWidth, boxHeight);
+      ctx.drawImage(img1, x, 0, boxWidth, boxHeight);
+      ctx.drawImage(img2, x, boxHeight + gap, boxWidth, boxHeight);
 
-          // 🔲 WHITE BOX 2 (BOTTOM)
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(x, boxHeight + gap, boxWidth, boxHeight);
-
-          // 🖼 FLAG 1
-          ctx.drawImage(img1, x, 0, boxWidth, boxHeight);
-
-          // 🖼 FLAG 2
-          ctx.drawImage(img2, x, boxHeight + gap, boxWidth, boxHeight);
-
-          finalize();
-        })
-        .catch(finalize);
-
-      return;
+      return true;
     }
 
-    // ---------- SINGLE FLAG ----------
     if (flag && flagImages[flag]) {
-      loadImage(flagImages[flag])
-        .then((img) => {
-          ctx.drawImage(
-            img,
-            0,
-            TEXT_HEIGHT,
-            CANVAS_WIDTH,
-            FLAG_HEIGHT
-          );
-          finalize();
-        })
-        .catch(finalize);
+      const img = await loadImage(flagImages[flag]);
 
-      return;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+
+      ctx.drawImage(img, 0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+
+      return true;
     }
 
-    // ---------- EMPTY ----------
-    finalize();
+    return false;
+  };
+
+  const drawLogo = async (ctx, logoPre, logoCustom) => {
+    let logoSrc = logoCustom;
+
+    if (!logoSrc && logoPre) {
+      const found = logos.find((l) => l.name === logoPre);
+      if (found?.file_path) {
+        logoSrc = `${BASE_URL}${found.file_path.replace(/\\/g, "/")}`;
+      }
+    }
+
+    if (!logoSrc) return false;
+
+    const img = await new Promise((res, rej) => {
+      const i = new Image();
+      i.crossOrigin = "anonymous";
+      i.onload = () => res(i);
+      i.onerror = rej;
+      i.src = logoSrc;
+    });
+
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+
+    const ratio = Math.min(
+      CANVAS_WIDTH / img.width,
+      FLAG_HEIGHT / img.height
+    );
+
+    const w = img.width * ratio * 0.8;
+    const h = img.height * ratio * 0.8;
+
+    const x = (CANVAS_WIDTH - w) / 2;
+    const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
+
+    ctx.drawImage(img, x, y, w, h);
+
+    return true;
   };
 
   const handleFlagSelect = (field) => {
