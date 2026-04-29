@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CheckCircle, ShoppingCart, Settings } from "lucide-react";
-import gold from '../assets/Student Life.jpg';
+import gold from '../assets/StudentLife.jpg';
 
 const SuccessScreen = ({ onContinueConfiguring, handleResetModal, onClose }) => {
   const [searchParams] = useSearchParams();
