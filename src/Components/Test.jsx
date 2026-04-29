@@ -45,7 +45,7 @@ const CANVAS_HEIGHT = 400;
 //   { name: 'Design 8', url: design8 },
 // ];
 
-export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, designColor }) {
+export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, designColor, backDesigns: propBackDesigns }) {
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const [objects, setObjects] = useState([]);
@@ -57,7 +57,8 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
   const [initialSize, setInitialSize] = useState({ w: 0, h: 0 });
   const [initialAngleOffset, setInitialAngleOffset] = useState(0);
 
-  const { backDesigns, loading, fetchBackDesigns } = useBackDesignStore();
+  const { backDesigns: storeBackDesigns, loading, fetchBackDesigns } = useBackDesignStore();
+  const backDesigns = propBackDesigns || storeBackDesigns;
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : null;
   const getClassId = user?.class_id;
@@ -78,6 +79,8 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
   }, [getClassId]);
 
   console.log("🎨 Current backDesigns:", backDesigns);
+  console.log("🎨 Current propBackDesigns:", propBackDesigns);
+  console.log("🎨 Current storeBackDesigns:", storeBackDesigns);
   console.log("🎨 Current pressureOptions.backDesign:", pressureOptions?.backDesign);
   console.log("🎨 Current objects.length:", objects.length);
 
@@ -110,9 +113,12 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
 
   // Load saved backDesign when pressureOptions change
   useEffect(() => {
+    console.log("🔄 pressureOptions.backDesign changed:", pressureOptions?.backDesign);
     if (pressureOptions?.backDesign) {
       const config = pressureOptions.backDesign;
+      console.log("🎯 Loading back design config:", config);
       loadImageSafe(config.src, (img) => {
+        console.log("✅ Back design image loaded successfully");
         setObjects([{
           id: 'uploadedImage',
           type: 'image',
@@ -125,6 +131,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
         setSelectedId('uploadedImage');
       });
     } else {
+      console.log("🚫 No back design in pressureOptions, clearing objects");
       setObjects([]);
       setSelectedId(null);
     }
@@ -240,8 +247,11 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    console.log("🎨 Drawing canvas with objects:", objects.length);
+
     // Draw all objects on main canvas (for diffuse)
     objects.forEach(obj => {
+      console.log("🖼️ Drawing object:", obj.id, obj.type);
       ctx.save();
       ctx.translate(obj.pos.x, obj.pos.y);
       ctx.rotate((obj.angle * Math.PI) / 180);
@@ -290,6 +300,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
 
     // Send to parent / PlayCanvas
     if (onUpdate && postEx && diffuseBase64 && opacityBase64) {
+      console.log("📤 Sending canvas data to PlayCanvas:", postEx);
       onUpdate({
         canvasBase64: {
           diffuse: postEx + "back_diffuse: " + diffuseBase64,
