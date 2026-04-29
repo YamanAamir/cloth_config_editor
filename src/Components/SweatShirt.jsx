@@ -11,7 +11,7 @@ import { ALL_FLAGS, getFlagUrl } from "../utils/flags";
 import { X, Search, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 
 
-const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
+const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
   const [activeTab, setActiveTab] = useState("size");
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [currentField, setCurrentField] = useState("");
@@ -923,6 +923,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos }) => {
           postEx="SweatShirt:"
           pressureOptions={pressureOptions}
           isAppReady={isAppReady}
+          backDesigns={backDesigns}
           onUpdate={(update) => {
             if (update.canvasBase64) {
               const { diffuse, opacity, emissive } = update.canvasBase64;

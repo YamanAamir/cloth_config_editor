@@ -6,7 +6,7 @@ import { BASE_URL } from "../utils/const";
 import { ALL_FLAGS } from "../utils/flags";
 import { X, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 
-const Hoodie = ({ data, onUpdate, isAppReady, logos }) => {
+const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
   const [activeTab, setActiveTab] = useState("size");
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [currentField, setCurrentField] = useState("");
@@ -496,7 +496,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos }) => {
         </>
       )}
       <div className={activeTab === "pressure" ? "mt-10" : ""} style={activeTab !== "pressure" ? { visibility: "hidden", position: "absolute", pointerEvents: "none", height: 0, overflow: "hidden" } : {}}>
-        <Test postEx="Hoodie:" pressureOptions={pressureOptions} isAppReady={isAppReady} onUpdate={u => {
+        <Test postEx="Hoodie:" pressureOptions={pressureOptions} isAppReady={isAppReady} backDesigns={backDesigns} onUpdate={u => {
           if (u.canvasBase64) { const { diffuse, opacity, emissive } = u.canvasBase64;["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) { f.contentWindow.postMessage(diffuse, "*"); f.contentWindow.postMessage(opacity, "*"); if (emissive) f.contentWindow.postMessage(emissive, "*"); } }); }
           if (u.backDesign !== undefined) onUpdate({ pressureOptions: { ...pressureOptions, backDesign: u.backDesign } });
         }} />

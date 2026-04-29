@@ -6,7 +6,7 @@ import { BASE_URL } from "../utils/const";
 import { ALL_FLAGS } from "../utils/flags";
 import { X, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 
-const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
+const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
   const [activeTab, setActiveTab] = useState("size");
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [currentField, setCurrentField] = useState("");
@@ -565,7 +565,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos }) => {
       )}
 
       <div className={activeTab === "pressure" ? "mt-10" : ""} style={activeTab !== "pressure" ? { visibility: 'hidden', position: 'absolute', pointerEvents: 'none', height: 0, overflow: 'hidden' } : {}}>
-        <Test postEx="ZipperHoodie:" pressureOptions={pressureOptions} isAppReady={isAppReady}
+        <Test postEx="ZipperHoodie:" pressureOptions={pressureOptions} isAppReady={isAppReady} backDesigns={backDesigns}
           onUpdate={(update) => {
             if (update.canvasBase64) {
               const { diffuse, opacity, emissive } = update.canvasBase64;

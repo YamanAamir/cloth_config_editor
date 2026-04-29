@@ -214,6 +214,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         }
     }, [school_id, fetchLogos]);
 
+    // Auto-fetch back designs on mount so Test.jsx gets them without button
     useEffect(() => {
         const classId = user?.class_id;
         if (classId) {
