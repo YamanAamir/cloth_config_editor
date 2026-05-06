@@ -38,10 +38,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             selectedColor: 'Red',
             selectedSize: '',
             pressureOptions: {
-                rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '',
-                leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '',
-                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
-                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
+                rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
+                leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
+                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
+                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
                 backDesign: null,
             }
         },
@@ -49,10 +49,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             selectedColor: 'Red',
             selectedSize: '',
             pressureOptions: {
-                rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '',
-                leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '',
-                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
-                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
+                rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
+                leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
+                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
+                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
                 backDesign: null,
             }
         },
@@ -60,11 +60,11 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             selectedColor: 'Red',
             selectedSize: '',
             pressureOptions: {
-                rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '',
-                leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '',
-                bottomChestText: '', bottomChestFlag: '', bottomChestLogoPredefined: '', bottomChestLogoCustom: '', bottomChestType: '',
-                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
-                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
+                rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
+                leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
+                bottomChestText: '', bottomChestFlag: '', bottomChestLogoPredefined: '', bottomChestLogoCustom: '', bottomChestType: '', bottomChestTextColor: '#ffffff',
+                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
+                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
                 backDesign: null,
             }
         },
@@ -72,10 +72,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             selectedColor: 'Red',
             selectedSize: '',
             pressureOptions: {
-                rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '',
-                leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '',
-                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '',
-                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '',
+                rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
+                leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
+                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
+                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
                 backDesign: null,
             }
         },
@@ -83,16 +83,16 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             selectedColor: 'Red',
             selectedSize: '',
             pressureOptions: {
-                rightLegText: '', rightLegFlag: '', rightLegLogoPredefined: '', rightLegLogoCustom: '', rightLegType: '',
-                leftLegText: '', leftLegFlag: '', leftLegLogoPredefined: '', leftLegLogoCustom: '', leftLegType: '',
+                rightLegText: '', rightLegFlag: '', rightLegLogoPredefined: '', rightLegLogoCustom: '', rightLegType: '', rightLegTextColor: '#ffffff',
+                leftLegText: '', leftLegFlag: '', leftLegLogoPredefined: '', leftLegLogoCustom: '', leftLegType: '', leftLegTextColor: '#ffffff',
             }
         },
         'SHORTS': {
             selectedColor: 'Red',
             selectedSize: '',
             pressureOptions: {
-                rightLegText: '', rightLegFlag: '', rightLegLogoPredefined: '', rightLegLogoCustom: '', rightLegType: '',
-                leftLegText: '', leftLegFlag: '', leftLegLogoPredefined: '', leftLegLogoCustom: '', leftLegType: '',
+                rightLegText: '', rightLegFlag: '', rightLegLogoPredefined: '', rightLegLogoCustom: '', rightLegType: '', rightLegTextColor: '#ffffff',
+                leftLegText: '', leftLegFlag: '', leftLegLogoPredefined: '', leftLegLogoCustom: '', leftLegType: '', leftLegTextColor: '#ffffff',
             }
         }
     };
@@ -267,9 +267,15 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         try {
             const resBackDesigns = await getMyClassBackDesigns();
             if (resBackDesigns.data?.success && resBackDesigns.data.data) {
-                const backDesigns = resBackDesigns.data.data;
-                // Find the most recent back design or the one that matches current class
-                const latestDesign = backDesigns.find(design => design.class_id === user?.class_id) || backDesigns[0];
+                const data = resBackDesigns.data.data;
+                // API single object ya array dono return kar sakta hai — dono handle karo
+                let latestDesign = null;
+                if (Array.isArray(data)) {
+                    latestDesign = data.find(design => design.class_id === user?.class_id) || data[0];
+                } else if (data && typeof data === 'object') {
+                    // Single object directly
+                    latestDesign = data;
+                }
                 if (latestDesign) {
                     setBackDesignStatus(latestDesign.approval_status);
                 }
@@ -509,6 +515,14 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                     if (match) {
                         const basePos = match[1];
                         const suffix = match[2]; // e.g., "Text", "Flag", "Type"
+
+                        // TextColor — sirf active garment pe apply karo, cross-garment sync nahi
+                        if (suffix === 'TextColor') {
+                            if (next[category].pressureOptions) {
+                                next[category].pressureOptions[key] = newValue;
+                            }
+                            return;
+                        }
 
                         // Map Chest to Leg for unified "side" selection
                         const mapping = {
@@ -766,7 +780,22 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         };
 
         window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
+
+        // Fallback: agar 15 seconds mein app:ready nahi aaya (WebGL fail etc.)
+        // toh bhi isAppReady true kar do taake UI block na ho
+        const fallbackTimer = setTimeout(() => {
+            setIsAppReady(prev => {
+                if (!prev) {
+                    console.warn("PlayCanvas app:ready timeout — WebGL may not be supported. Enabling UI anyway.");
+                }
+                return true;
+            });
+        }, 15000);
+
+        return () => {
+            window.removeEventListener('message', handleMessage);
+            clearTimeout(fallbackTimer);
+        };
     }, []);
 
     // Jab selected student change ho → uske customizations load karo
@@ -1278,13 +1307,21 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                     </div>
                                 </div>
                                 {/* Iframe Preview */}
-                                <div className="flex-1 rounded-b-2xl overflow-hidden">
+                                <div className="flex-1 rounded-b-2xl overflow-hidden relative">
+                                    {!isIframeLoaded && (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10">
+                                            <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                                            <p className="text-sm text-slate-500">Loading 3D Preview...</p>
+                                        </div>
+                                    )}
                                     <iframe
                                         id="preview-iframe"
                                         src={'https://playcanv.as/e/p/1b1eadeb/'}
                                         className="w-full h-full"
                                         frameBorder="0"
                                         title="3D Student Card Preview"
+                                        onLoad={() => setIsIframeLoaded(true)}
+                                        onError={() => setIsIframeLoaded(true)}
                                     />
                                 </div>
                             </div>
@@ -1332,17 +1369,25 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                   </p>
                 </div> */}
                                     <div
-                                        className="h-[calc(100%-60px)] rounded-b-2xl overflow-hidden"
+                                        className="h-[calc(100%-60px)] rounded-b-2xl overflow-hidden relative"
                                         style={{
                                             pointerEvents: isConfigOpen ? 'none' : 'auto',
                                         }}
                                     >
+                                        {!isIframeLoaded && (
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10">
+                                                <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                                                <p className="text-sm text-slate-500">Loading 3D Preview...</p>
+                                            </div>
+                                        )}
                                         <iframe
                                             id="preview-iframe2"
                                             src={'https://playcanv.as/e/p/1b1eadeb/'}
                                             className="w-full h-full"
                                             frameBorder="0"
                                             title="3D Student Card Preview"
+                                            onLoad={() => setIsIframeLoaded(true)}
+                                            onError={() => setIsIframeLoaded(true)}
                                         />
                                     </div>
                                 </div>

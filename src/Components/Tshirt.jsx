@@ -73,7 +73,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
     ctx.restore();
   };
 
-  const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false, hasSecondAsset = false, flagCount = 1, flag = "", flag2 = "") => {
+  const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false, hasSecondAsset = false, flagCount = 1, flag = "", flag2 = "", textColor = "#ffffff") => {
     const canvas = document.createElement("canvas");
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
@@ -82,7 +82,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
     if (text?.trim()) {
       let fontSize = 48;
       ctx.font = `bold ${fontSize}px Arial`;
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = "#ffffff"; // emissive mein hamesha white = print area
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
@@ -104,6 +104,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
     } else if (hasFlag || hasLogo) {
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+      ctx.fillStyle = "#000";
     }
 
     ctx.strokeStyle = "#000000";
@@ -112,7 +113,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
 
     return canvas.toDataURL("image/png");
   };
-  const getDiffuseBase64 = async (flag, logoPre, logoCustom, text, callback, flag2 = "") => {
+  const getDiffuseBase64 = async (flag, logoPre, logoCustom, text, callback, flag2 = "", textColor = "#ffffff", type = "") => {
     const canvas = document.createElement("canvas");
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
@@ -121,7 +122,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
     if (text?.trim()) {
       let fontSize = 48;
       ctx.font = `bold ${fontSize}px Arial`;
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = textColor;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
@@ -131,11 +132,14 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
       ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
     }
 
-    try {
-      const flagDrawn = await drawFlags(ctx, flag, flag2);
-      if (!flagDrawn) await drawLogo(ctx, logoPre, logoCustom);
-    } catch (e) {
-      console.error("Render error:", e);
+    // type === "" means text mode — flag/logo draw nahi karo
+    if (type !== "") {
+      try {
+        const flagDrawn = await drawFlags(ctx, flag, flag2);
+        if (!flagDrawn) await drawLogo(ctx, logoPre, logoCustom);
+      } catch (e) {
+        console.error("Render error:", e);
+      }
     }
 
     callback(canvas.toDataURL("image/png"));
@@ -342,6 +346,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
       const logoPre = pressureOptions[`${area}LogoPredefined`] || "";
       const logoCustom = pressureOptions[`${area}LogoCustom`] || "";
       const type = pressureOptions[`${area}Type`] || "";
+      const textColor = pressureOptions[`${area}TextColor`] || "#ffffff";
 
       const prev = prevPressureOptionsRef.current[area] || {};
       const hasChanged =
@@ -351,22 +356,24 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
         prev.flagCount !== flagCount ||
         prev.logoPre !== logoPre ||
         prev.logoCustom !== logoCustom ||
-        prev.type !== type;
+        prev.type !== type ||
+        prev.textColor !== textColor;
 
       if (!hasChanged) return;
 
-      prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type };
+      prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor };
 
       const hasFlag = !!flag && type === "flag";
       const hasLogo = !!(logoPre || logoCustom) && type === "logo";
       const hasSecondAsset = flagCount === 2 && !!flag && !!flag2;
 
-      const opacity = getEmissiveBase64(text, hasFlag, hasLogo, hasSecondAsset, flagCount, flag, flag2);
+      const opacity = getEmissiveBase64(text, hasFlag, hasLogo, hasSecondAsset, flagCount, flag, flag2, textColor);
 
       ["preview-iframe", "preview-iframe2"].forEach((id) => {
         const iframe = document.getElementById(id);
         if (iframe?.contentWindow) {
           iframe.contentWindow.postMessage(`T-Shirt:${area}_opacity: ${opacity}`, "*");
+          console.log("aassqwqwsasqwwsasasO", area, "-->", opacity);
         }
       });
 
@@ -375,9 +382,11 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
           const iframe = document.getElementById(id);
           if (iframe?.contentWindow) {
             iframe.contentWindow.postMessage(`T-Shirt:${area}_diffuse: ${diffuseBase}`, "*");
+            console.log("aassqwqwsasqwwsasasE", area, "-->", diffuseBase);
           }
+
         });
-      }, flag2);
+      }, flag2, textColor, type);
     });
   }, [isAppReady, pressureOptions]);
 
@@ -548,16 +557,40 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
                   </div>
 
                   {!pressureOptions[`${area}Type`] && (
-                    <div className="flex flex-wrap gap-2">
-                      <input type="text" value={pressureOptions[`${area}Text`]}
-                        onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
-                        placeholder="Enter text" maxLength={25}
-                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                      />
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <input type="text" value={pressureOptions[`${area}Text`]}
+                          onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
+                          placeholder="Enter text" maxLength={25}
+                          className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                        />
+                        {pressureOptions[`${area}Text`] && (
+                          <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                       {pressureOptions[`${area}Text`] && (
-                        <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 font-medium">Text color:</span>
+                          {["#ffffff", "#000000"].map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}TextColor`]: color } })}
+                              title={color === "#ffffff" ? "White" : "Black"}
+                              className="w-7 h-7 rounded-full border-2 transition-all"
+                              style={{
+                                backgroundColor: color,
+                                borderColor: (pressureOptions[`${area}TextColor`] || "#ffffff") === color ? "#16a34a" : "#d1d5db",
+                                boxShadow: (pressureOptions[`${area}TextColor`] || "#ffffff") === color ? "0 0 0 2px #16a34a" : "none",
+                              }}
+                            />
+                          ))}
+                          <span className="text-xs text-gray-400">
+                            {(pressureOptions[`${area}TextColor`] || "#ffffff") === "#ffffff" ? "White" : "Black"}
+                          </span>
+                        </div>
                       )}
                     </div>
                   )}
@@ -632,14 +665,38 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
                     ))}
                   </div>
                   {!pressureOptions[`${area}Type`] && (
-                    <div className="flex flex-wrap gap-2">
-                      <input type="text" value={pressureOptions[`${area}Text`]}
-                        onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
-                        placeholder="Enter text" maxLength={25}
-                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                      />
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <input type="text" value={pressureOptions[`${area}Text`]}
+                          onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
+                          placeholder="Enter text" maxLength={25}
+                          className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                        />
+                        {pressureOptions[`${area}Text`] && (
+                          <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>
+                        )}
+                      </div>
                       {pressureOptions[`${area}Text`] && (
-                        <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 font-medium">Text color:</span>
+                          {["#ffffff", "#000000"].map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}TextColor`]: color } })}
+                              title={color === "#ffffff" ? "White" : "Black"}
+                              className="w-7 h-7 rounded-full border-2 transition-all"
+                              style={{
+                                backgroundColor: color,
+                                borderColor: (pressureOptions[`${area}TextColor`] || "#ffffff") === color ? "#16a34a" : "#d1d5db",
+                                boxShadow: (pressureOptions[`${area}TextColor`] || "#ffffff") === color ? "0 0 0 2px #16a34a" : "none",
+                              }}
+                            />
+                          ))}
+                          <span className="text-xs text-gray-400">
+                            {(pressureOptions[`${area}TextColor`] || "#ffffff") === "#ffffff" ? "White" : "Black"}
+                          </span>
+                        </div>
                       )}
                     </div>
                   )}

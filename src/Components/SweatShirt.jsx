@@ -69,7 +69,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
   const FLAG_HEIGHT = 240;
   const CANVAS_HEIGHT = TEXT_HEIGHT + FLAG_HEIGHT;
 
-  const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false, hasSecondAsset = false) => {
+  const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false, hasSecondAsset = false, textColor = "#ffffff") => {
     const canvas = document.createElement("canvas");
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
@@ -79,7 +79,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
     if (text?.trim()) {
       let fontSize = 48;
       ctx.font = `bold ${fontSize}px Arial`;
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = "#ffffff"; // emissive = mask, text area hamesha white
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
@@ -215,7 +215,8 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
     text,
     callback,
     flag2 = "",
-    flagCount = 1
+    flagCount = 1,
+    textColor = "#ffffff"
   ) => {
     const canvas = document.createElement("canvas");
     canvas.width = CANVAS_WIDTH;
@@ -227,7 +228,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
       if (text?.trim()) {
         let fontSize = 48;
         ctx.font = `bold ${fontSize}px Arial`;
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = textColor;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
@@ -251,7 +252,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
       let fontSize = 48;
 
       ctx.font = `bold ${fontSize}px Arial`;
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = textColor;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
@@ -532,6 +533,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
       const logoPre = pressureOptions[`${area}LogoPredefined`] || "";
       const logoCustom = pressureOptions[`${area}LogoCustom`] || "";
       const type = pressureOptions[`${area}Type`] || "";
+      const textColor = pressureOptions[`${area}TextColor`] || "#ffffff";
 
       // Check if anything actually changed for this area
       const prev = prevPressureOptionsRef.current[area] || {};
@@ -542,19 +544,20 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
         prev.flagCount !== flagCount ||
         prev.logoPre !== logoPre ||
         prev.logoCustom !== logoCustom ||
-        prev.type !== type;
+        prev.type !== type ||
+        prev.textColor !== textColor;
 
       if (!hasChanged) return;
 
       // Update the ref for this area
-      prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type };
+      prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor };
 
       const hasText = text.length > 0;
       const hasFlag = !!flag && type === "flag";
       const hasLogo = !!(logoPre || logoCustom) && type === "logo";
       const hasSecondAsset = !!flag2;
       // Emissive
-      const opacity = getEmissiveBase64(text, hasFlag, hasLogo, hasSecondAsset);
+      const opacity = getEmissiveBase64(text, hasFlag, hasLogo, hasSecondAsset, textColor);
       ["preview-iframe", "preview-iframe2"].forEach((id) => {
         const iframe = document.getElementById(id);
         if (iframe?.contentWindow) {
@@ -576,7 +579,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
 
           }
         });
-      }, flag2, flagCount);
+      }, flag2, flagCount, textColor);
     });
   }, [isAppReady, pressureOptions]);
 
@@ -739,16 +742,32 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
 
                   {/* Text */}
                   {!pressureOptions[`${area}Type`] && (
-                    <div className="flex flex-wrap gap-2">
-                      <input type="text" value={pressureOptions[`${area}Text`]}
-                        onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
-                        placeholder="Enter text" maxLength={25}
-                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                      />
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <input type="text" value={pressureOptions[`${area}Text`]}
+                          onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
+                          placeholder="Enter text" maxLength={25}
+                          className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                        />
+                        {pressureOptions[`${area}Text`] && (
+                          <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                       {pressureOptions[`${area}Text`] && (
-                        <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 font-medium">Text color:</span>
+                          {["#ffffff", "#000000"].map((color) => (
+                            <button key={color} type="button"
+                              onClick={() => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}TextColor`]: color } })}
+                              title={color === "#ffffff" ? "White" : "Black"}
+                              className="w-7 h-7 rounded-full border-2 transition-all"
+                              style={{ backgroundColor: color, borderColor: (pressureOptions[`${area}TextColor`] || "#ffffff") === color ? "#16a34a" : "#d1d5db", boxShadow: (pressureOptions[`${area}TextColor`] || "#ffffff") === color ? "0 0 0 2px #16a34a" : "none" }}
+                            />
+                          ))}
+                          <span className="text-xs text-gray-400">{(pressureOptions[`${area}TextColor`] || "#ffffff") === "#ffffff" ? "White" : "Black"}</span>
+                        </div>
                       )}
                     </div>
                   )}
@@ -826,14 +845,30 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
                     ))}
                   </div>
                   {!pressureOptions[`${area}Type`] && (
-                    <div className="flex flex-wrap gap-2">
-                      <input type="text" value={pressureOptions[`${area}Text`]}
-                        onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
-                        placeholder="Enter text" maxLength={25}
-                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                      />
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <input type="text" value={pressureOptions[`${area}Text`]}
+                          onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
+                          placeholder="Enter text" maxLength={25}
+                          className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                        />
+                        {pressureOptions[`${area}Text`] && (
+                          <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>
+                        )}
+                      </div>
                       {pressureOptions[`${area}Text`] && (
-                        <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 font-medium">Text color:</span>
+                          {["#ffffff", "#000000"].map((color) => (
+                            <button key={color} type="button"
+                              onClick={() => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}TextColor`]: color } })}
+                              title={color === "#ffffff" ? "White" : "Black"}
+                              className="w-7 h-7 rounded-full border-2 transition-all"
+                              style={{ backgroundColor: color, borderColor: (pressureOptions[`${area}TextColor`] || "#ffffff") === color ? "#16a34a" : "#d1d5db", boxShadow: (pressureOptions[`${area}TextColor`] || "#ffffff") === color ? "0 0 0 2px #16a34a" : "none" }}
+                            />
+                          ))}
+                          <span className="text-xs text-gray-400">{(pressureOptions[`${area}TextColor`] || "#ffffff") === "#ffffff" ? "White" : "Black"}</span>
+                        </div>
                       )}
                     </div>
                   )}
