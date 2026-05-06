@@ -44,7 +44,7 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos }) => {
     return canvas.toDataURL("image/png");
   };
 
-  const getDiffuseBase64 = (flag, logoPre, logoCustom, text, callback, flag2 = "", flagCount = 1, textColor = "#ffffff") => {
+  const getDiffuseBase64 = (flag, logoPre, logoCustom, text, callback, flag2 = "", flagCount = 1, textColor = "#ffffff", type = "") => {
     const canvas = document.createElement("canvas");
     canvas.width = CANVAS_WIDTH; canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
@@ -60,7 +60,7 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos }) => {
       const img = new Image(); img.crossOrigin = "anonymous";
       img.onload = () => resolve(img); img.onerror = () => reject(); img.src = src;
     });
-    if (flag && flagImages[flag]) {
+    if (type !== "" && flag && flagImages[flag]) {
       if (flag2 && flagImages[flag2]) {
         Promise.all([loadImage(flagImages[flag]), loadImage(flagImages[flag2])])
           .then(([img1, img2]) => {
@@ -75,19 +75,21 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos }) => {
       }
       return;
     }
-    let logoSrc = logoCustom;
-    if (!logoSrc && logoPre) {
-      const found = logos.find(l => l.name === logoPre);
-      if (found?.file_path) logoSrc = `${BASE_URL}${found.file_path.replace(/\\/g, "/")}`;
-    }
-    if (logoSrc) {
-      loadImage(logoSrc).then(img => {
-        const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height);
-        const w = img.width * ratio * 0.9; const h = img.height * ratio * 0.9;
-        ctx.drawImage(img, (CANVAS_WIDTH - w) / 2, TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2, w, h);
-        finalize();
-      }).catch(finalize);
-      return;
+    if (type !== "") {
+      let logoSrc = logoCustom;
+      if (!logoSrc && logoPre) {
+        const found = logos.find(l => l.name === logoPre);
+        if (found?.file_path) logoSrc = `${BASE_URL}${found.file_path.replace(/\\/g, "/")}`;
+      }
+      if (logoSrc) {
+        loadImage(logoSrc).then(img => {
+          const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height);
+          const w = img.width * ratio * 0.9; const h = img.height * ratio * 0.9;
+          ctx.drawImage(img, (CANVAS_WIDTH - w) / 2, TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2, w, h);
+          finalize();
+        }).catch(finalize);
+        return;
+      }
     }
     finalize();
   };
@@ -162,7 +164,7 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos }) => {
       ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(`SweatPant:${area}_opacity: ${opacity}`, "*"); });
       getDiffuseBase64(flag, logoPre, logoCustom, text, diffuse => {
         ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(`SweatPant:${area}_diffuse: ${diffuse}`, "*"); });
-      }, flag2, flagCount, textColor);
+      }, flag2, flagCount, textColor, type);
     });
   }, [isAppReady, pressureOptions]);
 

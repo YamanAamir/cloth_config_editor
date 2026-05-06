@@ -55,7 +55,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos }) => {
     const ctx = canvas.getContext("2d");
     if (text?.trim()) {
       let fontSize = 48;
-      ctx.font = `bold ${fontSize}px Arial`; ctx.fillStyle = textColor;
+      ctx.font = `bold ${fontSize}px Arial`; ctx.fillStyle = "#ffffff"; // emissive = mask, hamesha white
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       while (ctx.measureText(text).width > dimensions.width - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
       ctx.fillText(text, dimensions.width / 2, TEXT_HEIGHT / 2);
@@ -75,7 +75,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos }) => {
     }
   };
 
-  const getDiffuseBase64 = (flag, logoPre, logoCustom, text, callback, flag2 = "", flagCount = 1, textColor = "#ffffff") => {
+  const getDiffuseBase64 = (flag, logoPre, logoCustom, text, callback, flag2 = "", flagCount = 1, textColor = "#ffffff", type = "") => {
     const canvas = document.createElement("canvas");
     
     // 🔥 Dynamic canvas dimensions based on flag count
@@ -134,7 +134,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos }) => {
       
       img.src = src;
     });
-    if (flag && flagImages[flag]) {
+    if (type !== "" && flag && flagImages[flag]) {
       if (flag2 && flagImages[flag2]) {
         console.log("🔍 Loading dual flags:", flagImages[flag], flagImages[flag2]);
         Promise.all([loadImage(flagImages[flag]), loadImage(flagImages[flag2])])
@@ -162,23 +162,25 @@ const Shorts = ({ data, onUpdate, isAppReady, logos }) => {
       }
       return;
     }
-    let logoSrc = logoCustom;
-    if (!logoSrc && logoPre) {
-      const found = logos.find(l => l.name === logoPre);
-      if (found?.file_path) logoSrc = `${BASE_URL}${found.file_path.replace(/\\/g, "/")}`;
-    }
-    if (logoSrc) {
-      console.log("🔍 Shorts loading logo:", logoSrc);
-      loadImage(logoSrc).then(img => {
-        const ratio = Math.min(dimensions.width / img.width, dimensions.flagHeight / img.height);
-        const w = img.width * ratio * 0.9; const h = img.height * ratio * 0.9;
-        ctx.drawImage(img, (dimensions.width - w) / 2, TEXT_HEIGHT + (dimensions.flagHeight - h) / 2, w, h);
-        finalize();
-      }).catch((error) => {
-        console.error("❌ Shorts logo failed:", logoSrc, error);
-        finalize(); // Continue without logo
-      });
-      return;
+    if (type !== "") {
+      let logoSrc = logoCustom;
+      if (!logoSrc && logoPre) {
+        const found = logos.find(l => l.name === logoPre);
+        if (found?.file_path) logoSrc = `${BASE_URL}${found.file_path.replace(/\\/g, "/")}`;
+      }
+      if (logoSrc) {
+        console.log("🔍 Shorts loading logo:", logoSrc);
+        loadImage(logoSrc).then(img => {
+          const ratio = Math.min(dimensions.width / img.width, dimensions.flagHeight / img.height);
+          const w = img.width * ratio * 0.9; const h = img.height * ratio * 0.9;
+          ctx.drawImage(img, (dimensions.width - w) / 2, TEXT_HEIGHT + (dimensions.flagHeight - h) / 2, w, h);
+          finalize();
+        }).catch((error) => {
+          console.error("❌ Shorts logo failed:", logoSrc, error);
+          finalize();
+        });
+        return;
+      }
     }
     finalize();
   };
@@ -257,7 +259,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos }) => {
       ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(`Short:${area}_opacity: ${opacity}`, "*"); });
       getDiffuseBase64(flag, logoPre, logoCustom, text, diffuse => {
         ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(`Short:${area}_diffuse: ${diffuse}`, "*"); });
-      }, flag2, flagCount, textColor);
+      }, flag2, flagCount, textColor, type);
     });
   }, [isAppReady, pressureOptions]);
 
