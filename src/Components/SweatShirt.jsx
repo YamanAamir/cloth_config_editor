@@ -208,6 +208,22 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
 
   //   finalize();
   // };
+  // ── Image cache — ek baar fetch, baad mein instant ──────────────────────
+  const logoImageCache = React.useRef({});
+
+  const loadImageCached = (src) => {
+    if (logoImageCache.current[src]) {
+      return Promise.resolve(logoImageCache.current[src]);
+    }
+    return new Promise((res, rej) => {
+      const i = new Image();
+      i.crossOrigin = "anonymous";
+      i.onload = () => { logoImageCache.current[src] = i; res(i); };
+      i.onerror = rej;
+      i.src = src;
+    });
+  };
+
   const getDiffuseBase64 = (
     flag,
     logoPre,
@@ -353,7 +369,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
     }
 
     if (logoSrc) {
-      loadImage(logoSrc)
+      loadImageCached(logoSrc)
         .then((img) => {
           const ratio = Math.min(
             CANVAS_WIDTH / img.width,
@@ -366,8 +382,30 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
           const x = (CANVAS_WIDTH - w) / 2;
           const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
 
+          // White background — cloth color logo ke peeche na dikhe
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
           ctx.drawImage(img, x, y, w, h);
-          finalize();
+
+          // Brightness-inverted opacity canvas
+          const opacityCanvas = document.createElement("canvas");
+          opacityCanvas.width = CANVAS_WIDTH;
+          opacityCanvas.height = CANVAS_HEIGHT;
+          const octx = opacityCanvas.getContext("2d");
+          octx.fillStyle = "#fff";
+          octx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+          octx.drawImage(img, x, y, w, h);
+          const imgData = octx.getImageData(0, 0, opacityCanvas.width, opacityCanvas.height);
+          for (let i = 0; i < imgData.data.length; i += 4) {
+            const brightness = 0.299 * imgData.data[i] + 0.587 * imgData.data[i + 1] + 0.114 * imgData.data[i + 2];
+            const alpha = imgData.data[i + 3];
+            const bw = (alpha < 10 || brightness > 128) ? 0 : 255;
+            imgData.data[i] = imgData.data[i + 1] = imgData.data[i + 2] = bw;
+            imgData.data[i + 3] = 255;
+          }
+          octx.putImageData(imgData, 0, 0);
+
+          callback(canvas.toDataURL("image/png"), opacityCanvas.toDataURL("image/png"));
         })
         .catch(finalize);
 
@@ -521,6 +559,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
 
   // Ref to track previous options to prevent unnecessary updates
   const prevPressureOptionsRef = React.useRef({});
+  const renderCounterRef = React.useRef({});
 
   useEffect(() => {
     const areas = ["rightChest", "leftChest", "rightSleeve", "leftSleeve"];
@@ -552,31 +591,42 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
       // Update the ref for this area
       prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor };
 
+      // Stale result prevention — renderCounterRef
+      const currentRender = (renderCounterRef.current[area] || 0) + 1;
+      renderCounterRef.current[area] = currentRender;
+
       const hasText = text.length > 0;
       const hasFlag = !!flag && type === "flag";
       const hasLogo = !!(logoPre || logoCustom) && type === "logo";
       const hasSecondAsset = !!flag2;
-      // Emissive
-      const opacity = getEmissiveBase64(text, hasFlag, hasLogo, hasSecondAsset, textColor);
-      ["preview-iframe", "preview-iframe2"].forEach((id) => {
-        const iframe = document.getElementById(id);
-        if (iframe?.contentWindow) {
-          const msg = `SweatShirt:${area}_opacity: ${opacity}`;
-          iframe.contentWindow.postMessage(msg, "*");
-          console.log("fahhh", msg);
 
-        }
-      });
+      // Logo ke liye opacity getDiffuseBase64 callback se aayega (brightness-inverted)
+      if (!hasLogo) {
+        const opacity = getEmissiveBase64(text, hasFlag, hasLogo, hasSecondAsset, textColor);
+        ["preview-iframe", "preview-iframe2"].forEach((id) => {
+          const iframe = document.getElementById(id);
+          if (iframe?.contentWindow) {
+            const msg = `SweatShirt:${area}_opacity: ${opacity}`;
+            iframe.contentWindow.postMessage(msg, "*");
+            console.log("fahhh", msg);
+          }
+        });
+      }
 
       // Diffuse — pass flag2 and flagCount
-      getDiffuseBase64(flag, logoPre, logoCustom, text, (diffuseBase) => {
+      getDiffuseBase64(flag, logoPre, logoCustom, text, (diffuseBase, logoOpacityBase) => {
+        // Stale check — agar logo switch ho gaya to purana result ignore
+        if (renderCounterRef.current[area] !== currentRender) return;
         ["preview-iframe", "preview-iframe2"].forEach((id) => {
           const iframe = document.getElementById(id);
           if (iframe?.contentWindow) {
             const msg = `SweatShirt:${area}_diffuse: ${diffuseBase}`;
             iframe.contentWindow.postMessage(msg, "*");
             console.log("fahhhhh", msg);
-
+            // Logo opacity — brightness-inverted
+            if (logoOpacityBase) {
+              iframe.contentWindow.postMessage(`SweatShirt:${area}_opacity: ${logoOpacityBase}`, "*");
+            }
           }
         });
       }, flag2, flagCount, textColor);
