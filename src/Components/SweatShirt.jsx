@@ -8,6 +8,7 @@ import logo3 from "../assets/Universitylogo/logo3.jpg";
 import logo4 from "../assets/Universitylogo/logo4.png";
 import { BASE_URL } from "../utils/const";
 import { ALL_FLAGS, getFlagUrl } from "../utils/flags";
+import { postToPreview } from "../utils/postMessage";
 import { X, Search, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 
 
@@ -97,6 +98,10 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
 
     // Add black border (mask) if flag or logo is present
     if (hasFlag || hasLogo) {
+
+      // black belt = no-print zone (matches diffuse)
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, 20);
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 40;
       ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
@@ -335,21 +340,34 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
     }
 
     // ---------- SINGLE FLAG ----------
+    // ---------- SINGLE FLAG ----------
     if (flag && flagImages[flag]) {
       loadImage(flagImages[flag])
         .then((img) => {
-          ctx.drawImage(
-            img,
-            0,
-            TEXT_HEIGHT,
-            CANVAS_WIDTH,
-            FLAG_HEIGHT
-          );
+
+          // white background
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH - 20, FLAG_HEIGHT);
+
+          // top black padding
+          ctx.fillStyle = "#000000";
+          ctx.fillRect(0, 120, canvas.width, 20);
+
+          // custom size
+          const targetWidth = CANVAS_WIDTH * 0.9;
+          const targetHeight = FLAG_HEIGHT * 0.85;
+
+          // centered position
+          const x = (CANVAS_WIDTH - targetWidth) / 2;
+          const y = TEXT_HEIGHT + (FLAG_HEIGHT - targetHeight) / 2;
+
+          ctx.drawImage(img, x, y, targetWidth, targetHeight);
+
           finalize();
         })
         .catch(finalize);
 
-      return; // ✅ important
+      return;
     }
 
     // ---------- LOGO ONLY ----------
@@ -419,6 +437,8 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
 
   const handleFlagSelect = (field) => {
     setCurrentField(field);
+    const area = field.replace("Flag", "").replace("LogoPredefined", "");
+    postToPreview(`sshirt ${area}`);
     setShowFlagModal(true);
   };
 
@@ -481,6 +501,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
   const getLogoDisplay = (logoName) => logoName || "";
 
   const handleTypeChange = (area, type) => {
+    postToPreview(`sshirt ${area}`);
     onUpdate({
       pressureOptions: {
         ...pressureOptions,
@@ -795,7 +816,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
                     <div className="space-y-2">
                       <div className="flex flex-wrap gap-2">
                         <input type="text" value={pressureOptions[`${area}Text`]}
-                          onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
+                          onChange={(e) => { onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } }); setTimeout(() => { postToPreview(`sshirt ${area}`); }, 0); }}
                           placeholder="Enter text" maxLength={25}
                           className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
                         />
@@ -882,6 +903,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
                       <button key={tab} type="button"
                         onClick={() => {
                           if (tab === "text") {
+                            postToPreview(`sshirt ${area}`);
                             onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Type`]: "", [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" } });
                           } else { handleTypeChange(area, tab); }
                         }}
@@ -898,7 +920,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
                     <div className="space-y-2">
                       <div className="flex flex-wrap gap-2">
                         <input type="text" value={pressureOptions[`${area}Text`]}
-                          onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
+                          onChange={(e) => { onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } }); setTimeout(() => { postToPreview(`sweatshirt ${area}`); }, 0); }}
                           placeholder="Enter text" maxLength={25}
                           className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
                         />

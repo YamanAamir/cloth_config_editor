@@ -4,6 +4,7 @@ import plus from "../assets/menuimages/shirt-plus.png";
 import Test1 from "./Test1";
 import { BASE_URL } from "../utils/const";
 import { ALL_FLAGS } from "../utils/flags";
+import { postToPreview } from "../utils/postMessage";
 import { X, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 
 const SweatPants = ({ data, onUpdate, isAppReady, logos }) => {
@@ -40,88 +41,340 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos }) => {
       ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
     }
     if (hasFlag || hasLogo) { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT); }
-    if (hasFlag || hasLogo) { ctx.strokeStyle = "#000000"; ctx.lineWidth = 40; ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10); }
+    if (hasFlag || hasLogo) {
+      // black belt = no-print zone (matches diffuse)
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, 20);
+      ctx.strokeStyle = "#000000"; ctx.lineWidth = 40;
+      ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+    }
     return canvas.toDataURL("image/png");
   };
 
-  const getDiffuseBase64 = async (flag, logoPre, logoCustom, text, callback, flag2 = "", flagCount = 1, textColor = "#ffffff", type = "") => {
-    const canvas = document.createElement("canvas");
-    canvas.width = CANVAS_WIDTH; canvas.height = CANVAS_HEIGHT;
-    const ctx = canvas.getContext("2d");
+  // const getDiffuseBase64 = async (flag, logoPre, logoCustom, text, callback, flag2 = "", flagCount = 1, textColor = "#ffffff", type = "") => {
+  //   const canvas = document.createElement("canvas");
+  //   canvas.width = CANVAS_WIDTH; canvas.height = CANVAS_HEIGHT;
+  //   const ctx = canvas.getContext("2d");
 
-    const loadImage = (src) => new Promise((resolve, reject) => {
-      const img = new Image(); img.crossOrigin = "anonymous";
-      img.onload = () => resolve(img); img.onerror = () => reject(); img.src = src;
+  //   const loadImage = (src) => new Promise((resolve, reject) => {
+  //     const img = new Image(); img.crossOrigin = "anonymous";
+  //     img.onload = () => resolve(img); img.onerror = () => reject(); img.src = src;
+  //   });
+
+  //   if (text?.trim()) {
+  //     let fontSize = 48;
+  //     ctx.font = `bold ${fontSize}px Arial`; ctx.fillStyle = textColor;
+  //     ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  //     while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
+  //     ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+  //   }
+
+  //   if (type !== "" && flag && flagImages[flag]) {
+  //     if (flag2 && flagImages[flag2]) {
+  //       try {
+  //         const [img1, img2] = await Promise.all([loadImage(flagImages[flag]), loadImage(flagImages[flag2])]);
+  //         const gap = 10; const flagH = FLAG_HEIGHT / 2;
+  //         const flagW = (CANVAS_WIDTH - gap) / 2; const startX = (CANVAS_WIDTH - flagW) / 2;
+  //         ctx.drawImage(img1, startX, TEXT_HEIGHT, flagW, flagH);
+  //         ctx.drawImage(img2, startX, TEXT_HEIGHT + flagH + gap, flagW, flagH - gap);
+  //       } catch (e) { /* render as-is */ }
+  //     } else {
+  //       try {
+  //         const img = await loadImage(flagImages[flag]);
+  //         ctx.drawImage(img, 0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+  //       } catch (e) { /* render as-is */ }
+  //     }
+  //     callback(canvas.toDataURL("image/png"));
+  //     return;
+  //   }
+
+  //   if (type !== "") {
+  //     let logoSrc = logoCustom;
+  //     if (!logoSrc && logoPre) {
+  //       const found = logos.find(l => l.name === logoPre);
+  //       if (found?.file_path) logoSrc = `${BASE_URL}${found.file_path.replace(/\\/g, "/")}`;
+  //     }
+  //     if (logoSrc) {
+  //       try {
+  //         const img = await loadImage(logoSrc);
+  //         const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height);
+  //         const w = img.width * ratio * 0.8; const h = img.height * ratio * 0.8;
+  //         const x = (CANVAS_WIDTH - w) / 2; const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
+
+  //         ctx.fillStyle = "#fff"; ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+  //         ctx.drawImage(img, x, y, w, h);
+
+  //         // Brightness-inverted opacity canvas
+  //         const opacityCanvas = document.createElement("canvas");
+  //         opacityCanvas.width = CANVAS_WIDTH; opacityCanvas.height = CANVAS_HEIGHT;
+  //         const octx = opacityCanvas.getContext("2d");
+  //         octx.fillStyle = "#fff"; octx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+  //         octx.drawImage(img, x, y, w, h);
+  //         const imgData = octx.getImageData(0, 0, opacityCanvas.width, opacityCanvas.height);
+  //         for (let i = 0; i < imgData.data.length; i += 4) {
+  //           const brightness = 0.299 * imgData.data[i] + 0.587 * imgData.data[i + 1] + 0.114 * imgData.data[i + 2];
+  //           const alpha = imgData.data[i + 3];
+  //           const bw = (alpha < 10 || brightness > 128) ? 0 : 255;
+  //           imgData.data[i] = imgData.data[i + 1] = imgData.data[i + 2] = bw;
+  //           imgData.data[i + 3] = 255;
+  //         }
+  //         octx.putImageData(imgData, 0, 0);
+  //         callback(canvas.toDataURL("image/png"), opacityCanvas.toDataURL("image/png"));
+  //         return;
+  //       } catch (e) { /* fall through */ }
+  //     }
+  //   }
+
+  //   callback(canvas.toDataURL("image/png"));
+  // };
+const getDiffuseBase64 = async (
+  flag,
+  logoPre,
+  logoCustom,
+  text,
+  callback,
+  flag2 = "",
+  flagCount = 1,
+  textColor = "#ffffff",
+  type = ""
+) => {
+  const canvas = document.createElement("canvas");
+  canvas.width = CANVAS_WIDTH;
+  canvas.height = CANVAS_HEIGHT;
+
+  const ctx = canvas.getContext("2d");
+
+  const loadImage = (src) =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+
+      img.onload = () => resolve(img);
+      img.onerror = () => reject();
+
+      img.src = src;
     });
 
-    if (text?.trim()) {
-      let fontSize = 48;
-      ctx.font = `bold ${fontSize}px Arial`; ctx.fillStyle = textColor;
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+  // ---------- TEXT ----------
+  if (text?.trim()) {
+    let fontSize = 48;
+
+    ctx.font = `bold ${fontSize}px Arial`;
+    ctx.fillStyle = textColor;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    while (
+      ctx.measureText(text).width > CANVAS_WIDTH - 80 &&
+      fontSize > 28
+    ) {
+      fontSize -= 2;
+      ctx.font = `bold ${fontSize}px Arial`;
     }
 
-    if (type !== "" && flag && flagImages[flag]) {
-      if (flag2 && flagImages[flag2]) {
-        try {
-          const [img1, img2] = await Promise.all([loadImage(flagImages[flag]), loadImage(flagImages[flag2])]);
-          const gap = 10; const flagH = FLAG_HEIGHT / 2;
-          const flagW = (CANVAS_WIDTH - gap) / 2; const startX = (CANVAS_WIDTH - flagW) / 2;
-          ctx.drawImage(img1, startX, TEXT_HEIGHT, flagW, flagH);
-          ctx.drawImage(img2, startX, TEXT_HEIGHT + flagH + gap, flagW, flagH - gap);
-        } catch (e) { /* render as-is */ }
-      } else {
-        try {
-          const img = await loadImage(flagImages[flag]);
-          ctx.drawImage(img, 0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-        } catch (e) { /* render as-is */ }
-      }
-      callback(canvas.toDataURL("image/png"));
-      return;
-    }
+    ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+  }
 
-    if (type !== "") {
-      let logoSrc = logoCustom;
-      if (!logoSrc && logoPre) {
-        const found = logos.find(l => l.name === logoPre);
-        if (found?.file_path) logoSrc = `${BASE_URL}${found.file_path.replace(/\\/g, "/")}`;
-      }
-      if (logoSrc) {
-        try {
-          const img = await loadImage(logoSrc);
-          const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height);
-          const w = img.width * ratio * 0.8; const h = img.height * ratio * 0.8;
-          const x = (CANVAS_WIDTH - w) / 2; const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
+  // ---------- DOUBLE FLAG ----------
+  if (
+    type === "flag" &&
+    flag &&
+    flag2 &&
+    flagImages[flag] &&
+    flagImages[flag2]
+  ) {
+    try {
+      const [img1, img2] = await Promise.all([
+        loadImage(flagImages[flag]),
+        loadImage(flagImages[flag2]),
+      ]);
 
-          ctx.fillStyle = "#fff"; ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-          ctx.drawImage(img, x, y, w, h);
+      // white background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
 
-          // Brightness-inverted opacity canvas
-          const opacityCanvas = document.createElement("canvas");
-          opacityCanvas.width = CANVAS_WIDTH; opacityCanvas.height = CANVAS_HEIGHT;
-          const octx = opacityCanvas.getContext("2d");
-          octx.fillStyle = "#fff"; octx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-          octx.drawImage(img, x, y, w, h);
-          const imgData = octx.getImageData(0, 0, opacityCanvas.width, opacityCanvas.height);
-          for (let i = 0; i < imgData.data.length; i += 4) {
-            const brightness = 0.299 * imgData.data[i] + 0.587 * imgData.data[i + 1] + 0.114 * imgData.data[i + 2];
-            const alpha = imgData.data[i + 3];
-            const bw = (alpha < 10 || brightness > 128) ? 0 : 255;
-            imgData.data[i] = imgData.data[i + 1] = imgData.data[i + 2] = bw;
-            imgData.data[i + 3] = 255;
-          }
-          octx.putImageData(imgData, 0, 0);
-          callback(canvas.toDataURL("image/png"), opacityCanvas.toDataURL("image/png"));
-          return;
-        } catch (e) { /* fall through */ }
-      }
-    }
+      // black top belt
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, 20);
+
+      const gap = 12;
+
+      const availableHeight = FLAG_HEIGHT - 40;
+      const eachHeight = (availableHeight - gap) / 2;
+
+      const flagWidth = CANVAS_WIDTH * 0.88;
+
+      const x = (CANVAS_WIDTH - flagWidth) / 2;
+
+      const y1 = TEXT_HEIGHT + 25;
+      const y2 = y1 + eachHeight + gap;
+
+      ctx.drawImage(img1, x, y1, flagWidth, eachHeight);
+      ctx.drawImage(img2, x, y2, flagWidth, eachHeight);
+    } catch (e) {}
 
     callback(canvas.toDataURL("image/png"));
-  };
+    return;
+  }
 
-  const handleFlagSelect = (field) => { setCurrentField(field); setShowFlagModal(true); };
+  // ---------- SINGLE FLAG ----------
+  if (type === "flag" && flag && flagImages[flag]) {
+    const finalize = () => {
+      callback(canvas.toDataURL("image/png"));
+    };
+
+    loadImage(flagImages[flag])
+      .then((img) => {
+        // white background
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+
+        // top black padding / belt
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, 20);
+
+        // flag size
+        const targetWidth = CANVAS_WIDTH * 0.9;
+        const targetHeight = FLAG_HEIGHT * 0.85;
+
+        // centered position
+        const x = (CANVAS_WIDTH - targetWidth) / 2;
+        const y =
+          TEXT_HEIGHT + (FLAG_HEIGHT - targetHeight) / 2;
+
+        // draw flag
+        ctx.drawImage(
+          img,
+          x,
+          y,
+          targetWidth,
+          targetHeight
+        );
+
+        finalize();
+      })
+      .catch(finalize);
+
+    return;
+  }
+
+  // ---------- LOGO ----------
+  if (type === "logo") {
+    let logoSrc = logoCustom;
+
+    if (!logoSrc && logoPre) {
+      const found = logos.find((l) => l.name === logoPre);
+
+      if (found?.file_path) {
+        logoSrc = `${BASE_URL}${found.file_path.replace(
+          /\\/g,
+          "/"
+        )}`;
+      }
+    }
+
+    if (logoSrc) {
+      try {
+        const img = await loadImage(logoSrc);
+
+        const ratio = Math.min(
+          CANVAS_WIDTH / img.width,
+          FLAG_HEIGHT / img.height
+        );
+
+        const w = img.width * ratio * 0.8;
+        const h = img.height * ratio * 0.8;
+
+        const x = (CANVAS_WIDTH - w) / 2;
+        const y =
+          TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
+
+        // white bg
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(
+          0,
+          TEXT_HEIGHT,
+          CANVAS_WIDTH,
+          FLAG_HEIGHT
+        );
+
+        // black belt
+        ctx.fillStyle = "#000";
+        ctx.fillRect(
+          0,
+          TEXT_HEIGHT,
+          CANVAS_WIDTH,
+          20
+        );
+
+        ctx.drawImage(img, x, y, w, h);
+
+        // ---------- OPACITY MAP ----------
+        const opacityCanvas =
+          document.createElement("canvas");
+
+        opacityCanvas.width = CANVAS_WIDTH;
+        opacityCanvas.height = CANVAS_HEIGHT;
+
+        const octx =
+          opacityCanvas.getContext("2d");
+
+        octx.fillStyle = "#fff";
+        octx.fillRect(
+          0,
+          TEXT_HEIGHT,
+          CANVAS_WIDTH,
+          FLAG_HEIGHT
+        );
+
+        octx.drawImage(img, x, y, w, h);
+
+        const imgData = octx.getImageData(
+          0,
+          0,
+          opacityCanvas.width,
+          opacityCanvas.height
+        );
+
+        for (let i = 0; i < imgData.data.length; i += 4) {
+          const brightness =
+            0.299 * imgData.data[i] +
+            0.587 * imgData.data[i + 1] +
+            0.114 * imgData.data[i + 2];
+
+          const alpha = imgData.data[i + 3];
+
+          const bw =
+            alpha < 10 || brightness > 128
+              ? 0
+              : 255;
+
+          imgData.data[i] = bw;
+          imgData.data[i + 1] = bw;
+          imgData.data[i + 2] = bw;
+          imgData.data[i + 3] = 255;
+        }
+
+        octx.putImageData(imgData, 0, 0);
+
+        callback(
+          canvas.toDataURL("image/png"),
+          opacityCanvas.toDataURL("image/png")
+        );
+
+        return;
+      } catch (e) {}
+    }
+  }
+
+  callback(canvas.toDataURL("image/png"));
+};
+  const handleFlagSelect = (field) => {
+    setCurrentField(field);
+    const area = field.replace("Flag", "").replace("LogoPredefined", "");
+    postToPreview(`pant ${area}`);
+    setShowFlagModal(true);
+  };
   const selectFlag = (countryName) => { onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: countryName } }); setShowFlagModal(false); };
   const selectLogo = (logoName, logoId) => { onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: logoName, selectedLogoId: logoId } }); setShowFlagModal(false); };
   const clearField = (field) => { onUpdate({ pressureOptions: { ...pressureOptions, [field]: "" } }); };
@@ -129,13 +382,14 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos }) => {
   const getLogoDisplay = (n) => n || "";
 
   const handleTypeChange = (area, type) => {
+    postToPreview(`pant ${area}`);
     onUpdate({
       pressureOptions: {
         ...pressureOptions,
         [`${area}Type`]: type, [`${area}Text`]: "",
         ...(type === "flag" ? { [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" }
           : type === "logo" ? { [`${area}Flag`]: "" }
-          : { [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" }),
+            : { [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" }),
       },
     });
   };
@@ -230,7 +484,7 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos }) => {
           {["text", "flag", "logo"].map(tab => (
             <button key={tab} type="button"
               onClick={() => {
-                if (tab === "text") onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Type`]: "", [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" } });
+                if (tab === "text") { postToPreview(`pant ${area}`); onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Type`]: "", [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" } }); }
                 else handleTypeChange(area, tab);
               }}
               className={`flex-1 py-2 text-xs font-bold capitalize transition-all ${pressureOptions[`${area}Type`] === tab || (tab === "text" && !pressureOptions[`${area}Type`]) ? "bg-green-700 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
@@ -244,7 +498,7 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos }) => {
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
               <input type="text" value={pressureOptions[`${area}Text`]}
-                onChange={e => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
+                onChange={e => { onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } }); setTimeout(() => { postToPreview(`pant ${area}`); }, 0); }}
                 placeholder="Enter text" maxLength={25}
                 className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
               />

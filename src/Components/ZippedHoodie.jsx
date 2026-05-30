@@ -4,6 +4,7 @@ import plus from "../assets/menuimages/shirt-plus.png";
 import Test from "./Test";
 import { BASE_URL } from "../utils/const";
 import { ALL_FLAGS } from "../utils/flags";
+import { postToPreview } from "../utils/postMessage";
 import { X, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 
 const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
@@ -58,6 +59,9 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
 
     // Add black border (mask) if flag or logo is present
     if (hasFlag || hasLogo) {
+      // black belt = no-print zone (matches diffuse)
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, 20);
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 40;
       ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
@@ -162,15 +166,48 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
     }
 
     // ---------- SINGLE FLAG ----------
+    // if (flag && flagImages[flag]) {
+    //   try {
+    //     const img = await loadImage(flagImages[flag]);
+    //     ctx.drawImage(img, 0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+    //   } catch (e) { /* render as-is */ }
+    //   callback(canvas.toDataURL("image/png"));
+    //   return;
+    // }
+    // ---------- SINGLE FLAG ----------
     if (flag && flagImages[flag]) {
-      try {
-        const img = await loadImage(flagImages[flag]);
-        ctx.drawImage(img, 0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-      } catch (e) { /* render as-is */ }
-      callback(canvas.toDataURL("image/png"));
+      const finalize = () => {
+        callback(canvas.toDataURL("image/png"));
+      };
+
+      loadImage(flagImages[flag])
+        .then((img) => {
+
+          // white background
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+
+          // top black padding / belt
+          ctx.fillStyle = "#000000";
+          ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, 20);
+
+          // flag size
+          const targetWidth = CANVAS_WIDTH * 0.9;
+          const targetHeight = FLAG_HEIGHT * 0.85;
+
+          // centered position
+          const x = (CANVAS_WIDTH - targetWidth) / 2;
+          const y = TEXT_HEIGHT + (FLAG_HEIGHT - targetHeight) / 2;
+
+          // draw flag
+          ctx.drawImage(img, x, y, targetWidth, targetHeight);
+
+          finalize();
+        })
+        .catch(finalize);
+
       return;
     }
-
     // ---------- LOGO ONLY ----------
     let logoSrc = logoCustom;
     if (!logoSrc && logoPre) {
@@ -215,7 +252,12 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
     callback(canvas.toDataURL("image/png"));
   };
 
-  const handleFlagSelect = (field) => { setCurrentField(field); setShowFlagModal(true); };
+  const handleFlagSelect = (field) => {
+    setCurrentField(field);
+    const area = field.replace("Flag", "").replace("LogoPredefined", "");
+    postToPreview(`zhoodie ${area}`);
+    setShowFlagModal(true);
+  };
   const selectFlag = (countryName) => { onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: countryName } }); setShowFlagModal(false); };
   const selectLogo = (logoName, logoId) => { onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: logoName, selectedLogoId: logoId } }); setShowFlagModal(false); };
   const clearField = (field) => { onUpdate({ pressureOptions: { ...pressureOptions, [field]: "" } }); };
@@ -223,6 +265,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
   const getLogoDisplay = (logoName) => logoName || "";
 
   const handleTypeChange = (area, type) => {
+    postToPreview(`zhoodie ${area}`);
     onUpdate({
       pressureOptions: {
         ...pressureOptions,
@@ -349,6 +392,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
             <button key={tab} type="button"
               onClick={() => {
                 if (tab === "text") {
+                  postToPreview(`zhoodie ${area}`);
                   onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Type`]: "", [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" } });
                 } else { handleTypeChange(area, tab); }
               }}
@@ -363,7 +407,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
               <input type="text" value={pressureOptions[`${area}Text`]}
-                onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
+                onChange={(e) => { onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } }); setTimeout(() => { postToPreview(`zhoodie ${area}`); }, 0); }}
                 placeholder="Enter text" maxLength={25}
                 className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
               />
@@ -420,6 +464,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
             <button key={tab} type="button"
               onClick={() => {
                 if (tab === "text") {
+                  postToPreview(`zhoodie ${area}`);
                   onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Type`]: "", [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" } });
                 } else { handleTypeChange(area, tab); }
               }}
@@ -434,7 +479,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
               <input type="text" value={pressureOptions[`${area}Text`]}
-                onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
+                onChange={(e) => { onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } }); setTimeout(() => { postToPreview(`zhoodie ${area}`); }, 0); }}
                 placeholder="Enter text" maxLength={25}
                 className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
               />

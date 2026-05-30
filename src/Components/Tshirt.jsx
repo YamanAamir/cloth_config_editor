@@ -4,6 +4,7 @@
   import Test from "./Test";
   import { BASE_URL } from "../utils/const";
   import { ALL_FLAGS, getFlagUrl } from "../utils/flags";
+  import { postToPreview } from "../utils/postMessage";
   import { X, Search, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 
 
@@ -104,7 +105,10 @@
       } else if (hasFlag || hasLogo) {
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-        ctx.fillStyle = "#000";
+
+        // black belt = no-print zone (matches diffuse)
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, 20);
       }
 
       ctx.strokeStyle = "#000000";
@@ -219,8 +223,17 @@
         const img = await loadImage(flagImages[flag]);
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-        // SweatShirt jaisa — stretch fit, poora area fill
-        ctx.drawImage(img, 0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+
+        // black belt strip at top of flag area
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, 20);
+
+        // smaller flag — centered with padding
+        const targetWidth = CANVAS_WIDTH * 0.9;
+        const targetHeight = FLAG_HEIGHT * 0.85;
+        const x = (CANVAS_WIDTH - targetWidth) / 2;
+        const y = TEXT_HEIGHT + (FLAG_HEIGHT - targetHeight) / 2;
+        ctx.drawImage(img, x, y, targetWidth, targetHeight);
         return true;
       }
 
@@ -277,6 +290,8 @@
 
     const handleFlagSelect = (field) => {
       setCurrentField(field);
+      const area = field.replace("Flag", "").replace("LogoPredefined", "");
+      postToPreview(`tshirt ${area}`);
       setShowFlagModal(true);
     };
 
@@ -337,6 +352,7 @@
     const getLogoDisplay = (logoName) => logoName || "";
 
     const handleTypeChange = (area, type) => {
+      postToPreview(`tshirt ${area}`);
       onUpdate({
         pressureOptions: {
           ...pressureOptions,
@@ -627,7 +643,10 @@
                       <div className="space-y-2">
                         <div className="flex flex-wrap gap-2">
                           <input type="text" value={pressureOptions[`${area}Text`]}
-                            onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
+                            onChange={(e) => {
+                              onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } });
+                              setTimeout(() => { postToPreview(`tshirt ${area}`); }, 0);
+                            }}
                             placeholder="Enter text" maxLength={25}
                             className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
                           />
@@ -719,6 +738,7 @@
                         <button key={tab} type="button"
                           onClick={() => {
                             if (tab === "text") {
+                              postToPreview(`tshirt ${area}`);
                               onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Type`]: "", [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" } });
                             } else { handleTypeChange(area, tab); }
                           }}
@@ -735,7 +755,10 @@
                       <div className="space-y-2">
                         <div className="flex flex-wrap gap-2">
                           <input type="text" value={pressureOptions[`${area}Text`]}
-                            onChange={(e) => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } })}
+                            onChange={(e) => {
+                              onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } });
+                              setTimeout(() => { postToPreview(`tshirt ${area}`); }, 0);
+                            }}
                             placeholder="Enter text" maxLength={25}
                             className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
                           />
