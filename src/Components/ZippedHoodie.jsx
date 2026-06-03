@@ -7,8 +7,10 @@ import { ALL_FLAGS } from "../utils/flags";
 import { postToPreview } from "../utils/postMessage";
 import { X, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 
-const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
-  const [activeTab, setActiveTab] = useState("size");
+const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText = 25, activeTab: externalTab }) => {
+  const [internalTab, setInternalTab] = useState("size");
+  const activeTab = externalTab || internalTab;
+  const setActiveTab = externalTab ? () => {} : setInternalTab;
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [currentField, setCurrentField] = useState("");
 
@@ -408,10 +410,15 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
             <div className="flex flex-wrap gap-2">
               <input type="text" value={pressureOptions[`${area}Text`]}
                 onChange={(e) => { onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } }); setTimeout(() => { postToPreview(`zhoodie ${area}`); }, 0); }}
-                placeholder="Enter text" maxLength={25}
+                placeholder="Enter text" maxLength={maxCharsText}
                 className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
               />
               {pressureOptions[`${area}Text`] && <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
+            </div>
+            <div className="flex justify-end">
+              <span className={`text-xs font-medium ${(pressureOptions[`${area}Text`]?.length || 0) >= maxCharsText ? 'text-red-500' : 'text-gray-400'}`}>
+                {pressureOptions[`${area}Text`]?.length || 0}/{maxCharsText}
+              </span>
             </div>
             {pressureOptions[`${area}Text`] && (
               <div className="flex items-center gap-2">
@@ -480,10 +487,15 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
             <div className="flex flex-wrap gap-2">
               <input type="text" value={pressureOptions[`${area}Text`]}
                 onChange={(e) => { onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } }); setTimeout(() => { postToPreview(`zhoodie ${area}`); }, 0); }}
-                placeholder="Enter text" maxLength={25}
+                placeholder="Enter text" maxLength={maxCharsText}
                 className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
               />
               {pressureOptions[`${area}Text`] && <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
+            </div>
+            <div className="flex justify-end">
+              <span className={`text-xs font-medium ${(pressureOptions[`${area}Text`]?.length || 0) >= maxCharsText ? 'text-red-500' : 'text-gray-400'}`}>
+                {pressureOptions[`${area}Text`]?.length || 0}/{maxCharsText}
+              </span>
             </div>
             {pressureOptions[`${area}Text`] && (
               <div className="flex items-center gap-2">
@@ -556,7 +568,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
 
   return (
     <div className="max-w-md mx-auto p-6 bg-gray-50">
-      <div className="flex gap-4 mb-8">
+      {/* <div className="flex gap-4 mb-8">
         <button onClick={() => setActiveTab("size")} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeTab === "size" ? "bg-white shadow-sm border-2 border-green-700" : "bg-white border-2 border-transparent hover:border-gray-300"}`}>
           <span className="font-medium text-gray-900">Size and color</span>
           <img className="w-10" src={cog} alt="settings" />
@@ -565,37 +577,31 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns }) => {
           <span className="font-medium text-gray-900">Pressure</span>
           <img className="w-10" src={plus} alt="add" />
         </button>
-      </div>
+      </div> */}
 
       {activeTab === "size" ? (
         <>
           <h1 className="text-3xl font-bold mb-8 text-gray-900">Zipper Hoodie</h1>
-          <div className="mb-8">
-            <h2 className="text-sm font-semibold mb-4 text-gray-700">Color</h2>
-            <div className="grid grid-cols-4 gap-4">
-              {colors.map((color) => (
-                <div key={color.name} className="flex flex-col items-center">
-                  <button onClick={() => onUpdate({ selectedColor: color.name })}
-                    className="relative w-12 h-12 rounded-lg transition-all focus:outline-none"
-                    style={{ backgroundColor: color.value, border: selectedColor === color.name ? `3px solid ${color.border}` : `1px solid ${color.border}`, boxShadow: selectedColor === color.name ? `0 0 0 2px white, 0 0 0 4px ${color.border}` : "none" }}
-                  >
-                    {selectedColor === color.name && <div className="absolute inset-0 rounded-lg border-2 border-white pointer-events-none" />}
-                  </button>
-                  <span className="text-xs mt-2 text-center text-gray-700">{color.name}</span>
-                </div>
+           {/* Color — 2-row grid */}
+          <div className="mb-4">
+            <h2 className="text-xs font-semibold mb-2 text-gray-500 uppercase tracking-wide">Color</h2>
+            <div className="grid grid-flow-col grid-rows-1 gap-2 w-fit">
+              {colors.map(c => (
+                <button key={c.name} title={c.name} onClick={() => onUpdate({ selectedColor: c.name })}
+                  className="relative w-8 h-8 rounded-md transition-all focus:outline-none"
+                  style={{ backgroundColor: c.value, border: selectedColor === c.name ? `2px solid ${c.border}` : `1px solid ${c.border}`, boxShadow: selectedColor === c.name ? `0 0 0 2px white, 0 0 0 3px ${c.border}` : "none" }}>
+                  {selectedColor === c.name && <div className="absolute inset-0 rounded-md border border-white pointer-events-none" />}
+                </button>
               ))}
             </div>
+            {selectedColor && <p className="text-xs text-gray-500 mt-1.5">{selectedColor}</p>}
           </div>
-          <div>
-            <h2 className="text-sm font-semibold mb-4 text-gray-700">Size</h2>
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {sizes.map((size) => (
-                <button key={size} onClick={() => onUpdate({ selectedSize: size })}
-                  className={`py-3 px-4 rounded-lg border-2 transition-all font-medium ${selectedSize === size ? "border-gray-900 bg-white text-gray-900" : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"}`}
-                >{size}</button>
-              ))}
+          {/* Size */}
+          <div className="mb-5">
+            <h2 className="text-xs font-semibold mb-2 text-gray-500 uppercase tracking-wide">Size</h2>
+            <div className="flex flex-wrap gap-2">
+              {sizes.map(s => <button key={s} onClick={() => onUpdate({ selectedSize: s })} className={`py-1.5 px-3 rounded-lg border-2 transition-all font-medium text-sm ${selectedSize === s ? "border-gray-900 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"}`}>{s}</button>)}
             </div>
-            <a href="#" className="text-sm text-green-600 hover:underline">Size guide</a>
           </div>
         </>
       ) : (

@@ -97,18 +97,18 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         }
     };
 
-    const { fetchSettings, getGarmentPrice, getVat } = useSettingsStore();
+    const { fetchSettings, getGarmentPrice, getVat, getMaxCharsClothText } = useSettingsStore();
 
     // Fetch settings on mount
     useEffect(() => { fetchSettings(); }, []);
 
     const GARMENT_PRICES = {
-        'T-SHIRT':      getGarmentPrice('T-SHIRT')      || 1200,
-        'SWEATSHIRT':   getGarmentPrice('SWEATSHIRT')   || 1500,
-        'HOODIE':       getGarmentPrice('HOODIE')        || 2000,
+        'T-SHIRT': getGarmentPrice('T-SHIRT') || 1200,
+        'SWEATSHIRT': getGarmentPrice('SWEATSHIRT') || 1500,
+        'HOODIE': getGarmentPrice('HOODIE') || 2000,
         'ZIPPERHOODIE': getGarmentPrice('ZIPPERHOODIE') || 2200,
-        'SWEATPANTS':   getGarmentPrice('SWEATPANTS')   || 2000,
-        'SHORTS':       getGarmentPrice('SHORTS')        || 1500,
+        'SWEATPANTS': getGarmentPrice('SWEATPANTS') || 2000,
+        'SHORTS': getGarmentPrice('SHORTS') || 1500,
     };
 
     const isGarmentConfigured = (garmentType, garmentData) => {
@@ -143,6 +143,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
     // 2. State
     const [allSelections, setAllSelections] = useState(DEFAULT_SELECTIONS);
     const [activeMenu, setActiveMenu] = useState('T-SHIRT');
+    const [garmentTab, setGarmentTab] = useState('size'); // 'size' | 'pressure'
     const [backDesignKey, setBackDesignKey] = useState(0); // force Test remount on page switch
     const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
     const [profileData, setProfileData] = useState(null);
@@ -304,7 +305,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
 
     const handleResetOrder = async () => {
         console.log("🔄 Reset button clicked, orderId:", orderId);
-        
+
         if (!orderId) {
             message.error("No active order found to reset.");
             return;
@@ -315,21 +316,21 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             console.log("🔄 Calling resetOrder API with orderId:", orderId);
             const response = await resetOrder(orderId);
             console.log("🔄 Reset response:", response);
-            
+
             if (response.data?.success) {
                 message.success("Order reset successfully! Starting fresh design.");
-                
+
                 // Reset local state to defaults
                 setAllSelections(DEFAULT_SELECTIONS);
                 setCustomizations(prev => ({
                     ...prev,
                     [selectedStudent]: DEFAULT_SELECTIONS
                 }));
-                
+
                 // Refresh data
                 await fetchOrderData();
                 await fetchHistoryData();
-                
+
                 setShowResetModal(false);
             }
         } catch (err) {
@@ -346,18 +347,18 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             const response = await createFreshOrder();
             if (response.data?.success) {
                 message.success("Fresh order created! Start designing from scratch.");
-                
+
                 // Reset local state to defaults
                 setAllSelections(DEFAULT_SELECTIONS);
                 setCustomizations(prev => ({
                     ...prev,
                     [selectedStudent]: DEFAULT_SELECTIONS
                 }));
-                
+
                 // Refresh data
                 await fetchOrderData();
                 await fetchHistoryData();
-                
+
                 setShowResetModal(false);
             }
         } catch (err) {
@@ -466,7 +467,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
 
     const handleUpdateSelection = (category, updates) => {
         console.log("HANDLE UPDATE:", category, updates);
-        
+
         if (isLocked && !isAdmin) {
             message.warning("Editing is locked after the deadline.");
             return;
@@ -490,7 +491,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             // Sync Pressure Options with positional mapping
             if (updates.pressureOptions) {
                 const pUpdates = updates.pressureOptions;
-                
+
                 // For SHORTS, apply updates directly without cross-category sync
                 if (category === 'SHORTS') {
                     Object.keys(pUpdates).forEach(key => {
@@ -501,50 +502,50 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                 } else {
                     // Original complex mapping logic for other categories
                     Object.keys(pUpdates).forEach(key => {
-                    if (key === 'backDesign') {
-                        const val = pUpdates[key];
-                        ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'].forEach(cat => {
-                            if (next[cat]) next[cat].pressureOptions.backDesign = val;
-                        });
-                        return;
-                    }
-
-                    const newValue = pUpdates[key];
-                    // Regex for exact position matching to avoid chest/sleeve cross-contamination
-                    const match = key.match(/^(rightChest|leftChest|rightSleeve|leftSleeve|bottomChest|rightLeg|leftLeg)(.*)$/);
-                    if (match) {
-                        const basePos = match[1];
-                        const suffix = match[2]; // e.g., "Text", "Flag", "Type"
-
-                        // TextColor — sirf active garment pe apply karo, cross-garment sync nahi
-                        if (suffix === 'TextColor') {
-                            if (next[category].pressureOptions) {
-                                next[category].pressureOptions[key] = newValue;
-                            }
+                        if (key === 'backDesign') {
+                            const val = pUpdates[key];
+                            ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'].forEach(cat => {
+                                if (next[cat]) next[cat].pressureOptions.backDesign = val;
+                            });
                             return;
                         }
 
-                        // Map Chest to Leg for unified "side" selection
-                        const mapping = {
-                            'rightChest': ['rightChest', 'rightLeg'],
-                            'leftChest': ['leftChest', 'leftLeg'],
-                            'rightLeg': ['rightChest', 'rightLeg'],
-                            'leftLeg': ['leftChest', 'leftLeg'],
-                            'rightSleeve': ['rightSleeve'],
-                            'leftSleeve': ['leftSleeve'],
-                            'bottomChest': ['bottomChest']
-                        };
+                        const newValue = pUpdates[key];
+                        // Regex for exact position matching to avoid chest/sleeve cross-contamination
+                        const match = key.match(/^(rightChest|leftChest|rightSleeve|leftSleeve|bottomChest|rightLeg|leftLeg)(.*)$/);
+                        if (match) {
+                            const basePos = match[1];
+                            const suffix = match[2]; // e.g., "Text", "Flag", "Type"
 
-                        const targets = mapping[basePos] || [basePos];
-                        Object.keys(next).forEach(cat => {
-                            targets.forEach(tPos => {
-                                const tKey = `${tPos}${suffix}`;
-                                if (next[cat].pressureOptions && next[cat].pressureOptions.hasOwnProperty(tKey)) {
-                                    next[cat].pressureOptions[tKey] = newValue;
+                            // TextColor — sirf active garment pe apply karo, cross-garment sync nahi
+                            if (suffix === 'TextColor') {
+                                if (next[category].pressureOptions) {
+                                    next[category].pressureOptions[key] = newValue;
                                 }
+                                return;
+                            }
+
+                            // Map Chest to Leg for unified "side" selection
+                            const mapping = {
+                                'rightChest': ['rightChest', 'rightLeg'],
+                                'leftChest': ['leftChest', 'leftLeg'],
+                                'rightLeg': ['rightChest', 'rightLeg'],
+                                'leftLeg': ['leftChest', 'leftLeg'],
+                                'rightSleeve': ['rightSleeve'],
+                                'leftSleeve': ['leftSleeve'],
+                                'bottomChest': ['bottomChest']
+                            };
+
+                            const targets = mapping[basePos] || [basePos];
+                            Object.keys(next).forEach(cat => {
+                                targets.forEach(tPos => {
+                                    const tKey = `${tPos}${suffix}`;
+                                    if (next[cat].pressureOptions && next[cat].pressureOptions.hasOwnProperty(tKey)) {
+                                        next[cat].pressureOptions[tKey] = newValue;
+                                    }
+                                });
                             });
-                        });
-                    }
+                        }
                     });
                 }
             }
@@ -998,7 +999,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                 <span className="hidden sm:inline">Reset</span>
                             </button>
                         )}
-                        
+
                         {undoAvailable && (
                             <button
                                 onClick={handleUndo}
@@ -1113,22 +1114,21 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                         )}
 
                         {/* Payment status badge */}
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                            paymentStatus === 'paid' ? 'bg-green-100 text-green-700' :
-                            paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-slate-100 text-slate-500'
-                        }`}>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${paymentStatus === 'paid' ? 'bg-green-100 text-green-700' :
+                                paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-slate-100 text-slate-500'
+                            }`}>
                             {paymentStatus}
                         </span>
 
                         {/* Class tracking status */}
                         {classStatus && (() => {
                             const statusMap = {
-                                active:           { label: 'Order in progress',              color: 'bg-blue-100 text-blue-700' },
-                                orders_locked:    { label: 'Order locked – going to production', color: 'bg-orange-100 text-orange-700' },
-                                production_ready: { label: 'Being produced',                 color: 'bg-purple-100 text-purple-700' },
-                                shipped:          { label: 'Shipped – check email for tracking', color: 'bg-indigo-100 text-indigo-700' },
-                                completed:        { label: 'Delivered',                      color: 'bg-green-100 text-green-700' },
+                                active: { label: 'Order in progress', color: 'bg-blue-100 text-blue-700' },
+                                orders_locked: { label: 'Order locked – going to production', color: 'bg-orange-100 text-orange-700' },
+                                production_ready: { label: 'Being produced', color: 'bg-purple-100 text-purple-700' },
+                                shipped: { label: 'Shipped – check email for tracking', color: 'bg-indigo-100 text-indigo-700' },
+                                completed: { label: 'Delivered', color: 'bg-green-100 text-green-700' },
                             };
                             const s = statusMap[classStatus];
                             if (!s) return null;
@@ -1145,9 +1145,9 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                         {/* Back Design Approval Status */}
                         {backDesignStatus && (() => {
                             const statusMap = {
-                                pending:  { label: 'Back Design: Pending Review', color: 'bg-yellow-100 text-yellow-700' },
-                                approved: { label: 'Back Design: Approved ✓',     color: 'bg-green-100 text-green-700' },
-                                rejected: { label: 'Back Design: Rejected',      color: 'bg-red-100 text-red-700' },
+                                pending: { label: 'Back Design: Pending Review', color: 'bg-yellow-100 text-yellow-700' },
+                                approved: { label: 'Back Design: Approved ✓', color: 'bg-green-100 text-green-700' },
+                                rejected: { label: 'Back Design: Rejected', color: 'bg-red-100 text-red-700' },
                             };
                             const s = statusMap[backDesignStatus];
                             if (!s) return null;
@@ -1245,14 +1245,31 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                 </div>
                             </div>
                             <div className="flex-1 bg-white/50 secondDiv overflow-y-auto custom-scrollbar-premium">
+                                {/* Tab Navigation — top */}
+                                <div className="px-6 pt-4 pb-2">
+                                    <div className="flex rounded-xl overflow-hidden border border-gray-200 bg-white">
+                                        <button
+                                            onClick={() => setGarmentTab('size')}
+                                            className={`flex-1 py-2.5 text-sm font-semibold transition-all ${garmentTab === 'size' ? 'bg-green-700 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                                        >
+                                            Farve & Størrelse
+                                        </button>
+                                        <button
+                                            onClick={() => setGarmentTab('pressure')}
+                                            className={`flex-1 py-2.5 text-sm font-semibold transition-all ${garmentTab === 'pressure' ? 'bg-green-700 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                                        >
+                                            Design
+                                        </button>
+                                    </div>
+                                </div>
                                 <div className="p-6 space-y-8">
 
-                                    {activeMenu === 'T-SHIRT' && <Tshirt key={`tshirt-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} />}
-                                    {activeMenu === "SWEATSHIRT" && <SweatShirt key={`sweatshirt-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} />}
-                                    {activeMenu === "HOODIE" && <Hoodie key={`hoodie-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} />}
-                                    {activeMenu === "ZIPPERHOODIE" && <ZippedHoodie key={`zipper-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} backDesigns={backDesigns} />}
-                                    {activeMenu === "SWEATPANTS" && <SweatPants key={`sweatpants-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} />}
-                                    {activeMenu === "SHORTS" && <Shorts key={`shorts-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} />}
+                                    {activeMenu === 'T-SHIRT' && <Tshirt key={`tshirt-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {activeMenu === "SWEATSHIRT" && <SweatShirt key={`sweatshirt-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {activeMenu === "HOODIE" && <Hoodie key={`hoodie-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {activeMenu === "ZIPPERHOODIE" && <ZippedHoodie key={`zipper-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {activeMenu === "SWEATPANTS" && <SweatPants key={`sweatpants-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {activeMenu === "SHORTS" && <Shorts key={`shorts-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
                                 </div>
                             </div>
                         </div>
@@ -1422,12 +1439,12 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                 {isConfigOpen && (
                                     <div className="p-4 space-y-6">
                                         {/* Keep all components mounted but conditionally show based on activeMenu */}
-                                        {activeMenu === 'T-SHIRT' && <Tshirt isAppReady={isAppReady} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} />}
-                                        {activeMenu === "SWEATSHIRT" && <SweatShirt isAppReady={isAppReady} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} />}
-                                        {activeMenu === "HOODIE" && <Hoodie isAppReady={isAppReady} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} />}
-                                        {activeMenu === "ZIPPERHOODIE" && <ZippedHoodie isAppReady={isAppReady} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} />}
-                                        {activeMenu === "SWEATPANTS" && <SweatPants isAppReady={isAppReady} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} />}
-                                        {activeMenu === "SHORTS" && <Shorts isAppReady={isAppReady} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} />}
+                                        {activeMenu === 'T-SHIRT' && <Tshirt isAppReady={isAppReady} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} maxCharsText={getMaxCharsClothText()} />}
+                                        {activeMenu === "SWEATSHIRT" && <SweatShirt isAppReady={isAppReady} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} maxCharsText={getMaxCharsClothText()} />}
+                                        {activeMenu === "HOODIE" && <Hoodie isAppReady={isAppReady} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} maxCharsText={getMaxCharsClothText()} />}
+                                        {activeMenu === "ZIPPERHOODIE" && <ZippedHoodie isAppReady={isAppReady} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} maxCharsText={getMaxCharsClothText()} />}
+                                        {activeMenu === "SWEATPANTS" && <SweatPants isAppReady={isAppReady} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} maxCharsText={getMaxCharsClothText()} />}
+                                        {activeMenu === "SHORTS" && <Shorts isAppReady={isAppReady} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} maxCharsText={getMaxCharsClothText()} />}
                                     </div>
                                 )}
                             </div>
@@ -1567,7 +1584,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                         consent_marketing: d.consent_marketing,
                                     });
                                 }
-                            }).catch(() => {});
+                            }).catch(() => { });
                         }
                     }}
                 >

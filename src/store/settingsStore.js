@@ -34,6 +34,12 @@ const useSettingsStore = create((set, get) => ({
         const s = get().settings;
         return parseFloat(s?.vat_percentage || 0);
     },
+
+    getMaxCharsClothText: () => {
+        const s = get().settings;
+        const val = parseInt(s?.max_chars_cloth_text || 25);
+        return isNaN(val) ? 25 : val;
+    },
 }));
 
 export default useSettingsStore;
