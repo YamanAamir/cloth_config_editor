@@ -955,13 +955,11 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                 {/* Global Header */}
                 <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-40">
                     <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-200">
-                            <GraduationCap className="w-6 h-6 text-white" />
+                        <div className="w-22 flex items-center justify-center">
+                            <img src="clothLogo.png" alt="" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-bold text-slate-900 tracking-tight">StudentLife</h1>
                             <div className="flex items-center space-x-2">
-                                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-widest leading-none">Cloth Configurator</p>
                                 {isLocked && (
                                     <Tag color="error" className="flex items-center space-x-1 px-1.5 py-0 rounded border-red-100 h-4">
                                         <Lock className="w-2.5 h-2.5" />
@@ -1115,8 +1113,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
 
                         {/* Payment status badge */}
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${paymentStatus === 'paid' ? 'bg-green-100 text-green-700' :
-                                paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-700' :
-                                    'bg-slate-100 text-slate-500'
+                            paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-slate-100 text-slate-500'
                             }`}>
                             {paymentStatus}
                         </span>
@@ -1198,7 +1196,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                     </div>
                 </div>
 
-                <div className="hidden md:flex h-[calc(95vh-80px)] w-full relative">
+                <div className="hidden md:flex h-[calc(96vh-80px)] w-full relative">
                     {/* Sidebar */}
                     <div className="flex flex-col h-full border-r border-slate-200 bg-white shadow-xl z-10 w-[600px] min-w-[500px]">
                         <div className='flex flex-1 min-h-0'>
@@ -1247,16 +1245,16 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                             <div className="flex-1 bg-white/50 secondDiv overflow-y-auto custom-scrollbar-premium">
                                 {/* Tab Navigation — top */}
                                 <div className="px-6 pt-4 pb-2">
-                                    <div className="flex rounded-xl overflow-hidden border border-gray-200 bg-white">
+                                    <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
                                         <button
                                             onClick={() => setGarmentTab('size')}
-                                            className={`flex-1 py-2.5 text-sm font-semibold transition-all ${garmentTab === 'size' ? 'bg-green-700 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                                            className={`flex-1 py-2.5 text-sm font-semibold transition-all rounded-xl ${garmentTab === 'size' ? 'bg-green-700 text-white' : 'text-gray-500 bg-white hover:bg-gray-50'}`}
                                         >
-                                            Farve & Størrelse
+                                            Color & Size
                                         </button>
                                         <button
                                             onClick={() => setGarmentTab('pressure')}
-                                            className={`flex-1 py-2.5 text-sm font-semibold transition-all ${garmentTab === 'pressure' ? 'bg-green-700 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                                            className={`flex-1 py-2.5 text-sm font-semibold transition-all rounded-xl ${garmentTab === 'pressure' ? 'bg-green-700 text-white' : 'text-gray-500 bg-white hover:bg-gray-50'}`}
                                         >
                                             Design
                                         </button>
@@ -1306,25 +1304,9 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                     {/* Main Content Area */}
                     <div className="flex flex-1 h-full">
                         {/* Preview Panel */}
-                        <div className="flex-1 p-6">
-                            <div className="bg-white/50 backdrop-blur-sm rounded-2xl shadow-xl h-full flex flex-col border border-slate-200">
-                                {/* Header */}
-                                <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-green-600 rounded-xl flex items-center justify-center">
-                                            <GraduationCap className="w-5 h-5 text-white" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-semibold text-slate-800">Selected {activeMenu}</h4>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                                        <span className="text-xs font-medium text-slate-600">LIVE PREVIEW</span>
-                                    </div>
-                                </div>
-                                {/* Iframe Preview */}
-                                <div className="flex-1 rounded-b-2xl overflow-hidden relative">
+                        <div className="flex-1">
+                            <div className="bg-white/50  h-full flex flex-col border border-slate-200">
+                                <div className="flex-1 overflow-hidden relative">
                                     {!isIframeLoaded && (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10">
                                             <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-3"></div>

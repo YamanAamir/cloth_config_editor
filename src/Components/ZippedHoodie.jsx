@@ -567,7 +567,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
   );
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-gray-50">
+    <div className="max-w-md mx-auto">
       {/* <div className="flex gap-4 mb-8">
         <button onClick={() => setActiveTab("size")} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeTab === "size" ? "bg-white shadow-sm border-2 border-green-700" : "bg-white border-2 border-transparent hover:border-gray-300"}`}>
           <span className="font-medium text-gray-900">Size and color</span>
@@ -581,7 +581,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
 
       {activeTab === "size" ? (
         <>
-          <h1 className="text-3xl font-bold mb-8 text-gray-900">Zipper Hoodie</h1>
+          <h1 className="text-lg font-bold mb-3 text-gray-900">Zipper Hoodie</h1>
            {/* Color — 2-row grid */}
           <div className="mb-4">
             <h2 className="text-xs font-semibold mb-2 text-gray-500 uppercase tracking-wide">Color</h2>
@@ -606,7 +606,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
         </>
       ) : (
         <>
-          <h1 className="text-3xl font-bold mb-8 text-gray-900">Pressure Options</h1>
+          <h1 className="text-lg font-bold mb-3 text-gray-900">Pressure Options</h1>
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Chest Area</h2>
             {["rightChest", "leftChest"].map(renderChestArea)}

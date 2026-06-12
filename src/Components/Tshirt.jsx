@@ -519,7 +519,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   const sizes = ["S", "M", "L", "XL", "2XL", "3XL"];
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-gray-50">
+    <div className="max-w-md mx-auto">
       {/* Tab Navigation — sirf jab external tab na ho */}
       {/* {!externalTab && (
       <div className="flex gap-4 mb-8">
@@ -548,7 +548,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
 
       {activeTab === "size" ? (
         <>
-          <h1 className="text-3xl font-bold mb-8 text-gray-900">T-shirt</h1>
+          <h1 className="text-lg font-bold mb-3 text-gray-900">T-shirt</h1>
 
           {/* Color — 2-row grid */}
           <div className="mb-4">
@@ -574,7 +574,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         </>
       ) : (
         <>
-          <h1 className="text-3xl font-bold mb-8 text-gray-900">
+          <h1 className="text-lg font-bold mb-3 text-gray-900">
             Pressure Options
           </h1>
 

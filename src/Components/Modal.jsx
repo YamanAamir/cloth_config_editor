@@ -4,7 +4,7 @@ import { X, Printer, Download, Mail, CheckCircle, Package, Star, User, CreditCar
 // import { loadStripe } from "@stripe/stripe-js";
 import { useRef } from 'react';
 import { useEffect } from 'react';
-import { placeOrder, createCheckoutSession } from '../api/api';
+import { placeOrder, createCheckoutSession, getShippingRates } from '../api/api';
 import useSettingsStore from '../store/settingsStore';
 // const stripePromise = loadStripe("pk_test_51S0HgS2ZnQzLDaK40M9tlj1n72wtQNsUNhG986xbE6bfHxWmFfOMJfWGAbg4QrAlFtnhVCtOajoIqUbRgSBnRnkb00iMo1bD1o");
 
@@ -59,12 +59,35 @@ const QuoteModal = ({
   const [isLoading, setIsLoading] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   
+  // Shipping rates from API
+  const [shippingRates, setShippingRates] = useState([]);
+  const [shippingLoading, setShippingLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchRates = async () => {
+      setShippingLoading(true);
+      try {
+        const { data } = await getShippingRates();
+        if (data?.success) setShippingRates(data.data || []);
+      } catch {
+        // silently fail — delivery section will still work
+      } finally {
+        setShippingLoading(false);
+      }
+    };
+    fetchRates();
+  }, []);
+  
   // Track which garments are selected for purchase — start empty, user explicitly selects
   const [selectedGarments, setSelectedGarments] = useState(() => {
     const configured = {};
     Object.entries(selectedOptions).forEach(([type, options]) => {
       configured[type] = isGarmentConfigured(type, options);
     });
+    // T-SHIRT by default selected jab modal khule
+    if ('T-SHIRT' in configured) {
+      configured['T-SHIRT'] = true;
+    }
     return configured;
   });
 
@@ -205,14 +228,27 @@ const QuoteModal = ({
   };
 
   const dynamicPrice = calculateTotalPrice();
-  
+
+  // Shipping rate — matched by country_name (case-insensitive)
+  const getSelectedShippingRate = () => {
+    if (!shippingRates.length) return 0;
+    const match = shippingRates.find(
+      r => r.country_name.toLowerCase() === (customerDetails.country || '').toLowerCase()
+    );
+    if (!match) return 0;
+    return customerDetails.deliveryType === 'express'
+      ? parseFloat(match.express_delivery_rate || 0)
+      : parseFloat(match.regular_delivery_rate || 0);
+  };
+  const shippingRate = getSelectedShippingRate();
+
   // VAT calculation
   const subtotal = dynamicPrice;
   const vatPct = getVat(); // e.g. 10
   const vatAmount = Math.round(subtotal * vatPct / 100);
-  const totalWithVat = subtotal + vatAmount;
+  const totalWithVat = subtotal + vatAmount + shippingRate;
 
-  // Balance due = total with VAT - already paid amount
+  // Balance due = total with VAT + shipping - already paid amount
   const computedBalanceDue = Math.max(0, totalWithVat - amountPaid);
 
   // ✨ NEW: Toggle garment selection
@@ -1063,11 +1099,21 @@ const QuoteModal = ({
                       onKeyPress={(e) => handleKeyPress(e, "country")}
                       className={`${inputClasses} appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%20stroke%3D%22currentColor%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.75rem_center] bg-no-repeat`}
                     >
-                      <option value="Denmark">Denmark</option>
-                      <option value="Sweden">Sweden</option>
-                      <option value="Norway">Norway</option>
-                      <option value="Germany">Germany</option>
-                      <option value="Other">Other</option>
+                      {shippingLoading ? (
+                        <option>Loading...</option>
+                      ) : shippingRates.length > 0 ? (
+                        shippingRates.map(r => (
+                          <option key={r.id} value={r.country_name}>{r.country_name}</option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="Denmark">Denmark</option>
+                          <option value="Sweden">Sweden</option>
+                          <option value="Norway">Norway</option>
+                          <option value="Germany">Germany</option>
+                          <option value="Other">Other</option>
+                        </>
+                      )}
                     </select>
                   </div>
                 </div>
@@ -1086,7 +1132,9 @@ const QuoteModal = ({
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-800">Regular Delivery</p>
-                    <p className="text-xs text-slate-500 font-medium">Estimated 6 weeks free shipping</p>
+                    <p className="text-xs text-slate-500 font-medium">
+                      {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (customerDetails.country||'').toLowerCase()); return r ? `${r.regular_delivery_rate} DKK — Est. 6 weeks` : 'Est. 6 weeks'; })()}
+                    </p>
                   </div>
                 </button>
                 <button
@@ -1098,7 +1146,9 @@ const QuoteModal = ({
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-800">Express Priority</p>
-                    <p className="text-xs text-slate-500 font-medium">Estimated 3 weeks delivery</p>
+                    <p className="text-xs text-slate-500 font-medium">
+                      {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (customerDetails.country||'').toLowerCase()); return r ? `${r.express_delivery_rate} DKK — Est. 3 weeks` : 'Est. 3 weeks'; })()}
+                    </p>
                   </div>
                 </button>
               </div>
@@ -1257,6 +1307,14 @@ const QuoteModal = ({
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-bold text-slate-600">VAT ({vatPct}%)</span>
                   <span className="text-lg font-bold text-slate-800">{vatAmount} DKK</span>
+                </div>
+              )}
+              {shippingRate > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-slate-600">
+                    Shipping ({customerDetails.deliveryType === 'express' ? 'Express' : 'Regular'} — {customerDetails.country})
+                  </span>
+                  <span className="text-lg font-bold text-slate-800">{shippingRate} DKK</span>
                 </div>
               )}
               <div className="border-t border-slate-200 pt-4">
@@ -1461,6 +1519,14 @@ const QuoteModal = ({
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-xs font-bold text-gray-500 uppercase">VAT ({vatPct}%)</span>
                       <span className="text-sm font-bold text-gray-700">{vatAmount} DKK</span>
+                    </div>
+                  )}
+                  {shippingRate > 0 && (
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-gray-500 uppercase">
+                        Shipping ({customerDetails.deliveryType === 'express' ? 'Express' : 'Regular'})
+                      </span>
+                      <span className="text-sm font-bold text-gray-700">{shippingRate} DKK</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center mb-1 pt-1 border-t border-gray-200">

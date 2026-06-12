@@ -84,6 +84,9 @@ export const createCheckoutSession = (data) => api.post('/payment/create-checkou
 // Settings (public)
 export const getPublicSettings = () => api.get('/student/settings');
 
+// Shipping Rates (public)
+export const getShippingRates = () => api.get('/student/shipping-rates');
+
 // Student Profile
 export const getStudentProfile = () => api.get('/student/profile');
 export const updateStudentProfile = (data) => api.put('/student/profile', data);
