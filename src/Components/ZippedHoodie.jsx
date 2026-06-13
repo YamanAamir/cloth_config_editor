@@ -51,7 +51,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
         fontSize -= 2;
         ctx.font = `bold ${fontSize}px Arial`;
       }
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
     }
 
     if (hasFlag || hasLogo) {
@@ -122,7 +122,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
           fontSize -= 2;
           ctx.font = `bold ${fontSize}px Arial`;
         }
-        ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+        ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
       }
       callback(canvas.toDataURL("image/png"));
       return;
@@ -130,8 +130,8 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
 
     const hasTwoFlags = flag && flagImages[flag] && flag2 && flagImages[flag2];
 
-    // ---------- TEXT ----------
-    if (text?.trim() && !hasTwoFlags) {
+    // ---------- TEXT ---------- (only for text-only mode; with flag/logo, text drawn after)
+    if (text?.trim() && !hasTwoFlags && !flag && !logoPre && !logoCustom) {
       let fontSize = 48;
       ctx.font = `bold ${fontSize}px Arial`;
       ctx.fillStyle = textColor;
@@ -141,7 +141,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
         fontSize -= 2;
         ctx.font = `bold ${fontSize}px Arial`;
       }
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
     }
 
     // ---------- 2 FLAGS SIDE BY SIDE ----------
@@ -204,6 +204,20 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
           // draw flag
           ctx.drawImage(img, x, y, targetWidth, targetHeight);
 
+          // Overlay text centered on flag area
+          if (text?.trim()) {
+            let fontSize = 48;
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+              fontSize -= 2;
+              ctx.font = `bold ${fontSize}px Arial`;
+            }
+            ctx.fillStyle = textColor;
+            ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
+          }
+
           finalize();
         })
         .catch(finalize);
@@ -229,6 +243,20 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
 
         ctx.fillStyle = "#fff"; ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
         ctx.drawImage(img, x, y, w, h);
+
+        // Overlay text centered on logo area
+        if (text?.trim()) {
+          let fontSize = 48;
+          ctx.font = `bold ${fontSize}px Arial`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+            fontSize -= 2;
+            ctx.font = `bold ${fontSize}px Arial`;
+          }
+          ctx.fillStyle = textColor;
+          ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
+        }
 
         // Brightness-inverted opacity canvas
         const opacityCanvas = document.createElement("canvas");

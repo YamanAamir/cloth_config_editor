@@ -61,7 +61,8 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
       ctx.font = `bold ${fontSize}px Arial`; ctx.fillStyle = "#ffffff"; // emissive = mask, hamesha white
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       while (ctx.measureText(text).width > dimensions.width - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
-      ctx.fillText(text, dimensions.width / 2, TEXT_HEIGHT / 2);
+      const textY = (hasFlag || hasLogo) ? TEXT_HEIGHT + dimensions.flagHeight / 2 : TEXT_HEIGHT / 2;
+      ctx.fillText(text, dimensions.width / 2, textY);
     }
     if (hasFlag || hasLogo) { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, TEXT_HEIGHT, dimensions.width, dimensions.flagHeight); }
     if (hasFlag || hasLogo) {
@@ -104,7 +105,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
   //     ctx.font = `bold ${fontSize}px Arial`; ctx.fillStyle = textColor;
   //     ctx.textAlign = "center"; ctx.textBaseline = "middle";
   //     while (ctx.measureText(text).width > dimensions.width - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
-  //     ctx.fillText(text, dimensions.width / 2, TEXT_HEIGHT / 2);
+  //     ctx.fillText(text, dimensions.width / 2, CANVAS_HEIGHT / 2);
   //   }
 
   //   if (type !== "" && flag && flagImages[flag]) {
@@ -195,7 +196,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
       });
 
     // ---------- TEXT ----------
-    if (text?.trim()) {
+    if (text?.trim() && type === "") {
       let fontSize = 48;
 
       ctx.font = `bold ${fontSize}px Arial`;
@@ -211,7 +212,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
         ctx.font = `bold ${fontSize}px Arial`;
       }
 
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
     }
 
     // ---------- DOUBLE FLAG ----------
@@ -290,6 +291,20 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
             targetHeight
           );
 
+          // Overlay text centered on flag area
+          if (text?.trim()) {
+            let fontSize = 48;
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+              fontSize -= 2;
+              ctx.font = `bold ${fontSize}px Arial`;
+            }
+            ctx.fillStyle = textColor;
+            ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
+          }
+
           finalize();
         })
         .catch(finalize);
@@ -347,6 +362,20 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
           );
 
           ctx.drawImage(img, x, y, w, h);
+
+          // Overlay text centered on logo area
+          if (text?.trim()) {
+            let fontSize = 48;
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+              fontSize -= 2;
+              ctx.font = `bold ${fontSize}px Arial`;
+            }
+            ctx.fillStyle = textColor;
+            ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
+          }
 
           // ---------- OPACITY MAP ----------
           const opacityCanvas =

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import cog from "../assets/menuimages/cogwheel-pen.png";
 import plus from "../assets/menuimages/shirt-plus.png";
 import Test from "./Test";
@@ -90,7 +90,9 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
         fontSize -= 2;
         ctx.font = `bold ${fontSize}px Arial`;
       }
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+      // If flag/logo present, draw text centered on flag area; else top zone
+      const textY = TEXT_HEIGHT + FLAG_HEIGHT / 2;
+      ctx.fillText(text, CANVAS_WIDTH / 2, textY);
     }
 
     if (hasFlag || hasLogo) {
@@ -144,7 +146,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
   //       fontSize -= 2;
   //       ctx.font = `bold ${fontSize}px Arial`;
   //     }
-  //     ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+  //     ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
   //   }
 
   //   const drawBorder = () => {
@@ -215,7 +217,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
 
   //   finalize();
   // };
-  // -- Image cache � ek baar fetch, baad mein instant ----------------------
+  // -- Image cache ? ek baar fetch, baad mein instant ----------------------
   const logoImageCache = React.useRef({});
 
   const loadImageCached = (src) => {
@@ -260,7 +262,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
           ctx.font = `bold ${fontSize}px Arial`;
         }
 
-        ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+        ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
       }
 
       callback(canvas.toDataURL("image/png"));
@@ -270,8 +272,8 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
     const hasTwoFlags =
       flag && flagImages[flag] && flag2 && flagImages[flag2];
 
-    // ---------- TEXT ----------
-    if (text?.trim() && !hasTwoFlags) {
+    // ---------- TEXT ---------- (only for text-only mode when no flag/logo; with flag/logo, text drawn after)
+    if (text?.trim() && !hasTwoFlags && !flag && !logoPre && !logoCustom) {
       let fontSize = 48;
 
       ctx.font = `bold ${fontSize}px Arial`;
@@ -287,8 +289,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
         ctx.font = `bold ${fontSize}px Arial`;
       }
 
-      const y = TEXT_HEIGHT / 2;
-      ctx.fillText(text, CANVAS_WIDTH / 2, y);
+      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
     }
 
     const finalize = () => {
@@ -365,6 +366,20 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
 
           ctx.drawImage(img, x, y, targetWidth, targetHeight);
 
+          // Overlay text centered on flag area
+          if (text?.trim()) {
+            let fontSize = 48;
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+              fontSize -= 2;
+              ctx.font = `bold ${fontSize}px Arial`;
+            }
+            ctx.fillStyle = textColor;
+            ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
+          }
+
           finalize();
         })
         .catch(finalize);
@@ -402,10 +417,24 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
           const x = (CANVAS_WIDTH - w) / 2;
           const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
 
-          // White background � cloth color logo ke peeche na dikhe
+          // White background ? cloth color logo ke peeche na dikhe
           ctx.fillStyle = "#fff";
           ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
           ctx.drawImage(img, x, y, w, h);
+
+          // Overlay text centered on logo area
+          if (text?.trim()) {
+            let fontSize = 48;
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+              fontSize -= 2;
+              ctx.font = `bold ${fontSize}px Arial`;
+            }
+            ctx.fillStyle = textColor;
+            ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
+          }
 
           // Brightness-inverted opacity canvas
           const opacityCanvas = document.createElement("canvas");
@@ -496,7 +525,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
 
   const getFlagDisplay = (countryName) => {
     if (!countryName) return "";
-    // countryName is stored as name � just return it directly
+    // countryName is stored as name ? just return it directly
     return countryName;
   };
 
@@ -614,7 +643,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
       // Update the ref for this area
       prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor };
 
-      // Stale result prevention � renderCounterRef
+      // Stale result prevention ? renderCounterRef
       const currentRender = (renderCounterRef.current[area] || 0) + 1;
       renderCounterRef.current[area] = currentRender;
 
@@ -636,9 +665,9 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
         });
       }
 
-      // Diffuse � pass flag2 and flagCount
+      // Diffuse ? pass flag2 and flagCount
       getDiffuseBase64(flag, logoPre, logoCustom, text, (diffuseBase, logoOpacityBase) => {
-        // Stale check � agar logo switch ho gaya to purana result ignore
+        // Stale check ? agar logo switch ho gaya to purana result ignore
         if (renderCounterRef.current[area] !== currentRender) return;
         ["preview-iframe", "preview-iframe2"].forEach((id) => {
           const iframe = document.getElementById(id);
@@ -646,7 +675,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
             const msg = `SweatShirt:${area}_diffuse: ${diffuseBase}`;
             iframe.contentWindow.postMessage(msg, "*");
             console.log("fahhhhh", msg);
-            // Logo opacity � brightness-inverted
+            // Logo opacity ? brightness-inverted
             if (logoOpacityBase) {
               iframe.contentWindow.postMessage(`SweatShirt:${area}_opacity: ${logoOpacityBase}`, "*");
             }
@@ -713,7 +742,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
         <>
           <h1 className="text-lg font-bold mb-3 text-gray-900">SweatShirt</h1>
 
-           {/* Color — 2-row grid */}
+           {/* Color � 2-row grid */}
           <div className="mb-4">
             <h2 className="text-xs font-semibold mb-2 text-gray-500 uppercase tracking-wide">Color</h2>
             <div className="grid grid-flow-col grid-rows-1 gap-2 w-fit">
@@ -833,7 +862,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
                     </div>
                   )}
 
-                  {/* Logo � predefined only, no upload */}
+                  {/* Logo ? predefined only, no upload */}
                   {pressureOptions[`${area}Type`] === "logo" && (
                     <div className="flex flex-wrap gap-2">
                       <input type="text" value={getLogoDisplay(pressureOptions[`${area}LogoPredefined`])} readOnly placeholder="Select logo"
@@ -969,7 +998,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
                         </div>
                       </div>
 
-                      {/* Flag 2 � only if count = 2 */}
+                      {/* Flag 2 ? only if count = 2 */}
                       {(Number(pressureOptions[`${area}FlagCount`] || 1) === 2) && (
                         <div>
                           <label className="text-xs text-gray-500 mb-1 block">Flag 2 (50% size)</label>

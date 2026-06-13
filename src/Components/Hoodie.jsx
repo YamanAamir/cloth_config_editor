@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import cog from "../assets/menuimages/cogwheel-pen.png";
 import plus from "../assets/menuimages/shirt-plus.png";
 import Test from "./Test";
@@ -45,7 +45,9 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         fontSize -= 2;
         ctx.font = `bold ${fontSize}px Arial`;
       }
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+      // If flag/logo present, draw text centered on flag area; else top zone
+      const textY = TEXT_HEIGHT + FLAG_HEIGHT / 2;
+      ctx.fillText(text, CANVAS_WIDTH / 2, textY);
     }
 
     if (hasFlag || hasLogo) {
@@ -116,7 +118,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
           fontSize -= 2;
           ctx.font = `bold ${fontSize}px Arial`;
         }
-        ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+        ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
       }
       callback(canvas.toDataURL("image/png"));
       return;
@@ -124,8 +126,8 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
 
     const hasTwoFlags = flag && flagImages[flag] && flag2 && flagImages[flag2];
 
-    // ---------- TEXT ----------
-    if (text?.trim() && !hasTwoFlags) {
+    // ---------- TEXT ---------- (only for text-only mode when no flag/logo; with flag/logo, text drawn after)
+    if (text?.trim() && !hasTwoFlags && !flag && !logoPre && !logoCustom) {
       let fontSize = 48;
       ctx.font = `bold ${fontSize}px Arial`;
       ctx.fillStyle = textColor;
@@ -135,7 +137,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         fontSize -= 2;
         ctx.font = `bold ${fontSize}px Arial`;
       }
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
     }
 
     // ---------- 2 FLAGS SIDE BY SIDE ----------
@@ -198,6 +200,20 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
           // draw flag
           ctx.drawImage(img, x, y, targetWidth, targetHeight);
 
+          // Overlay text centered on flag area
+          if (text?.trim()) {
+            let fontSize = 48;
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+              fontSize -= 2;
+              ctx.font = `bold ${fontSize}px Arial`;
+            }
+            ctx.fillStyle = textColor;
+            ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
+          }
+
           finalize();
         })
         .catch(finalize);
@@ -223,6 +239,20 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
 
         ctx.fillStyle = "#fff"; ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
         ctx.drawImage(img, x, y, w, h);
+
+        // Overlay text centered on logo area
+        if (text?.trim()) {
+          let fontSize = 48;
+          ctx.font = `bold ${fontSize}px Arial`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+            fontSize -= 2;
+            ctx.font = `bold ${fontSize}px Arial`;
+          }
+          ctx.fillStyle = textColor;
+          ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
+        }
 
         // Brightness-inverted opacity canvas
         const opacityCanvas = document.createElement("canvas");
@@ -316,7 +346,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       const hasFlag = !!flag && type === "flag", hasLogo = !!(logoPre || logoCustom) && type === "logo";
       const hasSecondAsset = !!flag2;
 
-      // Skip emissive for logo � will be sent from getDiffuseBase64 callback
+      // Skip emissive for logo ? will be sent from getDiffuseBase64 callback
       if (!hasLogo) {
         const opacity = getEmissiveBase64(text, hasFlag, hasLogo, hasSecondAsset, textColor);
         ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(`Hoodie:${area}_opacity: ${opacity}`, "*"); });
@@ -537,7 +567,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       {activeTab === "size" ? (
         <>
           <h1 className="text-lg font-bold mb-3 text-gray-900">Hoodie</h1>
-             {/* Color — 2-row grid */}
+             {/* Color � 2-row grid */}
           <div className="mb-4">
             <h2 className="text-xs font-semibold mb-2 text-gray-500 uppercase tracking-wide">Color</h2>
             <div className="grid grid-flow-col grid-rows-1 gap-2 w-fit">

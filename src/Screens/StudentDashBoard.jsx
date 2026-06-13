@@ -116,12 +116,42 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         if (!defaults) return true;
 
         // Color aur Size sync hote hain globally — inhe "configured" nahi maante
-        // Sirf pressureOptions mein actual design changes hone par configured maano
+        // Sirf pressureOptions mein actual user-made design changes count karein
+
+        // Ye keys auto-assign hoti hain (logo auto-select, internal IDs) — ignore karo
+        // Keys jo configured nahi maani jayengi:
+        // - Logo auto-assign keys (system se aati hain, user ne manually select nahi kiya)
+        // - backDesign (class-level back design — user action nahi hai)
+        // Configured = sirf tab jab user ne text/flag manually add kiya ho
+        const AUTO_ASSIGNED_KEYS = new Set([
+            'selectedLogoId',
+            'backDesign',                // class back design auto-apply — configured nahi
+            'rightChestLogoPredefined', 'leftChestLogoPredefined',
+            'bottomChestLogoPredefined', 'rightSleeveLogoPredefined',
+            'leftSleeveLogoPredefined',
+            'rightLegLogoPredefined', 'leftLegLogoPredefined',
+            'rightChestLogoCustom', 'leftChestLogoCustom',
+            'bottomChestLogoCustom', 'rightSleeveLogoCustom',
+            'leftSleeveLogoCustom', 'rightLegLogoCustom', 'leftLegLogoCustom',
+            // Type fields bhi ignore — sirf content fields check karo
+            'rightChestType', 'leftChestType', 'bottomChestType',
+            'rightSleeveType', 'leftSleeveType',
+            'rightLegType', 'leftLegType',
+            // TextColor ignore — color alone configured nahi maanta
+            'rightChestTextColor', 'leftChestTextColor', 'bottomChestTextColor',
+            'rightSleeveTextColor', 'leftSleeveTextColor',
+            'rightLegTextColor', 'leftLegTextColor',
+            // FlagCount ignore
+            'rightSleeveFlagCount', 'leftSleeveFlagCount',
+        ]);
 
         const currentPO = garmentData.pressureOptions || {};
         const defaultPO = defaults.pressureOptions || {};
 
         for (const key of Object.keys(currentPO)) {
+            // Auto-assigned keys skip karo
+            if (AUTO_ASSIGNED_KEYS.has(key)) continue;
+
             const currentVal = currentPO[key];
             const defaultVal = defaultPO[key];
 
@@ -198,9 +228,14 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         return total;
     };
 
-    const subtotal = calculateTotalPrice();
+    // Sidebar mein price tab dikhao jab koi garment actually configured ho
+    const anyGarmentConfigured = Object.entries(allSelections).some(
+        ([type, options]) => isGarmentConfigured(type, options)
+    );
+
+    const subtotal = anyGarmentConfigured ? calculateTotalPrice() : 0;
     const vatPct = getVat(); // e.g. 10
-    const vatAmount = Math.round(subtotal * vatPct / 100);
+    const vatAmount = anyGarmentConfigured ? Math.round(subtotal * vatPct / 100) : 0;
     const dynamicPrice = subtotal + vatAmount;
     const balanceDue = Math.max(0, dynamicPrice - amountPaid);
 
@@ -500,7 +535,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                         }
                     });
                 } else {
-                    // Original complex mapping logic for other categories
+                    // Sirf backDesign cross-garment sync hoga — baaki sab sirf active category pe
                     Object.keys(pUpdates).forEach(key => {
                         if (key === 'backDesign') {
                             const val = pUpdates[key];
@@ -510,41 +545,12 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                             return;
                         }
 
-                        const newValue = pUpdates[key];
-                        // Regex for exact position matching to avoid chest/sleeve cross-contamination
-                        const match = key.match(/^(rightChest|leftChest|rightSleeve|leftSleeve|bottomChest|rightLeg|leftLeg)(.*)$/);
-                        if (match) {
-                            const basePos = match[1];
-                            const suffix = match[2]; // e.g., "Text", "Flag", "Type"
-
-                            // TextColor — sirf active garment pe apply karo, cross-garment sync nahi
-                            if (suffix === 'TextColor') {
-                                if (next[category].pressureOptions) {
-                                    next[category].pressureOptions[key] = newValue;
-                                }
-                                return;
-                            }
-
-                            // Map Chest to Leg for unified "side" selection
-                            const mapping = {
-                                'rightChest': ['rightChest', 'rightLeg'],
-                                'leftChest': ['leftChest', 'leftLeg'],
-                                'rightLeg': ['rightChest', 'rightLeg'],
-                                'leftLeg': ['leftChest', 'leftLeg'],
-                                'rightSleeve': ['rightSleeve'],
-                                'leftSleeve': ['leftSleeve'],
-                                'bottomChest': ['bottomChest']
-                            };
-
-                            const targets = mapping[basePos] || [basePos];
-                            Object.keys(next).forEach(cat => {
-                                targets.forEach(tPos => {
-                                    const tKey = `${tPos}${suffix}`;
-                                    if (next[cat].pressureOptions && next[cat].pressureOptions.hasOwnProperty(tKey)) {
-                                        next[cat].pressureOptions[tKey] = newValue;
-                                    }
-                                });
-                            });
+                        // Baaki sab updates sirf active category pe apply karo — NO cross-garment sync
+                        if (next[category].pressureOptions && next[category].pressureOptions.hasOwnProperty(key)) {
+                            next[category].pressureOptions[key] = pUpdates[key];
+                        } else if (next[category].pressureOptions) {
+                            // Key exist nahi karti toh bhi set karo (naye fields ke liye)
+                            next[category].pressureOptions[key] = pUpdates[key];
                         }
                     });
                 }
@@ -1273,20 +1279,29 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                         </div>
                         <div className=" border-slate-200 p-6 bg-white/50 backdrop-blur-sm">
                             <div className="mb-4 space-y-1.5">
-                                <div className="flex justify-between text-xs text-slate-500">
-                                    <span>Subtotal</span>
-                                    <span>{subtotal} DKK</span>
-                                </div>
-                                {vatPct > 0 && (
-                                    <div className="flex justify-between text-xs text-slate-500">
-                                        <span>VAT ({vatPct}%)</span>
-                                        <span>{vatAmount} DKK</span>
+                                {anyGarmentConfigured ? (
+                                    <>
+                                        <div className="flex justify-between text-xs text-slate-500">
+                                            <span>Subtotal</span>
+                                            <span>{subtotal} DKK</span>
+                                        </div>
+                                        {vatPct > 0 && (
+                                            <div className="flex justify-between text-xs text-slate-500">
+                                                <span>VAT ({vatPct}%)</span>
+                                                <span>{vatAmount} DKK</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center pt-1.5 border-t border-slate-200">
+                                            <span className="text-sm font-semibold text-slate-700">Total</span>
+                                            <span className="text-2xl font-bold text-slate-900">{dynamicPrice} DKK</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="flex justify-between items-center pt-1.5 border-t border-slate-200">
+                                        <span className="text-sm font-semibold text-slate-700">Total</span>
+                                        <span className="text-2xl font-bold text-slate-400">0 DKK</span>
                                     </div>
                                 )}
-                                <div className="flex justify-between items-center pt-1.5 border-t border-slate-200">
-                                    <span className="text-sm font-semibold text-slate-700">Total</span>
-                                    <span className="text-2xl font-bold text-slate-900">{dynamicPrice} DKK</span>
-                                </div>
                             </div>
                             <button
                                 onClick={() => setIsQuoteModalOpen(true)}
@@ -1473,20 +1488,29 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                         {/* Fixed Footer - Always visible at bottom */}
                         <div className="border-t border-slate-200 p-4 bg-white/90 backdrop-blur-sm flex-shrink-0">
                             <div className="mb-3 space-y-1">
-                                <div className="flex justify-between text-xs text-slate-500">
-                                    <span>Subtotal</span>
-                                    <span>{subtotal} DKK</span>
-                                </div>
-                                {vatPct > 0 && (
-                                    <div className="flex justify-between text-xs text-slate-500">
-                                        <span>VAT ({vatPct}%)</span>
-                                        <span>{vatAmount} DKK</span>
+                                {anyGarmentConfigured ? (
+                                    <>
+                                        <div className="flex justify-between text-xs text-slate-500">
+                                            <span>Subtotal</span>
+                                            <span>{subtotal} DKK</span>
+                                        </div>
+                                        {vatPct > 0 && (
+                                            <div className="flex justify-between text-xs text-slate-500">
+                                                <span>VAT ({vatPct}%)</span>
+                                                <span>{vatAmount} DKK</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center pt-1 border-t border-slate-200">
+                                            <span className="text-sm font-semibold text-slate-700">Total</span>
+                                            <span className="text-xl font-bold text-slate-900">{dynamicPrice} DKK</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="flex justify-between items-center pt-1 border-t border-slate-200">
+                                        <span className="text-sm font-semibold text-slate-700">Total</span>
+                                        <span className="text-xl font-bold text-slate-400">0 DKK</span>
                                     </div>
                                 )}
-                                <div className="flex justify-between items-center pt-1 border-t border-slate-200">
-                                    <span className="text-sm font-semibold text-slate-700">Total</span>
-                                    <span className="text-xl font-bold text-slate-900">{dynamicPrice} DKK</span>
-                                </div>
                             </div>
                             <div className="flex space-x-3 mb-4">
                                 <button

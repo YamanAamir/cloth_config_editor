@@ -4,7 +4,7 @@ import { X, Printer, Download, Mail, CheckCircle, Package, Star, User, CreditCar
 // import { loadStripe } from "@stripe/stripe-js";
 import { useRef } from 'react';
 import { useEffect } from 'react';
-import { placeOrder, createCheckoutSession, getShippingRates } from '../api/api';
+import { placeOrder, createCheckoutSession, getShippingRates, getMyClassInfo } from '../api/api';
 import useSettingsStore from '../store/settingsStore';
 // const stripePromise = loadStripe("pk_test_51S0HgS2ZnQzLDaK40M9tlj1n72wtQNsUNhG986xbE6bfHxWmFfOMJfWGAbg4QrAlFtnhVCtOajoIqUbRgSBnRnkb00iMo1bD1o");
 
@@ -76,6 +76,24 @@ const QuoteModal = ({
       }
     };
     fetchRates();
+  }, []);
+
+  // Class student count — for handling fee per-student split
+  const [classStudentCount, setClassStudentCount] = useState(0);
+
+  useEffect(() => {
+    const fetchClassInfo = async () => {
+      try {
+        const { data } = await getMyClassInfo();
+        if (data?.success) {
+          // Use expected_students for handling fee split (total class size)
+          setClassStudentCount(data.data?.expected_students || 0);
+        }
+      } catch {
+        // silently fail — handling fee will show 0
+      }
+    };
+    fetchClassInfo();
   }, []);
   
   // Track which garments are selected for purchase — start empty, user explicitly selects
@@ -202,7 +220,7 @@ const QuoteModal = ({
   const [orderDate, setOrderDate] = useState(`ORD-${Date.now().toString()}`);
 
   // Garment prices from backend settings (with fallback) — must be before any early return
-  const { getGarmentPrice, getVat } = useSettingsStore();
+  const { getGarmentPrice, getVat, getHandlingFeeEnabled, getBaseHandlingFee, getThreshold, getExtraFeeAboveThreshold } = useSettingsStore();
   const GARMENT_PRICES = {
     'T-SHIRT':      getGarmentPrice('T-SHIRT')      || 1200,
     'SWEATSHIRT':   getGarmentPrice('SWEATSHIRT')   || 1500,
@@ -242,11 +260,26 @@ const QuoteModal = ({
   };
   const shippingRate = getSelectedShippingRate();
 
+  // Handling fee per-student calculation
+  // Logic:
+  //   students <= threshold  → baseFee ÷ totalStudents
+  //   students > threshold   → (baseFee + extraFee) ÷ totalStudents
+  const getHandlingFeePerStudent = () => {
+    if (!getHandlingFeeEnabled()) return 0;
+    if (!classStudentCount || classStudentCount <= 0) return 0;
+    const baseFee    = getBaseHandlingFee();
+    const threshold  = getThreshold();
+    const extraFee   = getExtraFeeAboveThreshold();
+    const totalFee   = classStudentCount > threshold ? baseFee + extraFee : baseFee;
+    return Math.round((totalFee / classStudentCount) * 100) / 100; // round to 2 decimals
+  };
+  const handlingFeePerStudent = getHandlingFeePerStudent();
+
   // VAT calculation
   const subtotal = dynamicPrice;
   const vatPct = getVat(); // e.g. 10
   const vatAmount = Math.round(subtotal * vatPct / 100);
-  const totalWithVat = subtotal + vatAmount + shippingRate;
+  const totalWithVat = subtotal + vatAmount + shippingRate + handlingFeePerStudent;
 
   // Balance due = total with VAT + shipping - already paid amount
   const computedBalanceDue = Math.max(0, totalWithVat - amountPaid);
@@ -1317,6 +1350,14 @@ const QuoteModal = ({
                   <span className="text-lg font-bold text-slate-800">{shippingRate} DKK</span>
                 </div>
               )}
+              {handlingFeePerStudent > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-slate-600">
+                    Handling Fee (1/{classStudentCount} of class)
+                  </span>
+                  <span className="text-lg font-bold text-slate-800">{handlingFeePerStudent} DKK</span>
+                </div>
+              )}
               <div className="border-t border-slate-200 pt-4">
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-bold text-slate-800">Total</span>
@@ -1527,6 +1568,12 @@ const QuoteModal = ({
                         Shipping ({customerDetails.deliveryType === 'express' ? 'Express' : 'Regular'})
                       </span>
                       <span className="text-sm font-bold text-gray-700">{shippingRate} DKK</span>
+                    </div>
+                  )}
+                  {handlingFeePerStudent > 0 && (
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-gray-500 uppercase">Handling Fee</span>
+                      <span className="text-sm font-bold text-gray-700">{handlingFeePerStudent} DKK</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center mb-1 pt-1 border-t border-gray-200">

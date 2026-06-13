@@ -87,6 +87,9 @@ export const getPublicSettings = () => api.get('/student/settings');
 // Shipping Rates (public)
 export const getShippingRates = () => api.get('/student/shipping-rates');
 
+// Class student count (for handling fee per-student split)
+export const getMyClassInfo = () => api.get('/student/my-class/student-count');
+
 // Student Profile
 export const getStudentProfile = () => api.get('/student/profile');
 export const updateStudentProfile = (data) => api.put('/student/profile', data);

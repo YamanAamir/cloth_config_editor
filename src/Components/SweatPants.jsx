@@ -40,7 +40,8 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
       ctx.font = `bold ${fontSize}px Arial`; ctx.fillStyle = "#ffffff"; // emissive = mask, hamesha white
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+      const textY = TEXT_HEIGHT + FLAG_HEIGHT / 2;
+      ctx.fillText(text, CANVAS_WIDTH / 2, textY);
     }
     if (hasFlag || hasLogo) { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT); }
     if (hasFlag || hasLogo) {
@@ -68,7 +69,7 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
   //     ctx.font = `bold ${fontSize}px Arial`; ctx.fillStyle = textColor;
   //     ctx.textAlign = "center"; ctx.textBaseline = "middle";
   //     while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
-  //     ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+  //     ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
   //   }
 
   //   if (type !== "" && flag && flagImages[flag]) {
@@ -158,7 +159,7 @@ const getDiffuseBase64 = async (
     });
 
   // ---------- TEXT ----------
-  if (text?.trim()) {
+  if (text?.trim() && type === "") {
     let fontSize = 48;
 
     ctx.font = `bold ${fontSize}px Arial`;
@@ -174,7 +175,7 @@ const getDiffuseBase64 = async (
       ctx.font = `bold ${fontSize}px Arial`;
     }
 
-    ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+    ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
   }
 
   // ---------- DOUBLE FLAG ----------
@@ -253,6 +254,20 @@ const getDiffuseBase64 = async (
           targetHeight
         );
 
+        // Overlay text centered on flag area
+        if (text?.trim()) {
+          let fontSize = 48;
+          ctx.font = `bold ${fontSize}px Arial`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+            fontSize -= 2;
+            ctx.font = `bold ${fontSize}px Arial`;
+          }
+          ctx.fillStyle = textColor;
+          ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
+        }
+
         finalize();
       })
       .catch(finalize);
@@ -310,6 +325,20 @@ const getDiffuseBase64 = async (
         );
 
         ctx.drawImage(img, x, y, w, h);
+
+        // Overlay text centered on logo area
+        if (text?.trim()) {
+          let fontSize = 48;
+          ctx.font = `bold ${fontSize}px Arial`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+            fontSize -= 2;
+            ctx.font = `bold ${fontSize}px Arial`;
+          }
+          ctx.fillStyle = textColor;
+          ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
+        }
 
         // ---------- OPACITY MAP ----------
         const opacityCanvas =

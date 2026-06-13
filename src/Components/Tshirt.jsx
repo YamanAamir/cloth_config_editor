@@ -92,7 +92,9 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         fontSize -= 2;
         ctx.font = `bold ${fontSize}px Arial`;
       }
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+      // If flag/logo present, draw text centered on flag area; else top zone
+      const textY = TEXT_HEIGHT + FLAG_HEIGHT / 2;
+      ctx.fillText(text, CANVAS_WIDTH / 2, textY);
     }
 
     if (hasFlag && flagCount === 2 && flag && flag2) {
@@ -125,7 +127,10 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
     canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
 
-    if (text?.trim()) {
+    const hasFlagOrLogo = type !== "";
+
+    // Text-only mode: draw text in top zone
+    if (text?.trim() && !hasFlagOrLogo) {
       let fontSize = 48;
       ctx.font = `bold ${fontSize}px Arial`;
       ctx.fillStyle = textColor;
@@ -135,7 +140,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         fontSize -= 2;
         ctx.font = `bold ${fontSize}px Arial`;
       }
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT / 2);
+      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
     }
 
     // type === "" means text mode — flag/logo draw nahi karo
@@ -162,6 +167,20 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
               const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
               ctx.drawImage(img, x, y, w, h);
 
+              // Draw text centered on logo area
+              if (text?.trim()) {
+                let fontSize = 48;
+                ctx.font = `bold ${fontSize}px Arial`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+                  fontSize -= 2;
+                  ctx.font = `bold ${fontSize}px Arial`;
+                }
+                ctx.fillStyle = textColor;
+                ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
+              }
+
               // Brightness-inverted opacity canvas
               const opacityCanvas = document.createElement("canvas");
               opacityCanvas.width = CANVAS_WIDTH;
@@ -184,6 +203,20 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
             } catch (e) {
               console.error("Logo render error:", e);
             }
+          }
+        } else {
+          // Flag drawn — overlay text centered on flag area
+          if (text?.trim()) {
+            let fontSize = 48;
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
+              fontSize -= 2;
+              ctx.font = `bold ${fontSize}px Arial`;
+            }
+            ctx.fillStyle = textColor;
+            ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
           }
         }
       } catch (e) {

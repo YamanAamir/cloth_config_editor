@@ -30,6 +30,21 @@ const useSettingsStore = create((set, get) => ({
         return s?.handling_fee_enabled === 'true';
     },
 
+    getBaseHandlingFee: () => {
+        const s = get().settings;
+        return parseFloat(s?.handling_fee || 0);          // key: handling_fee
+    },
+
+    getThreshold: () => {
+        const s = get().settings;
+        return parseInt(s?.handling_fee_threshold || 0);  // key: handling_fee_threshold
+    },
+
+    getExtraFeeAboveThreshold: () => {
+        const s = get().settings;
+        return parseFloat(s?.handling_fee_extra || 0);    // key: handling_fee_extra
+    },
+
     getVat: () => {
         const s = get().settings;
         return parseFloat(s?.vat_percentage || 0);
