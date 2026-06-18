@@ -10,7 +10,7 @@ import { X, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTab: externalTab }) => {
   const [internalTab, setInternalTab] = useState("size");
   const activeTab = externalTab || internalTab;
-  const setActiveTab = externalTab ? () => {} : setInternalTab;
+  const setActiveTab = externalTab ? () => { } : setInternalTab;
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [currentField, setCurrentField] = useState("");
 
@@ -56,19 +56,44 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
     canvas.height = TEXT_HEIGHT + dimensions.flagHeight;
 
     const ctx = canvas.getContext("2d");
+
+    // Pure black background
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     if (text?.trim()) {
       let fontSize = 48;
-      ctx.font = `bold ${fontSize}px Arial`; ctx.fillStyle = "#ffffff"; // emissive = mask, hamesha white
+      ctx.font = `bold ${fontSize}px Arial`; ctx.fillStyle = "#ffffff"; // emissive = white mask
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       while (ctx.measureText(text).width > dimensions.width - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
       const textY = (hasFlag || hasLogo) ? TEXT_HEIGHT + dimensions.flagHeight / 2 : TEXT_HEIGHT / 2;
       ctx.fillText(text, dimensions.width / 2, textY);
     }
-    if (hasFlag || hasLogo) { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, TEXT_HEIGHT, dimensions.width, dimensions.flagHeight); }
+    if (hasFlag && flagCount === 2) {
+      const gap = 12;
+      const availableHeight = dimensions.flagHeight - 40;
+      const eachHeight = (availableHeight - gap) / 2;
+      const flagWidth = dimensions.width * 0.88;
+      const x = (dimensions.width - flagWidth) / 2;
+      const y1 = TEXT_HEIGHT + 25;
+      const y2 = y1 + eachHeight + gap;
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x, y1, flagWidth, eachHeight);
+      ctx.fillRect(x, y2, flagWidth, eachHeight);
+    } else if (hasFlag) {
+      const targetWidth = dimensions.width * 0.9;
+      const targetHeight = dimensions.flagHeight * 0.85;
+      const x = (dimensions.width - targetWidth) / 2;
+      const y = TEXT_HEIGHT + (dimensions.flagHeight - targetHeight) / 2;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x, y, targetWidth, targetHeight);
+    } else if (hasLogo) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, TEXT_HEIGHT, dimensions.width, dimensions.flagHeight);
+    }
+
     if (hasFlag || hasLogo) {
-      // black belt = no-print zone (matches diffuse)
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, 20);
       ctx.strokeStyle = "#000000"; ctx.lineWidth = 40;
       ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
     }
@@ -229,14 +254,6 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
           loadImage(flagImages[flag2]),
         ]);
 
-        // white background
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-
-        // black top belt
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, 20);
-
         const gap = 12;
 
         const availableHeight = FLAG_HEIGHT - 40;
@@ -265,17 +282,9 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
 
       loadImage(flagImages[flag])
         .then((img) => {
-          // white background
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-
-          // top black padding / belt
-          ctx.fillStyle = "#000000";
-          ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, 20);
-
-          // flag size
+          // Remove solid white background fill
           const targetWidth = CANVAS_WIDTH * 0.9;
-          const targetHeight = FLAG_HEIGHT * 0.85;
+          const targetHeight = FLAG_HEIGHT * 1;
 
           // centered position
           const x = (CANVAS_WIDTH - targetWidth) / 2;
@@ -331,35 +340,10 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
         try {
           const img = await loadImage(logoSrc);
 
-          const ratio = Math.min(
-            CANVAS_WIDTH / img.width,
-            FLAG_HEIGHT / img.height
-          );
-
-          const w = img.width * ratio * 0.8;
-          const h = img.height * ratio * 0.8;
-
-          const x = (CANVAS_WIDTH - w) / 2;
-          const y =
-            TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
-
-          // white bg
-          ctx.fillStyle = "#fff";
-          ctx.fillRect(
-            0,
-            TEXT_HEIGHT,
-            CANVAS_WIDTH,
-            FLAG_HEIGHT
-          );
-
-          // black belt
-          ctx.fillStyle = "#000";
-          ctx.fillRect(
-            0,
-            TEXT_HEIGHT,
-            CANVAS_WIDTH,
-            20
-          );
+          // No solid white background — let cloth color through
+          const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height);
+          const w = img.width * ratio * 0.8; const h = img.height * ratio * 0.8;
+          const x = (CANVAS_WIDTH - w) / 2; const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
 
           ctx.drawImage(img, x, y, w, h);
 
@@ -377,49 +361,26 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
             ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
           }
 
-          // ---------- OPACITY MAP ----------
-          const opacityCanvas =
-            document.createElement("canvas");
-
+          // Opacity canvas construction
+          const opacityCanvas = document.createElement("canvas");
           opacityCanvas.width = CANVAS_WIDTH;
           opacityCanvas.height = CANVAS_HEIGHT;
+          const octx = opacityCanvas.getContext("2d");
 
-          const octx =
-            opacityCanvas.getContext("2d");
-
-          octx.fillStyle = "#fff";
-          octx.fillRect(
-            0,
-            TEXT_HEIGHT,
-            CANVAS_WIDTH,
-            FLAG_HEIGHT
-          );
+          // Pure black background
+          octx.fillStyle = "#000";
+          octx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
           octx.drawImage(img, x, y, w, h);
-
-          const imgData = octx.getImageData(
-            0,
-            0,
-            opacityCanvas.width,
-            opacityCanvas.height
-          );
-
+          const imgData = octx.getImageData(0, 0, opacityCanvas.width, opacityCanvas.height);
           for (let i = 0; i < imgData.data.length; i += 4) {
-            const brightness =
-              0.299 * imgData.data[i] +
-              0.587 * imgData.data[i + 1] +
-              0.114 * imgData.data[i + 2];
-
-            const alpha = imgData.data[i + 3];
-
-            const bw =
-              alpha < 10 || brightness > 128
-                ? 0
-                : 255;
-
-            imgData.data[i] = bw;
-            imgData.data[i + 1] = bw;
-            imgData.data[i + 2] = bw;
+            const r = imgData.data[i], g = imgData.data[i + 1], b = imgData.data[i + 2], a = imgData.data[i + 3];
+            const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+            let bw = 0;
+            if (a > 10 && brightness < 240) {
+              bw = 255;
+            }
+            imgData.data[i] = imgData.data[i + 1] = imgData.data[i + 2] = bw;
             imgData.data[i + 3] = 255;
           }
 
@@ -649,7 +610,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
       {activeTab === "size" ? (
         <>
           <h1 className="text-lg font-bold mb-3 text-gray-900">Shorts</h1>
-            {/* Color — 2-row grid */}
+          {/* Color — 2-row grid */}
           <div className="mb-4">
             <h2 className="text-xs font-semibold mb-2 text-gray-500 uppercase tracking-wide">Color</h2>
             <div className="grid grid-flow-col grid-rows-1 gap-2 w-fit">

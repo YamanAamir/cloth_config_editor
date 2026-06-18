@@ -15,9 +15,12 @@ import { X, Search, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText = 25, activeTab: externalTab }) => {
   const [internalTab, setInternalTab] = useState("size");
   const activeTab = externalTab || internalTab;
-  const setActiveTab = externalTab ? () => {} : setInternalTab;
+  const setActiveTab = externalTab ? () => { } : setInternalTab;
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [currentField, setCurrentField] = useState("");
+  const [designColor, setDesignColor] = useState("light"); // 'light' | 'dark'
+  const designColorRef = React.useRef("light");
+  const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" });
 
   // Defaults
   const selectedColor = data?.selectedColor || "Red";
@@ -78,11 +81,14 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
     canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
 
-    // Use transparency instead of black background for cleaner blending
+    // Pure black background
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
     if (text?.trim()) {
       let fontSize = 48;
       ctx.font = `bold ${fontSize}px Arial`;
-      ctx.fillStyle = "#ffffff"; // emissive = mask, text area hamesha white
+      ctx.fillStyle = "#ffffff"; // emissive = white mask
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
@@ -90,32 +96,11 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
         fontSize -= 2;
         ctx.font = `bold ${fontSize}px Arial`;
       }
-      // If flag/logo present, draw text centered on flag area; else top zone
       const textY = TEXT_HEIGHT + FLAG_HEIGHT / 2;
       ctx.fillText(text, CANVAS_WIDTH / 2, textY);
     }
 
-    if (hasFlag || hasLogo) {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-    }
-
-    // Add black border (mask) if flag or logo is present
-    if (hasFlag || hasLogo) {
-
-      // black belt = no-print zone (matches diffuse)
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, 20);
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 40;
-      ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
-    }
-    if (hasSecondAsset) {
-      // ?? BLACK BASE
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
+    if (hasFlag && hasSecondAsset) {
       const DIVIDER_W = 2;
       const BOX_W = (CANVAS_WIDTH - DIVIDER_W) / 2;
       const BOX_H = Math.round(FLAG_HEIGHT * 0.4);
@@ -124,6 +109,22 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, BOX_Y, BOX_W, BOX_H);
       ctx.fillRect(BOX_W + DIVIDER_W, BOX_Y, BOX_W, BOX_H);
+    } else if (hasFlag) {
+      const targetWidth = CANVAS_WIDTH * 0.9;
+      const targetHeight = FLAG_HEIGHT * 1;
+      const x = (CANVAS_WIDTH - targetWidth) / 2;
+      const y = TEXT_HEIGHT + (FLAG_HEIGHT - targetHeight) / 2;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x, y, targetWidth, targetHeight);
+    } else if (hasLogo) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+    }
+
+    if (hasFlag || hasLogo) {
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 40;
+      ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
     }
     return canvas.toDataURL("image/png");
   };
@@ -348,17 +349,9 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
       loadImage(flagImages[flag])
         .then((img) => {
 
-          // white background
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH - 20, FLAG_HEIGHT);
-
-          // top black padding
-          ctx.fillStyle = "#000000";
-          ctx.fillRect(0, 120, canvas.width, 20);
-
-          // custom size
+          // Remove solid white background fill
           const targetWidth = CANVAS_WIDTH * 0.9;
-          const targetHeight = FLAG_HEIGHT * 0.85;
+          const targetHeight = FLAG_HEIGHT * 1;
 
           // centered position
           const x = (CANVAS_WIDTH - targetWidth) / 2;
@@ -406,20 +399,11 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
     if (logoSrc) {
       loadImageCached(logoSrc)
         .then((img) => {
-          const ratio = Math.min(
-            CANVAS_WIDTH / img.width,
-            FLAG_HEIGHT / img.height
-          );
+          // No solid white background — let cloth color through
+          const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height);
+          const w = img.width * ratio * 0.8; const h = img.height * ratio * 0.8;
+          const x = (CANVAS_WIDTH - w) / 2; const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
 
-          const w = img.width * ratio * 0.9;
-          const h = img.height * ratio * 0.9;
-
-          const x = (CANVAS_WIDTH - w) / 2;
-          const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
-
-          // White background ? cloth color logo ke peeche na dikhe
-          ctx.fillStyle = "#fff";
-          ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
           ctx.drawImage(img, x, y, w, h);
 
           // Overlay text centered on logo area
@@ -436,25 +420,30 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
             ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
           }
 
-          // Brightness-inverted opacity canvas
+          // Opacity canvas construction
           const opacityCanvas = document.createElement("canvas");
-          opacityCanvas.width = CANVAS_WIDTH;
-          opacityCanvas.height = CANVAS_HEIGHT;
+          opacityCanvas.width = CANVAS_WIDTH; opacityCanvas.height = CANVAS_HEIGHT;
           const octx = opacityCanvas.getContext("2d");
-          octx.fillStyle = "#fff";
-          octx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+
+          // Pure black background
+          octx.fillStyle = "#000";
+          octx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
           octx.drawImage(img, x, y, w, h);
           const imgData = octx.getImageData(0, 0, opacityCanvas.width, opacityCanvas.height);
           for (let i = 0; i < imgData.data.length; i += 4) {
-            const brightness = 0.299 * imgData.data[i] + 0.587 * imgData.data[i + 1] + 0.114 * imgData.data[i + 2];
-            const alpha = imgData.data[i + 3];
-            const bw = (alpha < 10 || brightness > 128) ? 0 : 255;
+            const r = imgData.data[i], g = imgData.data[i + 1], b = imgData.data[i + 2], a = imgData.data[i + 3];
+            const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+            let bw = 0;
+            if (a > 10 && brightness < 240) {
+              bw = 255;
+            }
             imgData.data[i] = imgData.data[i + 1] = imgData.data[i + 2] = bw;
             imgData.data[i + 3] = 255;
           }
           octx.putImageData(imgData, 0, 0);
-
           callback(canvas.toDataURL("image/png"), opacityCanvas.toDataURL("image/png"));
+          return;
         })
         .catch(finalize);
 
@@ -464,6 +453,50 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
 
     // ---------- EMPTY ----------
     finalize();
+  };
+
+  const sendBackDesign = (diffuseB64, opacityB64, color) => {
+    if (!diffuseB64 && !opacityB64) return;
+
+    const invertOpacity = (b64, cb) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = 2;
+        const c = document.createElement("canvas");
+        c.width = img.width * scale; c.height = img.height * scale;
+        const ctx = c.getContext("2d");
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        const d = ctx.getImageData(0, 0, c.width, c.height);
+        for (let i = 0; i < d.data.length; i += 4) {
+          d.data[i] = 255 - d.data[i];
+          d.data[i + 1] = 255 - d.data[i + 1];
+          d.data[i + 2] = 255 - d.data[i + 2];
+          d.data[i + 3] = 255;
+        }
+        ctx.putImageData(d, 0, 0);
+        cb(c.toDataURL("image/png"));
+      };
+      img.src = b64;
+    };
+    ["preview-iframe", "preview-iframe2"].forEach(id => {
+      const iframe = document.getElementById(id);
+      if (!iframe?.contentWindow) return;
+      if (color === "light") {
+        if (diffuseB64) iframe.contentWindow.postMessage("SweatShirt:back_black_diffuse: " + diffuseB64, "*");
+        if (opacityB64) iframe.contentWindow.postMessage("SweatShirt:back_black_opacity: " + opacityB64, "*");
+      } else {
+        if (opacityB64) invertOpacity(opacityB64, inv => {
+          iframe.contentWindow.postMessage("SweatShirt:back_white_diffuse: " + inv, "*");
+        });
+        if (opacityB64) invertOpacity(opacityB64, inv => {
+          iframe.contentWindow.postMessage("SweatShirt:back_white_opacity: " + inv, "*");
+        });
+      }
+    });
   };
 
   const handleFlagSelect = (field) => {
@@ -698,55 +731,36 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
   // ];
 
   const colors = [
-    { name: "Red", value: "#E61709", border: "#E61709" },
-    { name: "Black", value: "#120F14", border: "#120F14" },
-    { name: "White", value: "#FFFFFF", border: "#D1D5DB" },
-    { name: "Natural", value: "#FFFAD9", border: "#FFFAD9" },
-    { name: "Heather Grey", value: "#D4D9DC", border: "#D4D9DC" },
-    { name: "Navy", value: "#051734", border: "#051734" },
-    { name: "Light Pink", value: "#F0A5C7", border: "#F0A5C7" },
-    { name: "Olive Green", value: "#63673F", border: "#63673F" },
-    { name: "Blue", value: "#0000FF", border: "#0000FF" },
-    { name: "Purple", value: "#431279", border: "#431279" },
+    { name: "Red", value: "#E61709", border: "#E61709", dark: false },
+    { name: "Black", value: "#120F14", border: "#120F14", dark: true },
+    { name: "White", value: "#FFFFFF", border: "#D1D5DB", dark: false },
+    { name: "Natural", value: "#FFFAD9", border: "#FFFAD9", dark: false },
+    { name: "Heather Grey", value: "#D4D9DC", border: "#D4D9DC", dark: false },
+    { name: "Navy", value: "#051734", border: "#051734", dark: true },
+    { name: "Light Pink", value: "#F0A5C7", border: "#F0A5C7", dark: false },
+    { name: "Olive Green", value: "#63673F", border: "#63673F", dark: true },
+    { name: "Blue", value: "#0000FF", border: "#0000FF", dark: true },
+    { name: "Purple", value: "#431279", border: "#431279", dark: true },
   ];
+
+  const visibleColors = backDesigns
+    ? [...colors].sort((a, b) => {
+      if (designColor === "dark") return (a.dark === b.dark ? 0 : a.dark ? -1 : 1);
+      return (a.dark === b.dark ? 0 : a.dark ? 1 : -1);
+    })
+    : colors;
 
   const sizes = ["S", "M", "L", "XL", "2XL", "3XL"];
 
   return (
     <div className="max-w-md mx-auto">
-      {/* Tab Navigation */}
-      {/* <div className="flex gap-4 mb-8">
-        <button
-          onClick={() => setActiveTab("size")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeTab === "size"
-            ? "bg-white shadow-sm border-2 border-green-700"
-            : "bg-white border-2 border-transparent hover:border-gray-300"
-            }`}
-        >
-          <span className="font-medium text-gray-900">Size and color</span>
-          <img className="w-10" src={cog} alt="settings" />
-        </button>
-        <button
-          onClick={() => setActiveTab("pressure")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeTab === "pressure"
-            ? "bg-white shadow-sm border-2 border-green-700"
-            : "bg-white border-2 border-transparent hover:border-gray-300"
-            }`}
-        >
-          <span className="font-medium text-gray-900">Pressure</span>
-          <img className="w-10" src={plus} alt="add" />
-        </button>
-      </div> */}
-
       {activeTab === "size" ? (
         <>
           <h1 className="text-lg font-bold mb-3 text-gray-900">SweatShirt</h1>
-
-           {/* Color � 2-row grid */}
           <div className="mb-4">
             <h2 className="text-xs font-semibold mb-2 text-gray-500 uppercase tracking-wide">Color</h2>
             <div className="grid grid-flow-col grid-rows-1 gap-2 w-fit">
-              {colors.map(c => (
+              {visibleColors.map(c => (
                 <button key={c.name} title={c.name} onClick={() => onUpdate({ selectedColor: c.name })}
                   className="relative w-8 h-8 rounded-md transition-all focus:outline-none"
                   style={{ backgroundColor: c.value, border: selectedColor === c.name ? `2px solid ${c.border}` : `1px solid ${c.border}`, boxShadow: selectedColor === c.name ? `0 0 0 2px white, 0 0 0 3px ${c.border}` : "none" }}>
@@ -756,60 +770,52 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
             </div>
             {selectedColor && <p className="text-xs text-gray-500 mt-1.5">{selectedColor}</p>}
           </div>
-          {/* Size */}
           <div className="mb-5">
             <h2 className="text-xs font-semibold mb-2 text-gray-500 uppercase tracking-wide">Size</h2>
             <div className="flex flex-wrap gap-2">
               {sizes.map(s => <button key={s} onClick={() => onUpdate({ selectedSize: s })} className={`py-1.5 px-3 rounded-lg border-2 transition-all font-medium text-sm ${selectedSize === s ? "border-gray-900 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"}`}>{s}</button>)}
             </div>
           </div>
+          {backDesigns && (
+            <div className="mb-5">
+              <h2 className="text-xs font-semibold mb-3 text-gray-500 uppercase tracking-wide flex items-center gap-2">
+                <span>⊕</span> Back Design Library
+              </h2>
+              <p className="text-xs font-semibold text-gray-700 mb-2">Garment Color</p>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => { setDesignColor("light"); designColorRef.current = "light"; sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, "light"); }}
+                  className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${designColor === "light" ? "border-green-600 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-500"}`}>
+                  <div className="font-bold">Light Garment</div>
+                  <div className="text-xs text-gray-400 font-normal">Black print</div>
+                </button>
+                <button type="button" onClick={() => { setDesignColor("dark"); designColorRef.current = "dark"; sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, "dark"); }}
+                  className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${designColor === "dark" ? "border-green-600 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-500"}`}>
+                  <div className="font-bold">Dark Garment</div>
+                  <div className="text-xs text-gray-400 font-normal">White print</div>
+                </button>
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <>
-          <h1 className="text-lg font-bold mb-3 text-gray-900">
-            Pressure Options
-          </h1>
-
-          {/* Chest Area */}
+          <h1 className="text-lg font-bold mb-3 text-gray-900">Pressure Options</h1>
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Chest Area
-            </h2>
-
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Chest Area</h2>
             {["rightChest", "leftChest"].map((area) => (
               <div key={area} className="bg-white rounded-lg p-4 mb-4">
-                <h3 className="font-semibold text-gray-900 mb-3">
-                  {area === "rightChest" ? "Right Chest:" : "Left Chest:"}
-                </h3>
+                <h3 className="font-semibold text-gray-900 mb-3">{area === "rightChest" ? "Right Chest:" : "Left Chest:"}</h3>
                 <div className="space-y-3">
-                  {/* Tabs: Text | Flag | Logo */}
                   <div className="flex rounded-lg overflow-hidden border border-gray-200">
                     {["text", "flag", "logo"].map((tab) => (
-                      <button
-                        key={tab}
-                        type="button"
-                        onClick={() => {
-                          // if (tab === "text") {
-                          //   onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Type`]: "", [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" } });
-                          // } else {
-                          //   handleTypeChange(area, tab);
-                          // }
-                          handleTypeChange(area, tab === "text" ? "" : tab);
-                        }}
-                        className={`flex-1 py-2 text-xs font-bold capitalize transition-all ${pressureOptions[`${area}Type`] === tab || (tab === "text" && !pressureOptions[`${area}Type`])
-                          ? "bg-green-700 text-white"
-                          : "bg-white text-gray-500 hover:bg-gray-50"
-                          }`}
-                      >
+                      <button key={tab} type="button"
+                        onClick={() => { handleTypeChange(area, tab === "text" ? "" : tab); }}
+                        className={`flex-1 py-2 text-xs font-bold capitalize transition-all ${pressureOptions[`${area}Type`] === tab || (tab === "text" && !pressureOptions[`${area}Type`]) ? "bg-green-700 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
                         {tab === "text" ? "Text" : tab === "flag" ? "Flag" : "Logo"}
-                        {(tab === "text" && pressureOptions[`${area}Text`]) ||
-                          (tab === "flag" && pressureOptions[`${area}Flag`]) ||
-                          (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? " ?" : ""}
+                        {(tab === "text" && pressureOptions[`${area}Text`]) || (tab === "flag" && pressureOptions[`${area}Flag`]) || (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? " ✓" : ""}
                       </button>
                     ))}
                   </div>
-
-                  {/* Text */}
                   {!pressureOptions[`${area}Type`] && (
                     <div className="space-y-2">
                       <div className="flex flex-wrap gap-2">
@@ -818,118 +824,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
                           placeholder="Enter text" maxLength={maxCharsText}
                           className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
                         />
-                        {pressureOptions[`${area}Text`] && (
-                          <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex justify-end">
-                        <span className={`text-xs font-medium ${(pressureOptions[`${area}Text`]?.length || 0) >= maxCharsText ? 'text-red-500' : 'text-gray-400'}`}>
-                          {pressureOptions[`${area}Text`]?.length || 0}/{maxCharsText}
-                        </span>
-                      </div>
-                      {pressureOptions[`${area}Text`] && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 font-medium">Text color:</span>
-                          {["#ffffff", "#000000"].map((color) => (
-                            <button key={color} type="button"
-                              onClick={() => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}TextColor`]: color } })}
-                              title={color === "#ffffff" ? "White" : "Black"}
-                              className="w-7 h-7 rounded-full border-2 transition-all"
-                              style={{ backgroundColor: color, borderColor: (pressureOptions[`${area}TextColor`] || "#ffffff") === color ? "#16a34a" : "#d1d5db", boxShadow: (pressureOptions[`${area}TextColor`] || "#ffffff") === color ? "0 0 0 2px #16a34a" : "none" }}
-                            />
-                          ))}
-                          <span className="text-xs text-gray-400">{(pressureOptions[`${area}TextColor`] || "#ffffff") === "#ffffff" ? "White" : "Black"}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Flag */}
-                  {pressureOptions[`${area}Type`] === "flag" && (
-                    <div className="flex flex-wrap gap-2">
-                      <input type="text" value={getFlagDisplay(pressureOptions[`${area}Flag`])} readOnly placeholder="Select flag"
-                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
-                        onClick={() => handleFlagSelect(`${area}Flag`)}
-                      />
-                      <button onClick={() => handleFlagSelect(`${area}Flag`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
-                      {pressureOptions[`${area}Flag`] && (
-                        <button onClick={() => clearField(`${area}Flag`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Logo ? predefined only, no upload */}
-                  {pressureOptions[`${area}Type`] === "logo" && (
-                    <div className="flex flex-wrap gap-2">
-                      <input type="text" value={getLogoDisplay(pressureOptions[`${area}LogoPredefined`])} readOnly placeholder="Select logo"
-                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
-                        onClick={() => handleFlagSelect(`${area}LogoPredefined`)}
-                      />
-                      <button onClick={() => handleFlagSelect(`${area}LogoPredefined`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
-                      {pressureOptions[`${area}LogoPredefined`] && (
-                        <button onClick={() => clearField(`${area}LogoPredefined`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Sleeves */}
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Sleeves
-            </h2>
-
-            {["rightSleeve", "leftSleeve"].map((area) => (
-              <div key={area} className="bg-white rounded-lg p-4 mb-4">
-                {
-                  console.log(
-                    area,
-                    pressureOptions[`${area}FlagCount`],
-                    Number(pressureOptions[`${area}FlagCount`] || 1)
-                  )
-                }
-                <h3 className="font-semibold text-gray-900 mb-3">
-                  {area === "rightSleeve" ? "Right Sleeve:" : "Left Sleeve:"}
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex rounded-lg overflow-hidden border border-gray-200">
-                    {["text", "flag", "logo"].map((tab) => (
-                      <button key={tab} type="button"
-                        onClick={() => {
-                          if (tab === "text") {
-                            postToPreview(`sshirt ${area}`);
-                            onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Type`]: "", [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" } });
-                          } else { handleTypeChange(area, tab); }
-                        }}
-                        className={`flex-1 py-2 text-xs font-bold capitalize transition-all ${pressureOptions[`${area}Type`] === tab || (tab === "text" && !pressureOptions[`${area}Type`])
-                          ? "bg-green-700 text-white" : "bg-white text-gray-500 hover:bg-gray-50"
-                          }`}
-                      >
-                        {tab === "text" ? "Text" : tab === "flag" ? "Flag" : "Logo"}
-                        {(tab === "text" && pressureOptions[`${area}Text`]) || (tab === "flag" && pressureOptions[`${area}Flag`]) || (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? " ?" : ""}
-                      </button>
-                    ))}
-                  </div>
-                  {!pressureOptions[`${area}Type`] && (
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap gap-2">
-                        <input type="text" value={pressureOptions[`${area}Text`]}
-                          onChange={(e) => { onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } }); setTimeout(() => { postToPreview(`sweatshirt ${area}`); }, 0); }}
-                          placeholder="Enter text" maxLength={maxCharsText}
-                          className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                        />
-                        {pressureOptions[`${area}Text`] && (
-                          <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>
-                        )}
+                        {pressureOptions[`${area}Text`] && <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
                       </div>
                       <div className="flex justify-end">
                         <span className={`text-xs font-medium ${(pressureOptions[`${area}Text`]?.length || 0) >= maxCharsText ? 'text-red-500' : 'text-gray-400'}`}>
@@ -954,40 +849,19 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
                   )}
                   {pressureOptions[`${area}Type`] === "flag" && (
                     <div className="space-y-3">
-                      {/* 1 or 2 flags toggle */}
                       <div className="flex items-center gap-3">
                         <span className="text-xs font-semibold text-gray-600">Number of flags:</span>
                         <div className="flex rounded-lg overflow-hidden border border-gray-200">
-                          {[1, 2].map((n) => (
+                          {[1, 2].map(n => (
                             <button key={n} type="button"
-                              onClick={() => {
-                                console.log("clicked", n);
-
-                                const updatedOptions = {
-                                  ...pressureOptions,
-                                  [`${area}FlagCount`]: n,
-                                  ...(n === 1 ? { [`${area}Flag2`]: "" } : {}),
-                                };
-
-                                console.log("updatedOptions", updatedOptions);
-
-                                onUpdate({
-                                  pressureOptions: updatedOptions,
-                                });
-                              }}
-                              className={`px-4 py-1.5 text-xs font-bold transition-all ${(pressureOptions[`${area}FlagCount`] || 1) === n
-                                ? "bg-green-700 text-white" : "bg-white text-gray-500 hover:bg-gray-50"
-                                }`}
+                              onClick={() => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}FlagCount`]: n, ...(n === 1 ? { [`${area}Flag2`]: "" } : {}) } })}
+                              className={`px-4 py-1.5 text-xs font-bold transition-all ${(pressureOptions[`${area}FlagCount`] || 1) === n ? "bg-green-700 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
                             >{n}</button>
                           ))}
                         </div>
                       </div>
-
-                      {/* Flag 1 */}
                       <div>
-                        <label className="text-xs text-gray-500 mb-1 block">
-                          {(Number(pressureOptions[`${area}FlagCount`] || 1) === 2) ? "Flag 1 (50% size)" : "Flag"}
-                        </label>
+                        <label className="text-xs text-gray-500 mb-1 block">Flag 1</label>
                         <div className="flex flex-wrap gap-2">
                           <input type="text" value={getFlagDisplay(pressureOptions[`${area}Flag`])} readOnly placeholder="Select flag"
                             className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
@@ -1028,6 +902,106 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
               </div>
             ))}
           </div>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Sleeve Area</h2>
+            {["rightSleeve", "leftSleeve"].map((area) => (
+              <div key={area} className="bg-white rounded-lg p-4 mb-4">
+                <h3 className="font-semibold text-gray-900 mb-3">{area === "rightSleeve" ? "Right Sleeve:" : "Left Sleeve:"}</h3>
+                <div className="space-y-3">
+                  <div className="flex rounded-lg overflow-hidden border border-gray-200">
+                    {["text", "flag", "logo"].map((tab) => (
+                      <button key={tab} type="button"
+                        onClick={() => { handleTypeChange(area, tab === "text" ? "" : tab); }}
+                        className={`flex-1 py-2 text-xs font-bold capitalize transition-all ${pressureOptions[`${area}Type`] === tab || (tab === "text" && !pressureOptions[`${area}Type`]) ? "bg-green-700 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
+                        {tab === "text" ? "Text" : tab === "flag" ? "Flag" : "Logo"}
+                        {(tab === "text" && pressureOptions[`${area}Text`]) || (tab === "flag" && pressureOptions[`${area}Flag`]) || (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? " ✓" : ""}
+                      </button>
+                    ))}
+                  </div>
+                  {!pressureOptions[`${area}Type`] && (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <input type="text" value={pressureOptions[`${area}Text`]}
+                          onChange={(e) => { onUpdate({ pressureOptions: { ...pressureOptions, [`${area}Text`]: e.target.value } }); setTimeout(() => { postToPreview(`sshirt ${area}`); }, 0); }}
+                          placeholder="Enter text" maxLength={maxCharsText}
+                          className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                        />
+                        {pressureOptions[`${area}Text`] && <button onClick={() => clearField(`${area}Text`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
+                      </div>
+                      <div className="flex justify-end">
+                        <span className={`text-xs font-medium ${(pressureOptions[`${area}Text`]?.length || 0) >= maxCharsText ? 'text-red-500' : 'text-gray-400'}`}>
+                          {pressureOptions[`${area}Text`]?.length || 0}/{maxCharsText}
+                        </span>
+                      </div>
+                      {pressureOptions[`${area}Text`] && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 font-medium">Text color:</span>
+                          {["#ffffff", "#000000"].map((color) => (
+                            <button key={color} type="button"
+                              onClick={() => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}TextColor`]: color } })}
+                              title={color === "#ffffff" ? "White" : "Black"}
+                              className="w-7 h-7 rounded-full border-2 transition-all"
+                              style={{ backgroundColor: color, borderColor: (pressureOptions[`${area}TextColor`] || "#ffffff") === color ? "#16a34a" : "#d1d5db", boxShadow: (pressureOptions[`${area}TextColor`] || "#ffffff") === color ? "0 0 0 2px #16a34a" : "none" }}
+                            />
+                          ))}
+                          <span className="text-xs text-gray-400">{(pressureOptions[`${area}TextColor`] || "#ffffff") === "#ffffff" ? "White" : "Black"}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {pressureOptions[`${area}Type`] === "flag" && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-gray-600">Number of flags:</span>
+                        <div className="flex rounded-lg overflow-hidden border border-gray-200">
+                          {[1, 2].map(n => (
+                            <button key={n} type="button"
+                              onClick={() => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}FlagCount`]: n, ...(n === 1 ? { [`${area}Flag2`]: "" } : {}) } })}
+                              className={`px-4 py-1.5 text-xs font-bold transition-all ${(pressureOptions[`${area}FlagCount`] || 1) === n ? "bg-green-700 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+                            >{n}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Flag 1</label>
+                        <div className="flex flex-wrap gap-2">
+                          <input type="text" value={getFlagDisplay(pressureOptions[`${area}Flag`])} readOnly placeholder="Select flag"
+                            className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                            onClick={() => handleFlagSelect(`${area}Flag`)}
+                          />
+                          <button onClick={() => handleFlagSelect(`${area}Flag`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
+                          {pressureOptions[`${area}Flag`] && <button onClick={() => clearField(`${area}Flag`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
+                        </div>
+                      </div>
+                      {(Number(pressureOptions[`${area}FlagCount`] || 1) === 2) && (
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Flag 2 (50% size)</label>
+                          <div className="flex flex-wrap gap-2">
+                            <input type="text" value={getFlagDisplay(pressureOptions[`${area}Flag2`] || "")} readOnly placeholder="Select flag"
+                              className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                              onClick={() => handleFlagSelect(`${area}Flag2`)}
+                            />
+                            <button onClick={() => handleFlagSelect(`${area}Flag2`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
+                            {pressureOptions[`${area}Flag2`] && <button onClick={() => clearField(`${area}Flag2`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {pressureOptions[`${area}Type`] === "logo" && (
+                    <div className="flex flex-wrap gap-2">
+                      <input type="text" value={getLogoDisplay(pressureOptions[`${area}LogoPredefined`])} readOnly placeholder="Select logo"
+                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                        onClick={() => handleFlagSelect(`${area}LogoPredefined`)}
+                      />
+                      <button onClick={() => handleFlagSelect(`${area}LogoPredefined`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
+                      {pressureOptions[`${area}LogoPredefined`] && <button onClick={() => clearField(`${area}LogoPredefined`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </>
       )}
 
@@ -1039,17 +1013,14 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
           pressureOptions={pressureOptions}
           isAppReady={isAppReady}
           backDesigns={backDesigns}
+          designColor={designColor}
           onUpdate={(update) => {
             if (update.canvasBase64) {
-              const { diffuse, opacity, emissive } = update.canvasBase64;
-              ["preview-iframe", "preview-iframe2"].forEach((id) => {
-                const iframe = document.getElementById(id);
-                if (iframe?.contentWindow) {
-                  iframe.contentWindow.postMessage(diffuse, "*");
-                  iframe.contentWindow.postMessage(opacity, "*");
-                  if (emissive) iframe.contentWindow.postMessage(emissive, "*");
-                }
-              });
+              const raw = update.canvasBase64.rawData;
+              const diffuseB64 = raw?.diffuse || "";
+              const opacityB64 = raw?.opacity || "";
+              lastBackDataRef.current = { diffuse: diffuseB64, opacity: opacityB64 };
+              sendBackDesign(diffuseB64, opacityB64, designColorRef.current);
             }
             if (update.backDesign !== undefined) {
               onUpdate({

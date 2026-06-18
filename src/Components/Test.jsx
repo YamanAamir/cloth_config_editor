@@ -136,7 +136,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       setSelectedId(null);
     }
   }, [pressureOptions]);
- const selectPredefinedDesign = async (url, design) => {
+  const selectPredefinedDesign = async (url, design) => {
     loadImageSafe(url, async (img) => {
       const scale = Math.min(
         (CANVAS_WIDTH * 0.75) / img.width,
@@ -178,50 +178,74 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       currentObjectsLength: objects.length,
       currentPressureBackDesign: pressureOptions?.backDesign
     });
-    
+
     // If backDesigns just became available and we don't have any objects yet
-    if (backDesigns && objects.length === 0 && !pressureOptions?.backDesign) {
-      console.log("🚀 BackDesigns just became available, triggering auto-load");
+    if (backDesigns) {
       const design = backDesigns;
-      const img = `${BASE_URL}${design.file_path.replace(/\\/g, "/")}`;
-      console.log("🎯 Loading design from availability change:", design.name, img);
-      
-      loadImageSafe(img, async (imgObj) => {
-        console.log("✅ Image loaded from availability change");
-        const scale = Math.min(
-          (CANVAS_WIDTH * 0.75) / imgObj.width,
-          (CANVAS_HEIGHT * 0.65) / imgObj.height
-        );
-        const w = imgObj.width * scale;
-        const h = imgObj.height * scale;
+      const path = (designColor === "dark" && design.configured_file_path_2)
+        ? design.configured_file_path_2
+        : design.configured_file_path;
 
-        const newImageObj = {
-          id: 'uploadedImage',
-          type: 'image',
-          srcObj: imgObj,
-          pos: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
-          size: { w, h },
-          angle: 0,
-          locked: false,
-        };
+      if (!path) return;
+      const img = `${BASE_URL}${path.replace(/\\/g, "/")}`;
 
-        console.log("🎨 Setting objects from availability change:", newImageObj);
-        setObjects([newImageObj]);
-        setSelectedId('uploadedImage');
+      const isInitialLoad = objects.length === 0 && !pressureOptions?.backDesign;
+      const isColorSwitch = objects.length > 0 &&
+        (objects[0].designId === design.id || pressureOptions?.backDesign?.designId === design.id) &&
+        objects[0].currentPath !== path;
 
-        onUpdate({
-          backDesign: {
-            pos: newImageObj.pos,
-            size: newImageObj.size,
-            angle: newImageObj.angle,
-            locked: newImageObj.locked,
-            src: img,
-            designId: design?.id
+      if (isInitialLoad || isColorSwitch) {
+        console.log("🎯 Loading design (isInitialLoad:", isInitialLoad, "isColorSwitch:", isColorSwitch, "):", design.name, img);
+
+        loadImageSafe(img, async (imgObj) => {
+          console.log("✅ Image loaded successfully");
+
+          let newObject;
+          if (isInitialLoad) {
+            const scale = Math.min(
+              (CANVAS_WIDTH * 0.75) / imgObj.width,
+              (CANVAS_HEIGHT * 0.65) / imgObj.height
+            );
+            const w = imgObj.width * scale;
+            const h = imgObj.height * scale;
+
+            newObject = {
+              id: 'uploadedImage',
+              type: 'image',
+              srcObj: imgObj,
+              pos: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
+              size: { w, h },
+              angle: 0,
+              locked: false,
+              designId: design.id,
+              currentPath: path
+            };
+          } else {
+            // Preservation of transformations on color switch
+            newObject = {
+              ...objects[0],
+              srcObj: imgObj,
+              currentPath: path
+            };
           }
+
+          setObjects([newObject]);
+          setSelectedId('uploadedImage');
+
+          onUpdate({
+            backDesign: {
+              pos: newObject.pos,
+              size: newObject.size,
+              angle: newObject.angle,
+              locked: newObject.locked,
+              src: img,
+              designId: design.id
+            }
+          });
         });
-      });
+      }
     }
-  }, [backDesigns]); // Only watch backDesigns changes
+  }, [backDesigns, designColor]);
 
   const getSelected = () => objects.find(o => o.id === selectedId);
 
@@ -261,12 +285,15 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       ctx.restore();
     });
 
-    // ── Opacity Mask (pure black/white: bright bg → black, dark design → white) ──
+    // ── Opacity Mask (content = white, background = black) ──
     const opacityCanvas = document.createElement("canvas");
     opacityCanvas.width = CANVAS_WIDTH;
     opacityCanvas.height = CANVAS_HEIGHT;
     const octx = opacityCanvas.getContext("2d");
-    // No background fill — transparent canvas, empty areas = black (no print)
+
+    // Clear / keep transparent background
+    octx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
     objects.forEach(obj => {
       octx.save();
       octx.translate(obj.pos.x, obj.pos.y);
@@ -276,14 +303,19 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       }
       octx.restore();
     });
+
     const imgData = octx.getImageData(0, 0, opacityCanvas.width, opacityCanvas.height);
     for (let i = 0; i < imgData.data.length; i += 4) {
-      const brightness = 0.299 * imgData.data[i] + 0.587 * imgData.data[i + 1] + 0.114 * imgData.data[i + 2];
-      const alpha = imgData.data[i + 3];
-      // Transparent pixels (empty canvas) → black, bright pixels (white bg) → black, dark pixels (design) → white
-      const bw = (alpha < 10 || brightness > 128) ? 0 : 255;
+      const r = imgData.data[i], g = imgData.data[i + 1], b = imgData.data[i + 2], a = imgData.data[i + 3];
+      const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+
+      // Content is anything that is not transparent and not bright white background
+      let bw = 0;
+      if (a > 10 && brightness < 240) {
+        bw = 255;
+      }
       imgData.data[i] = imgData.data[i + 1] = imgData.data[i + 2] = bw;
-      imgData.data[i + 3] = 255;
+      imgData.data[i + 3] = a;
     }
     octx.putImageData(imgData, 0, 0);
 
@@ -383,7 +415,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
   //   img.src = url;
   // };
 
- 
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -583,11 +615,11 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
     setResizing(false);
     setRotating(false);
   };
-  console.log("backDesigns", backDesigns);
+  console.log("backDesignsmansdiasmdasd", backDesigns);
   console.log("canvasRefasasa", canvasRef);
 
   return (
-    <div className="p-0 max-w-2xl mx-auto">
+    <div className="p-0 max-w-2xl mx-auto hidden">
       {/* Show message when design is auto-applied */}
       {backDesigns && objects.length > 0 && (
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">

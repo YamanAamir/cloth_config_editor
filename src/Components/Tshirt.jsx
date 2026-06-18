@@ -12,9 +12,12 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   console.log("🎽 Tshirt component received backDesigns:", backDesigns);
   const [internalTab, setInternalTab] = useState("size");
   const activeTab = externalTab || internalTab;
-  const setActiveTab = externalTab ? () => {} : setInternalTab;
+  const setActiveTab = externalTab ? () => { } : setInternalTab;
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [currentField, setCurrentField] = useState("");
+  const [designColor, setDesignColor] = useState("light"); // 'light' | 'dark'
+  const designColorRef = React.useRef("light");
+  const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" }); // cache last canvas data
 
   const selectedColor = data?.selectedColor || "Red";
   const selectedSize = data?.selectedSize || "";
@@ -82,6 +85,10 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
     canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
 
+    // Pure black background
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
     if (text?.trim()) {
       let fontSize = 48;
       ctx.font = `bold ${fontSize}px Arial`;
@@ -103,16 +110,12 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       ctx.fillRect(0, BOX_Y, BOX_W, BOX_H);
       ctx.fillRect(BOX_W + DIVIDER_W, BOX_Y, BOX_W, BOX_H);
 
-      // black divider = no-print zone
-      ctx.fillStyle = "#000000";
+      // divider = print area mask
+      ctx.fillStyle = "#ffffff";
       ctx.fillRect(BOX_W, BOX_Y, DIVIDER_W, BOX_H);
     } else if (hasFlag || hasLogo) {
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
-
-      // black belt = no-print zone (matches diffuse)
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, 20);
     }
 
     ctx.strokeStyle = "#000000";
@@ -143,12 +146,10 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
     }
 
-    // type === "" means text mode — flag/logo draw nahi karo
     if (type !== "") {
       try {
         const flagDrawn = await drawFlags(ctx, flag, flag2);
         if (!flagDrawn) {
-          // Logo mode — white background + brightness-inverted opacity
           let logoSrc = logoCustom;
           if (!logoSrc && logoPre) {
             const found = logos.find((l) => l.name === logoPre);
@@ -157,9 +158,6 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
           if (logoSrc) {
             try {
               const img = await loadImageCached(logoSrc);
-              // White background — cloth color logo ke peeche na dikhe
-              ctx.fillStyle = "#fff";
-              ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
               const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height);
               const w = img.width * ratio * 0.8;
               const h = img.height * ratio * 0.8;
@@ -181,19 +179,26 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
                 ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
               }
 
-              // Brightness-inverted opacity canvas
               const opacityCanvas = document.createElement("canvas");
               opacityCanvas.width = CANVAS_WIDTH;
               opacityCanvas.height = CANVAS_HEIGHT;
               const octx = opacityCanvas.getContext("2d");
-              octx.fillStyle = "#fff";
-              octx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
+              octx.fillStyle = "#000";
+              octx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
               octx.drawImage(img, x, y, w, h);
               const imgData = octx.getImageData(0, 0, opacityCanvas.width, opacityCanvas.height);
               for (let i = 0; i < imgData.data.length; i += 4) {
-                const brightness = 0.299 * imgData.data[i] + 0.587 * imgData.data[i + 1] + 0.114 * imgData.data[i + 2];
-                const alpha = imgData.data[i + 3];
-                const bw = (alpha < 10 || brightness > 128) ? 0 : 255;
+                const r = imgData.data[i], g = imgData.data[i + 1], b = imgData.data[i + 2], a = imgData.data[i + 3];
+                const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                // Logic: 
+                // Any pixel that isn't transparent AND isn't white background should be opaque-white (255)
+                // Else black (0)
+                let bw = 0;
+                if (a > 10 && brightness < 240) {
+                  bw = 255;
+                }
+
                 imgData.data[i] = imgData.data[i + 1] = imgData.data[i + 2] = bw;
                 imgData.data[i + 3] = 255;
               }
@@ -260,12 +265,12 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
 
       // black belt strip at top of flag area
-      ctx.fillStyle = "#000000";
+      ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, 20);
 
       // smaller flag — centered with padding
       const targetWidth = CANVAS_WIDTH * 0.9;
-      const targetHeight = FLAG_HEIGHT * 0.85;
+      const targetHeight = FLAG_HEIGHT * 1;
       const x = (CANVAS_WIDTH - targetWidth) / 2;
       const y = TEXT_HEIGHT + (FLAG_HEIGHT - targetHeight) / 2;
       ctx.drawImage(img, x, y, targetWidth, targetHeight);
@@ -508,17 +513,60 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
     });
   }, [isAppReady, pressureOptions]);
 
+  const sendBackDesign = (diffuseB64, opacityB64, color) => {
+    if (!diffuseB64 && !opacityB64) return;
+
+    const invertOpacity = (b64, cb) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = 2;
+        const c = document.createElement("canvas");
+        c.width = img.width * scale; c.height = img.height * scale;
+        const ctx = c.getContext("2d");
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        const d = ctx.getImageData(0, 0, c.width, c.height);
+        for (let i = 0; i < d.data.length; i += 4) {
+          d.data[i] = 255 - d.data[i];
+          d.data[i + 1] = 255 - d.data[i + 1];
+          d.data[i + 2] = 255 - d.data[i + 2];
+          d.data[i + 3] = 255;
+        }
+        ctx.putImageData(d, 0, 0);
+        cb(c.toDataURL("image/png"));
+      };
+      img.src = b64;
+    };
+    ["preview-iframe", "preview-iframe2"].forEach(id => {
+      const iframe = document.getElementById(id);
+      if (!iframe?.contentWindow) return;
+      if (color === "light") {
+        if (diffuseB64) iframe.contentWindow.postMessage("T-Shirt:back_black_diffuse: " + diffuseB64, "*");
+        if (opacityB64) iframe.contentWindow.postMessage("T-Shirt:back_black_opacity: " + opacityB64, "*");
+      } else {
+        // if (opacityB64) iframe.contentWindow.postMessage("T-Shirt:back_white_diffuse: " + opacityB64, "*");
+        // if (opacityB64) iframe.contentWindow.postMessage("T-Shirt:back_white_opacity: " + opacityB64, "*");
+        if (opacityB64) invertOpacity(opacityB64, inv => {
+          iframe.contentWindow.postMessage("T-Shirt:back_white_diffuse: " + inv, "*");
+        });
+        if (opacityB64) invertOpacity(opacityB64, inv => {
+          iframe.contentWindow.postMessage("T-Shirt:back_white_opacity: " + inv, "*");
+        });
+      }
+    });
+  };
+
   const handleBackDesignUpdate = (update) => {
     if (update.canvasBase64) {
-      const { diffuse, opacity, emissive } = update.canvasBase64;
-      ["preview-iframe", "preview-iframe2"].forEach((id) => {
-        const iframe = document.getElementById(id);
-        if (iframe?.contentWindow) {
-          if (diffuse) iframe.contentWindow.postMessage(diffuse, "*");
-          if (opacity) iframe.contentWindow.postMessage(opacity, "*");
-          if (emissive) iframe.contentWindow.postMessage(emissive, "*");
-        }
-      });
+      const raw = update.canvasBase64.rawData;
+      const diffuseB64 = raw?.diffuse || "";
+      const opacityB64 = raw?.opacity || "";
+      // Cache for re-send on toggle change
+      lastBackDataRef.current = { diffuse: diffuseB64, opacity: opacityB64 };
+      sendBackDesign(diffuseB64, opacityB64, designColorRef.current);
     }
     if (update.backDesign !== undefined) {
       onUpdate({
@@ -537,17 +585,25 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   }, [pressureOptions?.backDesign, isAppReady]);
 
   const colors = [
-    { name: "Red", value: "#E61709", border: "#E61709" },
-    { name: "Black", value: "#120F14", border: "#120F14" },
-    { name: "White", value: "#FFFFFF", border: "#D1D5DB" },
-    { name: "Natural", value: "#FFFAD9", border: "#FFFAD9" },
-    { name: "Heather Grey", value: "#D4D9DC", border: "#D4D9DC" },
-    { name: "Navy", value: "#051734", border: "#051734" },
-    { name: "Light Pink", value: "#F0A5C7", border: "#F0A5C7" },
-    { name: "Olive Green", value: "#63673F", border: "#63673F" },
-    { name: "Blue", value: "#0000FF", border: "#0000FF" },
-    { name: "Purple", value: "#431279", border: "#431279" },
+    { name: "Red", value: "#E61709", border: "#E61709", dark: false },
+    { name: "Black", value: "#120F14", border: "#120F14", dark: true },
+    { name: "White", value: "#FFFFFF", border: "#D1D5DB", dark: false },
+    { name: "Natural", value: "#FFFAD9", border: "#FFFAD9", dark: false },
+    { name: "Heather Grey", value: "#D4D9DC", border: "#D4D9DC", dark: false },
+    { name: "Navy", value: "#051734", border: "#051734", dark: true },
+    { name: "Light Pink", value: "#F0A5C7", border: "#F0A5C7", dark: false },
+    { name: "Olive Green", value: "#63673F", border: "#63673F", dark: true },
+    { name: "Blue", value: "#0000FF", border: "#0000FF", dark: true },
+    { name: "Purple", value: "#431279", border: "#431279", dark: true },
   ];
+
+  // Filter colors based on garment toggle — dark garment shows dark colors first, light shows light colors first
+  const visibleColors = backDesigns
+    ? [...colors].sort((a, b) => {
+      if (designColor === "dark") return (a.dark === b.dark ? 0 : a.dark ? -1 : 1);
+      return (a.dark === b.dark ? 0 : a.dark ? 1 : -1);
+    })
+    : colors;
 
   const sizes = ["S", "M", "L", "XL", "2XL", "3XL"];
 
@@ -587,7 +643,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
           <div className="mb-4">
             <h2 className="text-xs font-semibold mb-2 text-gray-500 uppercase tracking-wide">Color</h2>
             <div className="grid grid-flow-col grid-rows-1 gap-2 w-fit">
-              {colors.map(c => (
+              {visibleColors.map(c => (
                 <button key={c.name} title={c.name} onClick={() => onUpdate({ selectedColor: c.name })}
                   className="relative w-8 h-8 rounded-md transition-all focus:outline-none"
                   style={{ backgroundColor: c.value, border: selectedColor === c.name ? `2px solid ${c.border}` : `1px solid ${c.border}`, boxShadow: selectedColor === c.name ? `0 0 0 2px white, 0 0 0 3px ${c.border}` : "none" }}>
@@ -604,6 +660,34 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
               {sizes.map(s => <button key={s} onClick={() => onUpdate({ selectedSize: s })} className={`py-1.5 px-3 rounded-lg border-2 transition-all font-medium text-sm ${selectedSize === s ? "border-gray-900 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"}`}>{s}</button>)}
             </div>
           </div>
+
+          {/* Back Design Garment Color Toggle — only shown when backDesigns exist */}
+          {backDesigns && (
+            <div className="mb-5">
+              <h2 className="text-xs font-semibold mb-3 text-gray-500 uppercase tracking-wide flex items-center gap-2">
+                <span>⊕</span> Back Design Library
+              </h2>
+              <p className="text-xs font-semibold text-gray-700 mb-2">Garment Color</p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setDesignColor("light"); designColorRef.current = "light"; sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, "light"); }}
+                  className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${designColor === "light" ? "border-green-600 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-500"}`}
+                >
+                  <div className="font-bold">Light Garment</div>
+                  <div className="text-xs text-gray-400 font-normal">Black print</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setDesignColor("dark"); designColorRef.current = "dark"; sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, "dark"); }}
+                  className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${designColor === "dark" ? "border-green-600 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-500"}`}
+                >
+                  <div className="font-bold">Dark Garment</div>
+                  <div className="text-xs text-gray-400 font-normal">White print</div>
+                </button>
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -891,6 +975,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
           isAppReady={isAppReady}
           onUpdate={handleBackDesignUpdate}
           backDesigns={backDesigns}
+          designColor={designColor}
         />
       </div>
 
