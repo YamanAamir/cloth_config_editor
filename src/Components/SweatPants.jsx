@@ -31,7 +31,7 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
   const FLAG_HEIGHT = 240;
   const CANVAS_HEIGHT = TEXT_HEIGHT + FLAG_HEIGHT;
 
-  const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false, textColor = "#ffffff") => {
+  const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false, hasSecondAsset = false, textColor = "#ffffff") => {
     const canvas = document.createElement("canvas");
     canvas.width = CANVAS_WIDTH; canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext("2d");
@@ -48,7 +48,7 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
       const textY = TEXT_HEIGHT + FLAG_HEIGHT / 2;
       ctx.fillText(text, CANVAS_WIDTH / 2, textY);
     }
-    if (hasFlag && flag2) {
+    if (hasFlag && hasSecondAsset) {
       const DIVIDER_W = 2;
       const BOX_W = (CANVAS_WIDTH - DIVIDER_W) / 2;
       const BOX_H = Math.round(FLAG_HEIGHT * 0.4);
@@ -442,10 +442,11 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
 
       const hasFlag = !!flag && type === "flag";
       const hasLogo = !!(logoPre || logoCustom) && type === "logo";
+      const hasSecondAsset = !!flag2;
 
       // Skip emissive for logo — will be sent from getDiffuseBase64 callback
       if (!hasLogo) {
-        const opacity = getEmissiveBase64(text, hasFlag, hasLogo, textColor);
+        const opacity = getEmissiveBase64(text, hasFlag, hasLogo, hasSecondAsset, textColor);
         ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(`SweatPant:${area}_opacity: ${opacity}`, "*"); });
       }
 

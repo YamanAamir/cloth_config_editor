@@ -55,7 +55,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       ctx.fillText(text, CANVAS_WIDTH / 2, textY);
     }
 
-    if (hasFlag && flag2) {
+    if (hasFlag && hasSecondAsset) {
       const DIVIDER_W = 2;
       const BOX_W = (CANVAS_WIDTH - DIVIDER_W) / 2;
       const BOX_H = Math.round(FLAG_HEIGHT * 0.4);
@@ -80,17 +80,6 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 40;
       ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
-    }
-
-    if (hasSecondAsset) {
-      const DIVIDER_W = 2;
-      const BOX_W = (CANVAS_WIDTH - DIVIDER_W) / 2;
-      const BOX_H = Math.round(FLAG_HEIGHT * 0.4);
-      const BOX_Y = TEXT_HEIGHT + (FLAG_HEIGHT - BOX_H) / 2;
-
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, BOX_Y, BOX_W, BOX_H);
-      ctx.fillRect(BOX_W + DIVIDER_W, BOX_Y, BOX_W, BOX_H);
     }
     return canvas.toDataURL("image/png");
   };

@@ -235,8 +235,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
 
     const subtotal = anyGarmentConfigured ? calculateTotalPrice() : 0;
     const vatPct = getVat(); // e.g. 10
-    const vatAmount = anyGarmentConfigured ? Math.round(subtotal * vatPct / 100) : 0;
-    const dynamicPrice = subtotal + vatAmount;
+    const vatAmount = anyGarmentConfigured ? Math.round(subtotal * vatPct / (100 + vatPct)) : 0;
+    const dynamicPrice = subtotal;
     const balanceDue = Math.max(0, dynamicPrice - amountPaid);
 
 
@@ -751,23 +751,26 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
 
                     // 2. Initial state sync for the new model
                     setTimeout(() => {
-                        const currentData = allSelections[activeMenu];
-                        if (currentData) {
-                            const { selectedColor, selectedSize } = currentData;
+                        const currentIframe = document.getElementById(id);
+                        if (currentIframe?.contentWindow) {
+                            const currentData = allSelections[activeMenu];
+                            if (currentData) {
+                                const { selectedColor, selectedSize } = currentData;
 
-                            const prefixMap = {
-                                'T-SHIRT': 'T-Shirt: ',
-                                'SWEATSHIRT': 'SweatShirt: ',
-                                'HOODIE': 'Hoodie: ',
-                                'ZIPPERHOODIE': 'ZipperHoodie: ',
-                                'SWEATPANTS': 'SweatPant: ',
-                                'SHORTS': 'Short: '
-                            };
+                                const prefixMap = {
+                                    'T-SHIRT': 'T-Shirt: ',
+                                    'SWEATSHIRT': 'SweatShirt: ',
+                                    'HOODIE': 'Hoodie: ',
+                                    'ZIPPERHOODIE': 'ZipperHoodie: ',
+                                    'SWEATPANTS': 'SweatPant: ',
+                                    'SHORTS': 'Short: '
+                                };
 
-                            const prefix = prefixMap[activeMenu];
-                            if (prefix) {
-                                if (selectedColor) iframe.contentWindow.postMessage(`${prefix}${selectedColor.toLowerCase()}`, "*");
-                                if (selectedSize) iframe.contentWindow.postMessage(`${prefix}size:${selectedSize}`, "*");
+                                const prefix = prefixMap[activeMenu];
+                                if (prefix) {
+                                    if (selectedColor) currentIframe.contentWindow.postMessage(`${prefix}${selectedColor.toLowerCase()}`, "*");
+                                    if (selectedSize) currentIframe.contentWindow.postMessage(`${prefix}size:${selectedSize}`, "*");
+                                }
                             }
                         }
                         // Force Test component to remount and re-send back design
@@ -1102,8 +1105,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
 
                         {/* Price */}
                         <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-slate-400 font-medium">Total</span>
-                            <span className="text-xs font-bold text-slate-700">{dynamicPrice} DKK</span>
+                            <span className="text-xs text-slate-400 font-medium">Price</span>
+                            <span className="text-xs font-bold text-slate-700">{GARMENT_PRICES[activeMenu]} DKK</span>
                         </div>
 
                         {/* Paid */}
@@ -1279,29 +1282,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                         </div>
                         <div className=" border-slate-200 p-6 bg-white/50 backdrop-blur-sm">
                             <div className="mb-4 space-y-1.5">
-                                {anyGarmentConfigured ? (
-                                    <>
-                                        <div className="flex justify-between text-xs text-slate-500">
-                                            <span>Subtotal</span>
-                                            <span>{subtotal} DKK</span>
-                                        </div>
-                                        {vatPct > 0 && (
-                                            <div className="flex justify-between text-xs text-slate-500">
-                                                <span>VAT ({vatPct}%)</span>
-                                                <span>{vatAmount} DKK</span>
-                                            </div>
-                                        )}
-                                        <div className="flex justify-between items-center pt-1.5 border-t border-slate-200">
-                                            <span className="text-sm font-semibold text-slate-700">Total</span>
-                                            <span className="text-2xl font-bold text-slate-900">{dynamicPrice} DKK</span>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="flex justify-between items-center pt-1.5 border-t border-slate-200">
-                                        <span className="text-sm font-semibold text-slate-700">Total</span>
-                                        <span className="text-2xl font-bold text-slate-400">0 DKK</span>
-                                    </div>
-                                )}
+                                <div className="flex justify-between items-center pt-1.5">
+                                    <span className="text-sm font-semibold text-slate-700">Price</span>
+                                    <span className="text-2xl font-bold text-slate-900">{GARMENT_PRICES[activeMenu]} DKK</span>
+                                </div>
                             </div>
                             <button
                                 onClick={() => setIsQuoteModalOpen(true)}
@@ -1488,29 +1472,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                         {/* Fixed Footer - Always visible at bottom */}
                         <div className="border-t border-slate-200 p-4 bg-white/90 backdrop-blur-sm flex-shrink-0">
                             <div className="mb-3 space-y-1">
-                                {anyGarmentConfigured ? (
-                                    <>
-                                        <div className="flex justify-between text-xs text-slate-500">
-                                            <span>Subtotal</span>
-                                            <span>{subtotal} DKK</span>
-                                        </div>
-                                        {vatPct > 0 && (
-                                            <div className="flex justify-between text-xs text-slate-500">
-                                                <span>VAT ({vatPct}%)</span>
-                                                <span>{vatAmount} DKK</span>
-                                            </div>
-                                        )}
-                                        <div className="flex justify-between items-center pt-1 border-t border-slate-200">
-                                            <span className="text-sm font-semibold text-slate-700">Total</span>
-                                            <span className="text-xl font-bold text-slate-900">{dynamicPrice} DKK</span>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="flex justify-between items-center pt-1 border-t border-slate-200">
-                                        <span className="text-sm font-semibold text-slate-700">Total</span>
-                                        <span className="text-xl font-bold text-slate-400">0 DKK</span>
-                                    </div>
-                                )}
+                                <div className="flex justify-between items-center pt-1">
+                                    <span className="text-sm font-semibold text-slate-700">Price</span>
+                                    <span className="text-xl font-bold text-slate-900">{GARMENT_PRICES[activeMenu]} DKK</span>
+                                </div>
                             </div>
                             <div className="flex space-x-3 mb-4">
                                 <button

@@ -278,8 +278,8 @@ const QuoteModal = ({
   // VAT calculation
   const subtotal = dynamicPrice;
   const vatPct = getVat(); // e.g. 10
-  const vatAmount = Math.round(subtotal * vatPct / 100);
-  const totalWithVat = subtotal + vatAmount + shippingRate + handlingFeePerStudent;
+  const vatAmount = Math.round(subtotal * vatPct / (100 + vatPct));
+  const totalWithVat = subtotal + shippingRate + handlingFeePerStudent;
 
   // Balance due = total with VAT + shipping - already paid amount
   const computedBalanceDue = Math.max(0, totalWithVat - amountPaid);
@@ -1338,7 +1338,7 @@ const QuoteModal = ({
               </div>
               {vatPct > 0 && (
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-slate-600">VAT ({vatPct}%)</span>
+                  <span className="text-sm font-bold text-slate-600">VAT ({vatPct}% included)</span>
                   <span className="text-lg font-bold text-slate-800">{vatAmount} DKK</span>
                 </div>
               )}
@@ -1558,7 +1558,7 @@ const QuoteModal = ({
                   </div>
                   {vatPct > 0 && (
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-bold text-gray-500 uppercase">VAT ({vatPct}%)</span>
+                      <span className="text-xs font-bold text-gray-500 uppercase">VAT ({vatPct}% included)</span>
                       <span className="text-sm font-bold text-gray-700">{vatAmount} DKK</span>
                     </div>
                   )}
