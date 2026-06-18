@@ -7,18 +7,46 @@ import { ALL_FLAGS } from "../utils/flags";
 import { postToPreview } from "../utils/postMessage";
 import { X, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 
+const colors = [
+  { name: "Red", value: "#E61709", border: "#E61709", dark: false },
+  { name: "Black", value: "#120F14", border: "#120F14", dark: true },
+  { name: "White", value: "#FFFFFF", border: "#D1D5DB", dark: false },
+  { name: "Natural", value: "#FFFAD9", border: "#FFFAD9", dark: false },
+  { name: "Heather Grey", value: "#D4D9DC", border: "#D4D9DC", dark: false },
+  { name: "Navy", value: "#051734", border: "#051734", dark: true },
+  { name: "Light Pink", value: "#F0A5C7", border: "#F0A5C7", dark: false },
+  { name: "Olive Green", value: "#63673F", border: "#63673F", dark: true },
+  { name: "Blue", value: "#0000FF", border: "#0000FF", dark: true },
+  { name: "Purple", value: "#431279", border: "#431279", dark: true },
+];
+
 const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText = 25, activeTab: externalTab }) => {
   const [internalTab, setInternalTab] = useState("size");
   const activeTab = externalTab || internalTab;
   const setActiveTab = externalTab ? () => { } : setInternalTab;
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [currentField, setCurrentField] = useState("");
-  const [designColor, setDesignColor] = useState("light"); // 'light' | 'dark'
-  const designColorRef = React.useRef("light");
-  const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" });
 
   const selectedColor = data?.selectedColor || "Red";
   const selectedSize = data?.selectedSize || "";
+
+  const initialDesignColor = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase())?.dark ? "dark" : "light";
+  const [designColor, setDesignColor] = useState(initialDesignColor);
+  const designColorRef = React.useRef(initialDesignColor);
+  const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" });
+
+  const handleDesignColorChange = (newDesignColor) => {
+    setDesignColor(newDesignColor);
+    designColorRef.current = newDesignColor;
+    sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, newDesignColor);
+
+    const current = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase());
+    const isCompatible = current && (newDesignColor === "dark" ? current.dark : !current.dark);
+    if (!isCompatible) {
+      const defaultColor = newDesignColor === "dark" ? "Black" : "White";
+      onUpdate({ selectedColor: defaultColor });
+    }
+  };
 
   const pressureOptions = data?.pressureOptions || {
     rightChestText: "", rightChestFlag: "", rightChestLogoPredefined: "", rightChestLogoCustom: "", rightChestType: "",
@@ -443,24 +471,9 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
     });
   }, [isAppReady, pressureOptions]);
 
-  const colors = [
-    { name: "Red", value: "#E61709", border: "#E61709", dark: false },
-    { name: "Black", value: "#120F14", border: "#120F14", dark: true },
-    { name: "White", value: "#FFFFFF", border: "#D1D5DB", dark: false },
-    { name: "Natural", value: "#FFFAD9", border: "#FFFAD9", dark: false },
-    { name: "Heather Grey", value: "#D4D9DC", border: "#D4D9DC", dark: false },
-    { name: "Navy", value: "#051734", border: "#051734", dark: true },
-    { name: "Light Pink", value: "#F0A5C7", border: "#F0A5C7", dark: false },
-    { name: "Olive Green", value: "#63673F", border: "#63673F", dark: true },
-    { name: "Blue", value: "#0000FF", border: "#0000FF", dark: true },
-    { name: "Purple", value: "#431279", border: "#431279", dark: true },
-  ];
-
+  // Filter colors based on garment toggle — dark garment shows dark colors, light shows light colors
   const visibleColors = backDesigns
-    ? [...colors].sort((a, b) => {
-      if (designColor === "dark") return (a.dark === b.dark ? 0 : a.dark ? -1 : 1);
-      return (a.dark === b.dark ? 0 : a.dark ? 1 : -1);
-    })
+    ? colors.filter(c => (designColor === "dark" ? c.dark : !c.dark))
     : colors;
 
   const sizes = ["S", "M", "L", "XL", "2XL", "3XL"];
@@ -718,6 +731,23 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
       {activeTab === "size" ? (
         <>
           <h1 className="text-lg font-bold mb-3 text-gray-900">Zipper Hoodie</h1>
+           {backDesigns && (
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-gray-700 mb-2">Garment Color</p>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => handleDesignColorChange("light")}
+                  className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${designColor === "light" ? "border-green-600 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-500"}`}>
+                  <div className="font-bold">Light Garment</div>
+                  <div className="text-xs text-gray-400 font-normal">Black print</div>
+                </button>
+                <button type="button" onClick={() => handleDesignColorChange("dark")}
+                  className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${designColor === "dark" ? "border-green-600 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-500"}`}>
+                  <div className="font-bold">Dark Garment</div>
+                  <div className="text-xs text-gray-400 font-normal">White print</div>
+                </button>
+              </div>
+            </div>
+          )}
           <div className="mb-4">
             <h2 className="text-xs font-semibold mb-2 text-gray-500 uppercase tracking-wide">Color</h2>
             <div className="grid grid-flow-col grid-rows-1 gap-2 w-fit">
@@ -737,24 +767,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
               {sizes.map(s => <button key={s} onClick={() => onUpdate({ selectedSize: s })} className={`py-1.5 px-3 rounded-lg border-2 transition-all font-medium text-sm ${selectedSize === s ? "border-gray-900 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"}`}>{s}</button>)}
             </div>
           </div>
-          {backDesigns && (
-            <div className="mb-5">
-              <h2 className="text-xs font-semibold mb-3 text-gray-500 uppercase tracking-wide flex items-center gap-2"><span>⊕</span> Back Design Library</h2>
-              <p className="text-xs font-semibold text-gray-700 mb-2">Garment Color</p>
-              <div className="flex gap-3">
-                <button type="button" onClick={() => { setDesignColor("light"); designColorRef.current = "light"; sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, "light"); }}
-                  className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${designColor === "light" ? "border-green-600 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-500"}`}>
-                  <div className="font-bold">Light Garment</div>
-                  <div className="text-xs text-gray-400 font-normal">Black print</div>
-                </button>
-                <button type="button" onClick={() => { setDesignColor("dark"); designColorRef.current = "dark"; sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, "dark"); }}
-                  className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${designColor === "dark" ? "border-green-600 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-500"}`}>
-                  <div className="font-bold">Dark Garment</div>
-                  <div className="text-xs text-gray-400 font-normal">White print</div>
-                </button>
-              </div>
-            </div>
-          )}
+         
         </>
       ) : (
         <>
