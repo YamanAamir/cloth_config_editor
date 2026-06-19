@@ -860,44 +860,13 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
                     </div>
                   )}
                   {pressureOptions[`${area}Type`] === "flag" && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-semibold text-gray-600">Number of flags:</span>
-                        <div className="flex rounded-lg overflow-hidden border border-gray-200">
-                          {[1, 2].map(n => (
-                            <button key={n} type="button"
-                              onClick={() => onUpdate({ pressureOptions: { ...pressureOptions, [`${area}FlagCount`]: n, ...(n === 1 ? { [`${area}Flag2`]: "" } : {}) } })}
-                              className={`px-4 py-1.5 text-xs font-bold transition-all ${(pressureOptions[`${area}FlagCount`] || 1) === n ? "bg-green-700 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
-                            >{n}</button>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Flag 1</label>
-                        <div className="flex flex-wrap gap-2">
-                          <input type="text" value={getFlagDisplay(pressureOptions[`${area}Flag`])} readOnly placeholder="Select flag"
-                            className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
-                            onClick={() => handleFlagSelect(`${area}Flag`)}
-                          />
-                          <button onClick={() => handleFlagSelect(`${area}Flag`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
-                          {pressureOptions[`${area}Flag`] && <button onClick={() => clearField(`${area}Flag`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
-                        </div>
-                      </div>
-
-                      {/* Flag 2 ? only if count = 2 */}
-                      {(Number(pressureOptions[`${area}FlagCount`] || 1) === 2) && (
-                        <div>
-                          <label className="text-xs text-gray-500 mb-1 block">Flag 2 (50% size)</label>
-                          <div className="flex flex-wrap gap-2">
-                            <input type="text" value={getFlagDisplay(pressureOptions[`${area}Flag2`] || "")} readOnly placeholder="Select flag"
-                              className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
-                              onClick={() => handleFlagSelect(`${area}Flag2`)}
-                            />
-                            <button onClick={() => handleFlagSelect(`${area}Flag2`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
-                            {pressureOptions[`${area}Flag2`] && <button onClick={() => clearField(`${area}Flag2`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
-                          </div>
-                        </div>
-                      )}
+                    <div className="flex flex-wrap gap-2">
+                      <input type="text" value={getFlagDisplay(pressureOptions[`${area}Flag`])} readOnly placeholder="Select flag"
+                        className="flex-1 min-w-[120px] px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-pointer"
+                        onClick={() => handleFlagSelect(`${area}Flag`)}
+                      />
+                      <button onClick={() => handleFlagSelect(`${area}Flag`)} className="px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 text-sm font-medium">Select</button>
+                      {pressureOptions[`${area}Flag`] && <button onClick={() => clearField(`${area}Flag`)} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>}
                     </div>
                   )}
                   {pressureOptions[`${area}Type`] === "logo" && (
