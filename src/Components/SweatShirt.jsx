@@ -383,7 +383,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
 
           // centered position
           const x = (CANVAS_WIDTH - targetWidth) / 2;
-          const y = TEXT_HEIGHT + (FLAG_HEIGHT - targetHeight) / 2;
+          const y = (TEXT_HEIGHT + (FLAG_HEIGHT - targetHeight) / 2) - 8;
 
           ctx.drawImage(img, x, y, targetWidth, targetHeight);
 

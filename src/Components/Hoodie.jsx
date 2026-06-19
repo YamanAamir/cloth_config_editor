@@ -218,7 +218,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
 
           // centered position
           const x = (CANVAS_WIDTH - targetWidth) / 2;
-          const y = TEXT_HEIGHT + (FLAG_HEIGHT - targetHeight) / 2;
+          const y = (TEXT_HEIGHT + (FLAG_HEIGHT - targetHeight) / 2) - 8;
 
           // draw flag
           ctx.drawImage(img, x, y, targetWidth, targetHeight);
@@ -809,7 +809,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
               {sizes.map(s => <button key={s} onClick={() => onUpdate({ selectedSize: s })} className={`py-1.5 px-3 rounded-lg border-2 transition-all font-medium text-sm ${selectedSize === s ? "border-gray-900 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"}`}>{s}</button>)}
             </div>
           </div>
-          
+
         </>
       ) : (
         <>

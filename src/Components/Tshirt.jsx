@@ -300,7 +300,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       const targetWidth = CANVAS_WIDTH * 0.9;
       const targetHeight = FLAG_HEIGHT * 1;
       const x = (CANVAS_WIDTH - targetWidth) / 2;
-      const y = TEXT_HEIGHT + (FLAG_HEIGHT - targetHeight) / 2;
+      const y = (TEXT_HEIGHT + (FLAG_HEIGHT - targetHeight) / 2) - 8;
       ctx.drawImage(img, x, y, targetWidth, targetHeight);
       return true;
     }

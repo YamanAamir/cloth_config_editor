@@ -249,7 +249,7 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
           // centered position
           const x = (CANVAS_WIDTH - targetWidth) / 2;
           const y =
-            TEXT_HEIGHT + (FLAG_HEIGHT - targetHeight) / 2;
+            (TEXT_HEIGHT + (FLAG_HEIGHT - targetHeight) / 2) - 8;
 
           // draw flag
           ctx.drawImage(
