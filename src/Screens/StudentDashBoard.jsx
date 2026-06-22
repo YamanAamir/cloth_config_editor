@@ -1065,7 +1065,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                     { type: 'divider' },
                                     {
                                         key: 'logout',
-                                        label: 'Log out',
+                                        label: 'Log ud',
                                         icon: <LogOut className="w-3.5 h-3.5" />,
                                         danger: true,
                                         onClick: handleLogout,
@@ -1698,7 +1698,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                         <button onClick={() => { setProfileDrawerOpen(false); handleLogout(); }}
                             className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-50 text-red-600 rounded-xl font-semibold text-sm hover:bg-red-100 transition-all border border-red-100">
                             <LogOut className="w-4 h-4" />
-                            Log out
+                            Log ud
                         </button>
                     </div>
                 </Drawer>

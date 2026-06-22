@@ -9,7 +9,7 @@ import { X, Search, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 
 
 const colors = [
-  { name: "Red", value: "#E61709", border: "#E61709", dark: false },
+  { name: "Red", value: "#E61709", border: "#E61709", dark: true},
   { name: "Black", value: "#120F14", border: "#120F14", dark: true },
   { name: "White", value: "#FFFFFF", border: "#D1D5DB", dark: false },
   { name: "Natural", value: "#FFFAD9", border: "#FFFAD9", dark: false },

@@ -195,7 +195,7 @@ const StudentRegister = () => {
                             <label className="flex items-start gap-2 cursor-pointer text-left">
                                 <input type="checkbox" className="mt-0.5 accent-green-600 w-4 h-4 flex-shrink-0" />
                                 <span className="text-xs text-slate-500 leading-relaxed">
-                                    I agree to receive marketing emails from StudentLife (optional)
+                                    I agree to receive marketing emails from Student Life (optional)
                                 </span>
                             </label>
                         </Form.Item>
