@@ -312,7 +312,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
 
 
 
-   const deleteObject = (obj) => {
+  const deleteObject = (obj) => {
     if (obj.id === 'uploadedImage') {
       onUpdate({ backDesign: null });
     }

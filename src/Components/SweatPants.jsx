@@ -334,7 +334,7 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
           const octx = opacityCanvas.getContext("2d");
 
           // Pure black background
-          octx.fillStyle = "#000";
+          octx.fillStyle = "#fff";
           octx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
           octx.drawImage(img, x, y, w, h);

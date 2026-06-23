@@ -8,7 +8,7 @@ import { postToPreview } from "../utils/postMessage";
 import { X, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
 
 const colors = [
-  { name: "Red", value: "#E61709", border: "#E61709", dark: true},
+  { name: "Red", value: "#E61709", border: "#E61709", dark: true },
   { name: "Black", value: "#120F14", border: "#120F14", dark: true },
   { name: "White", value: "#FFFFFF", border: "#D1D5DB", dark: false },
   { name: "Natural", value: "#FFFAD9", border: "#FFFAD9", dark: false },
@@ -287,7 +287,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
         const octx = opacityCanvas.getContext("2d");
 
         // Pure black background
-        octx.fillStyle = "#000";
+        octx.fillStyle = "#fff";
         octx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
         octx.drawImage(img, x, y, w, h);
@@ -315,44 +315,88 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
   const sendBackDesign = (diffuseB64, opacityB64, color) => {
     if (!diffuseB64 && !opacityB64) return;
 
-    const invertOpacity = (b64, cb) => {
+    // const formatTexture = (b64, cb) => {
+    //   if (!b64) { cb(null); return; }
+    //   const img = new Image();
+    //   img.crossOrigin = "anonymous";
+    //   img.onload = () => {
+    //     const BIG_CANVAS = 2048;
+    //     const c = document.createElement("canvas");
+    //     c.width = BIG_CANVAS; c.height = BIG_CANVAS;
+    //     const ctx = c.getContext("2d");
+    //     ctx.imageSmoothingEnabled = true;
+    //     ctx.imageSmoothingQuality = "high";
+
+    //     const TARGET_PERCENT = 0.9;
+    //     const targetSize = BIG_CANVAS * TARGET_PERCENT;
+    //     const ratio = Math.min(targetSize / img.width, targetSize / img.height);
+    //     const dw = img.width * ratio;
+    //     const dh = img.height * ratio;
+    //     const dx = (BIG_CANVAS - dw) / 2;
+    //     const dy = (BIG_CANVAS - dh) / 2;
+
+    //     ctx.drawImage(img, dx, dy, dw, dh);
+    //     cb(c.toDataURL("image/png", 1.0));
+    //   };
+    //   img.src = b64;
+    // };
+
+    const formatTexture = (b64, cb) => {
+      if (!b64) {
+        cb(null);
+        return;
+      }
+
       const img = new Image();
+      img.crossOrigin = "anonymous";
+
       img.onload = () => {
-        const scale = 2;
+        const BIG_CANVAS = 4096; // pehle 2048 tha
+
         const c = document.createElement("canvas");
-        c.width = img.width * scale; c.height = img.height * scale;
+        c.width = BIG_CANVAS;
+        c.height = BIG_CANVAS;
+
         const ctx = c.getContext("2d");
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, c.width, c.height);
-        ctx.drawImage(img, 0, 0, c.width, c.height);
-        const d = ctx.getImageData(0, 0, c.width, c.height);
-        for (let i = 0; i < d.data.length; i += 4) {
-          d.data[i] = 255 - d.data[i];
-          d.data[i + 1] = 255 - d.data[i + 1];
-          d.data[i + 2] = 255 - d.data[i + 2];
-          d.data[i + 3] = 255;
-        }
-        ctx.putImageData(d, 0, 0);
-        cb(c.toDataURL("image/png"));
+
+        const TARGET_PERCENT = 1.3; // pehle 0.9 tha
+
+        const targetSize = BIG_CANVAS * TARGET_PERCENT;
+        const ratio = Math.min(
+          targetSize / img.width,
+          targetSize / img.height
+        );
+
+        const dw = img.width * ratio;
+        const dh = img.height * ratio;
+
+        const dx = (BIG_CANVAS - dw) / 2.5;
+        const dy = (BIG_CANVAS - dh) / 2;
+
+        ctx.drawImage(img, dx, dy, dw, dh);
+
+        cb(c.toDataURL("image/png", 1.0));
       };
+
       img.src = b64;
     };
-    ["preview-iframe", "preview-iframe2"].forEach(id => {
-      const iframe = document.getElementById(id);
-      if (!iframe?.contentWindow) return;
-      if (color === "light") {
-        if (diffuseB64) iframe.contentWindow.postMessage("ZipperHoodie:back_black_diffuse: " + diffuseB64, "*");
-        if (opacityB64) iframe.contentWindow.postMessage("ZipperHoodie:back_black_opacity: " + opacityB64, "*");
-      } else {
-        if (opacityB64) invertOpacity(opacityB64, inv => {
-          iframe.contentWindow.postMessage("ZipperHoodie:back_white_diffuse: " + inv, "*");
+
+    formatTexture(diffuseB64, (formattedDiffuse) => {
+      formatTexture(opacityB64, (formattedOpacity) => {
+        ["preview-iframe", "preview-iframe2"].forEach(id => {
+          const iframe = document.getElementById(id);
+          if (!iframe?.contentWindow) return;
+          if (color === "light") {
+            if (formattedDiffuse) iframe.contentWindow.postMessage("ZipperHoodie:back_black_diffuse: " + formattedDiffuse, "*");
+            if (formattedOpacity) iframe.contentWindow.postMessage("ZipperHoodie:back_black_opacity: " + formattedOpacity, "*");
+          } else {
+            if (formattedOpacity) iframe.contentWindow.postMessage("ZipperHoodie:back_white_diffuse: " + formattedOpacity, "*");
+            if (formattedOpacity) iframe.contentWindow.postMessage("ZipperHoodie:back_white_opacity: " + formattedOpacity, "*");
+          }
         });
-        if (opacityB64) invertOpacity(opacityB64, inv => {
-          iframe.contentWindow.postMessage("ZipperHoodie:back_white_opacity: " + inv, "*");
-        });
-      }
+      });
     });
   };
 
