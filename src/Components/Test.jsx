@@ -5,20 +5,9 @@ import unlockIconImg from '../assets/canvasimage/unlocked.png';
 import resizeIconImg from '../assets/canvasimage/resize.png';
 import rotateIconImg from '../assets/canvasimage/rotate.png';
 
-// Predefined back designs
-import design1 from '../assets/predefinedbackimages/Design1.jpeg';
-import design2 from '../assets/predefinedbackimages/Design2.jpeg';
-import design3 from '../assets/predefinedbackimages/Design3.jpeg';
-import design4 from '../assets/predefinedbackimages/Design4.jpeg';
-import design5 from '../assets/predefinedbackimages/Design5.jpeg';
-import design6 from '../assets/predefinedbackimages/Design6.jpeg';
-import design7 from '../assets/predefinedbackimages/Design7.jpeg';
-import design8 from '../assets/predefinedbackimages/Design8.jpeg';
 import { BASE_URL } from "../utils/const";
-import useLogoStore from "../store/logoStore";
 import useBackDesignStore from "../store/backDesignStore";
 
-// Preload icons
 const deleteIcon = new Image();
 deleteIcon.src = deleteIconImg;
 const lockIcon = new Image();
@@ -31,23 +20,12 @@ const rotateIcon = new Image();
 rotateIcon.src = rotateIconImg;
 
 const HANDLE_SIZE = 28;
-const CANVAS_WIDTH = 400;
-const CANVAS_HEIGHT = 400;
+const CANVAS_WIDTH = 480;
+const CANVAS_HEIGHT = 350;
 
-// const logos = [
-//   { name: 'Design 1', url: design1 },
-//   { name: 'Design 2', url: design2 },
-//   { name: 'Design 3', url: design3 },
-//   { name: 'Design 4', url: design4 },
-//   { name: 'Design 5', url: design5 },
-//   { name: 'Design 6', url: design6 },
-//   { name: 'Design 7', url: design7 },
-//   { name: 'Design 8', url: design8 },
-// ];
 
 export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, designColor, backDesigns: propBackDesigns }) {
   const canvasRef = useRef(null);
-  const fileInputRef = useRef(null);
   const [objects, setObjects] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [dragging, setDragging] = useState(false);
@@ -61,32 +39,15 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
   const backDesigns = propBackDesigns || storeBackDesigns;
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : null;
-  const getClassId = user?.class_id;
 
-  // Keep designColor in ref so draw() always gets latest value (avoids stale closure)
-  // Priority: prop > backDesigns store value
   const designColorRef = useRef(designColor);
   useEffect(() => {
     designColorRef.current = designColor || backDesigns?.designColor;
   }, [designColor, backDesigns]);
 
 
-  useEffect(() => {
-    if (getClassId) {
-      console.log("🔍 Fetching back designs for class:", getClassId);
-      fetchBackDesigns({ class_id: getClassId });
-    }
-  }, [getClassId]);
-
-  console.log("🎨 Current backDesigns:", backDesigns);
-  console.log("🎨 Current propBackDesigns:", propBackDesigns);
-  console.log("🎨 Current storeBackDesigns:", storeBackDesigns);
-  console.log("🎨 Current pressureOptions.backDesign:", pressureOptions?.backDesign);
-  console.log("🎨 Current objects.length:", objects.length);
-
-  // Helper: load image via blob URL to avoid canvas taint from CORS
   const loadImageSafe = (src, callback) => {
-    fetch(src)
+    fetch(src, { mode: 'cors' })
       .then(res => res.blob())
       .then(blob => {
         const blobUrl = URL.createObjectURL(blob);
@@ -96,29 +57,28 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
           URL.revokeObjectURL(blobUrl);
         };
         img.onerror = () => {
-          // fallback: try direct load without crossOrigin
           const img2 = new Image();
+          img2.crossOrigin = "anonymous";
           img2.onload = () => callback(img2);
+          img2.onerror = () => callback(null);
           img2.src = src;
         };
         img.src = blobUrl;
       })
       .catch(() => {
-        // fallback: direct load
         const img = new Image();
+        img.crossOrigin = "anonymous";
         img.onload = () => callback(img);
+        img.onerror = () => callback(null);
         img.src = src;
       });
   };
 
-  // Load saved backDesign when pressureOptions change
   useEffect(() => {
-    console.log("🔄 pressureOptions.backDesign changed:", pressureOptions?.backDesign);
     if (pressureOptions?.backDesign) {
       const config = pressureOptions.backDesign;
-      console.log("🎯 Loading back design config:", config);
       loadImageSafe(config.src, (img) => {
-        console.log("✅ Back design image loaded successfully");
+        if (!img) return;
         setObjects([{
           id: 'uploadedImage',
           type: 'image',
@@ -131,121 +91,49 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
         setSelectedId('uploadedImage');
       });
     } else {
-      console.log("🚫 No back design in pressureOptions, clearing objects");
       setObjects([]);
       setSelectedId(null);
     }
   }, [pressureOptions]);
-  const selectPredefinedDesign = async (url, design) => {
-    loadImageSafe(url, async (img) => {
-      const scale = Math.min(
-        (CANVAS_WIDTH * 0.75) / img.width,
-        (CANVAS_HEIGHT * 0.65) / img.height
-      );
-      const w = img.width * scale;
-      const h = img.height * scale;
-
-      const newImageObj = {
-        id: 'uploadedImage',
-        type: 'image',
-        srcObj: img,
-        pos: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
-        size: { w, h },
-        angle: 0,
-        locked: false,
-      };
-
-      setObjects([newImageObj]);
-      setSelectedId('uploadedImage');
-
-      onUpdate({
-        backDesign: {
-          pos: newImageObj.pos,
-          size: newImageObj.size,
-          angle: newImageObj.angle,
-          locked: newImageObj.locked,
-          src: url,
-          designId: design?.id
-        }
-      });
-    });
-  };
-  // Separate effect to handle when backDesigns becomes available after initial mount
   useEffect(() => {
-    console.log("🔄 BackDesigns availability changed:", {
-      backDesigns: backDesigns,
-      hasBackDesigns: !!backDesigns,
-      currentObjectsLength: objects.length,
-      currentPressureBackDesign: pressureOptions?.backDesign
-    });
-
-    // If backDesigns just became available and we don't have any objects yet
-    if (backDesigns) {
+    if (backDesigns && objects.length === 0 && !pressureOptions?.backDesign) {
       const design = backDesigns;
-      const path = (designColor === "dark" && design.configured_file_path_2)
-        ? design.configured_file_path_2
-        : design.configured_file_path;
+      const img = `${BASE_URL}${design.configured_file_path.replace(/\\/g, "/")}`;
 
-      if (!path) return;
-      const img = `${BASE_URL}${path.replace(/\\/g, "/")}`;
+      loadImageSafe(img, async (imgObj) => {
+        const scale = Math.min(
+          (CANVAS_WIDTH * 0.98) / imgObj.width,
+          (CANVAS_HEIGHT * 0.95) / imgObj.height
+        );
+        const w = imgObj.width * scale;
+        const h = imgObj.height * scale;
 
-      const isInitialLoad = objects.length === 0 && !pressureOptions?.backDesign;
-      const isColorSwitch = objects.length > 0 &&
-        (objects[0].designId === design.id || pressureOptions?.backDesign?.designId === design.id) &&
-        objects[0].currentPath !== path;
+        const newImageObj = {
+          id: 'uploadedImage',
+          type: 'image',
+          srcObj: imgObj,
+          pos: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
+          size: { w, h },
+          angle: 0,
+          locked: false,
+        };
 
-      if (isInitialLoad || isColorSwitch) {
-        console.log("🎯 Loading design (isInitialLoad:", isInitialLoad, "isColorSwitch:", isColorSwitch, "):", design.name, img);
+        setObjects([newImageObj]);
+        setSelectedId('uploadedImage');
 
-        loadImageSafe(img, async (imgObj) => {
-          console.log("✅ Image loaded successfully");
-
-          let newObject;
-          if (isInitialLoad) {
-            const scale = Math.min(
-              (CANVAS_WIDTH * 0.75) / imgObj.width,
-              (CANVAS_HEIGHT * 0.65) / imgObj.height
-            );
-            const w = imgObj.width * scale;
-            const h = imgObj.height * scale;
-
-            newObject = {
-              id: 'uploadedImage',
-              type: 'image',
-              srcObj: imgObj,
-              pos: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
-              size: { w, h },
-              angle: 0,
-              locked: false,
-              designId: design.id,
-              currentPath: path
-            };
-          } else {
-            // Preservation of transformations on color switch
-            newObject = {
-              ...objects[0],
-              srcObj: imgObj,
-              currentPath: path
-            };
+        onUpdate({
+          backDesign: {
+            pos: newImageObj.pos,
+            size: newImageObj.size,
+            angle: newImageObj.angle,
+            locked: newImageObj.locked,
+            src: img,
+            designId: design?.id
           }
-
-          setObjects([newObject]);
-          setSelectedId('uploadedImage');
-
-          onUpdate({
-            backDesign: {
-              pos: newObject.pos,
-              size: newObject.size,
-              angle: newObject.angle,
-              locked: newObject.locked,
-              src: img,
-              designId: design.id
-            }
-          });
         });
-      }
+      });
     }
-  }, [backDesigns, designColor]);
+  }, [backDesigns]); // Only watch backDesigns changes
 
   const getSelected = () => objects.find(o => o.id === selectedId);
 
@@ -271,11 +159,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    console.log("🎨 Drawing canvas with objects:", objects.length);
-
-    // Draw all objects on main canvas (for diffuse)
     objects.forEach(obj => {
-      console.log("🖼️ Drawing object:", obj.id, obj.type);
       ctx.save();
       ctx.translate(obj.pos.x, obj.pos.y);
       ctx.rotate((obj.angle * Math.PI) / 180);
@@ -285,14 +169,14 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       ctx.restore();
     });
 
-    // ── Opacity Mask (content = white, background = black) ──
     const opacityCanvas = document.createElement("canvas");
     opacityCanvas.width = CANVAS_WIDTH;
     opacityCanvas.height = CANVAS_HEIGHT;
     const octx = opacityCanvas.getContext("2d");
 
-    // Clear / keep transparent background
-    octx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    // White background first (same as PreviewModal's createOpacityTexture)
+    octx.fillStyle = "white";
+    octx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     objects.forEach(obj => {
       octx.save();
@@ -303,42 +187,91 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       }
       octx.restore();
     });
-
-    const imgData = octx.getImageData(0, 0, opacityCanvas.width, opacityCanvas.height);
-    for (let i = 0; i < imgData.data.length; i += 4) {
-      const r = imgData.data[i], g = imgData.data[i + 1], b = imgData.data[i + 2], a = imgData.data[i + 3];
-      const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-
-      // Content is anything that is not transparent and not bright white background
-      let bw = 0;
-      if (a > 10 && brightness < 240) {
-        bw = 255;
+    try {
+      const imgData = octx.getImageData(0, 0, opacityCanvas.width, opacityCanvas.height);
+      for (let i = 0; i < imgData.data.length; i += 4) {
+        const brightness = 0.299 * imgData.data[i] + 0.587 * imgData.data[i + 1] + 0.114 * imgData.data[i + 2];
+        const bw = brightness > 128 ? 0 : 255;
+        imgData.data[i] = imgData.data[i + 1] = imgData.data[i + 2] = bw;
+        imgData.data[i + 3] = 255;
       }
-      imgData.data[i] = imgData.data[i + 1] = imgData.data[i + 2] = bw;
-      imgData.data[i + 3] = a;
+      octx.putImageData(imgData, 0, 0);
+    } catch (e) {
+      console.warn("getImageData blocked (CORS taint) — opacity map skipped:", e.message);
     }
-    octx.putImageData(imgData, 0, 0);
 
     let diffuseBase64 = "";
     let opacityBase64 = "";
 
     try {
-      diffuseBase64 = canvas.toDataURL("image/png");
-      opacityBase64 = opacityCanvas.toDataURL("image/png");
+      const EXPORT_SCALE = 3;
+
+      const exportCanvas = document.createElement("canvas");
+      exportCanvas.width = CANVAS_WIDTH * EXPORT_SCALE;
+      exportCanvas.height = CANVAS_HEIGHT * EXPORT_SCALE;
+      const ectx = exportCanvas.getContext("2d");
+      ectx.imageSmoothingEnabled = true;
+      ectx.imageSmoothingQuality = "high";
+      objects.forEach(obj => {
+        ectx.save();
+        ectx.translate(obj.pos.x * EXPORT_SCALE, obj.pos.y * EXPORT_SCALE);
+        ectx.rotate((obj.angle * Math.PI) / 180);
+        if (obj.type === 'image') {
+          ectx.drawImage(
+            obj.srcObj,
+            -(obj.size.w * EXPORT_SCALE) / 2,
+            -(obj.size.h * EXPORT_SCALE) / 2,
+            obj.size.w * EXPORT_SCALE,
+            obj.size.h * EXPORT_SCALE
+          );
+        }
+        ectx.restore();
+      });
+      diffuseBase64 = exportCanvas.toDataURL("image/png", 1.0);
+
+      const exportOpacity = document.createElement("canvas");
+      exportOpacity.width = CANVAS_WIDTH * EXPORT_SCALE;
+      exportOpacity.height = CANVAS_HEIGHT * EXPORT_SCALE;
+      const eoctx = exportOpacity.getContext("2d");
+      eoctx.imageSmoothingEnabled = true;
+      eoctx.imageSmoothingQuality = "high";
+      // White background so brightness threshold works correctly
+      eoctx.fillStyle = "#ffffff";
+      eoctx.fillRect(0, 0, exportOpacity.width, exportOpacity.height);
+      objects.forEach(obj => {
+        eoctx.save();
+        eoctx.translate(obj.pos.x * EXPORT_SCALE, obj.pos.y * EXPORT_SCALE);
+        eoctx.rotate((obj.angle * Math.PI) / 180);
+        if (obj.type === 'image') {
+          eoctx.drawImage(
+            obj.srcObj,
+            -(obj.size.w * EXPORT_SCALE) / 2,
+            -(obj.size.h * EXPORT_SCALE) / 2,
+            obj.size.w * EXPORT_SCALE,
+            obj.size.h * EXPORT_SCALE
+          );
+        }
+        eoctx.restore();
+      });
+      const eImgData = eoctx.getImageData(0, 0, exportOpacity.width, exportOpacity.height);
+      for (let i = 0; i < eImgData.data.length; i += 4) {
+        const brightness = 0.299 * eImgData.data[i] + 0.587 * eImgData.data[i + 1] + 0.114 * eImgData.data[i + 2];
+        const bw = brightness > 128 ? 0 : 255;
+        eImgData.data[i] = eImgData.data[i + 1] = eImgData.data[i + 2] = bw;
+        eImgData.data[i + 3] = 255;
+      }
+      eoctx.putImageData(eImgData, 0, 0);
+      opacityBase64 = exportOpacity.toDataURL("image/png", 1.0);
     } catch (err) {
-      console.warn("Canvas blocked due to CORS:", err);
-      // If blocked, we still want to try to draw handles but onUpdate might fail
+      console.warn("Canvas export error:", err);
     }
 
-    // Send to parent / PlayCanvas
     if (onUpdate && postEx && diffuseBase64 && opacityBase64) {
-      console.log("📤 Sending canvas data to PlayCanvas:", postEx);
       onUpdate({
         canvasBase64: {
           diffuse: postEx + "back_diffuse: " + diffuseBase64,
           opacity: postEx + "back_opacity: " + opacityBase64,
           emissive: postEx + "back_emissive: " + diffuseBase64,
-          // Special field for PlayCanvas to avoid CORS:
           rawData: {
             diffuse: diffuseBase64,
             opacity: opacityBase64,
@@ -349,7 +282,6 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       });
     }
 
-    // Draw handles for selected object
     const selected = getSelected();
     if (selected) {
       const handles = {
@@ -378,89 +310,9 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
 
   useEffect(() => draw(), [objects, selectedId, isAppReady]);
 
-  // const selectPredefinedDesign = (url) => {
-  //   const img = new Image();
-  //   img.crossOrigin = "anonymous";
-  //   img.onload = () => {
-  //     const scale = Math.min(
-  //       (CANVAS_WIDTH * 0.75) / img.width,
-  //       (CANVAS_HEIGHT * 0.65) / img.height
-  //     );
-  //     const w = img.width * scale;
-  //     const h = img.height * scale;
-
-  //     const newImageObj = {
-  //       id: 'uploadedImage',
-  //       type: 'image',
-  //       srcObj: img,
-  //       pos: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
-  //       size: { w, h },
-  //       angle: 0,
-  //       locked: false,
-  //     };
-
-  //     setObjects([newImageObj]);
-  //     setSelectedId('uploadedImage');
-
-  //     onUpdate({
-  //       backDesign: {
-  //         pos: newImageObj.pos,
-  //         size: newImageObj.size,
-  //         angle: newImageObj.angle,
-  //         locked: newImageObj.locked,
-  //         src: url,
-  //       }
-  //     });
-  //   };
-  //   img.src = url;
-  // };
 
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(
-          (CANVAS_WIDTH * 0.75) / img.width,
-          (CANVAS_HEIGHT * 0.65) / img.height
-        );
-        const w = img.width * scale;
-        const h = img.height * scale;
-
-        const newImageObj = {
-          id: 'uploadedImage',
-          type: 'image',
-          srcObj: img,
-          pos: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
-          size: { w, h },
-          angle: 0,
-          locked: false,
-        };
-
-        setObjects([newImageObj]);
-        setSelectedId('uploadedImage');
-
-        onUpdate({
-          backDesign: {
-            pos: newImageObj.pos,
-            size: newImageObj.size,
-            angle: newImageObj.angle,
-            locked: newImageObj.locked,
-            src: ev.target.result,
-          }
-        });
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  };
-
-  const deleteObject = (obj) => {
+   const deleteObject = (obj) => {
     if (obj.id === 'uploadedImage') {
       onUpdate({ backDesign: null });
     }
@@ -615,8 +467,6 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
     setResizing(false);
     setRotating(false);
   };
-  console.log("backDesignsmansdiasmdasd", backDesigns);
-  console.log("canvasRefasasa", canvasRef);
 
   return (
     <div className="p-0 max-w-2xl mx-auto hidden">
@@ -634,7 +484,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
         ref={canvasRef}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        className="border-2 border-gray-300 rounded-lg shadow-lg block mx-auto bg-gray-50"
+        className="border-2 border-gray-300 rounded-lg shadow-lg block mx-auto bg-gray-50 hidden"
         style={{ cursor: getSelected()?.locked ? "not-allowed" : "move" }}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}

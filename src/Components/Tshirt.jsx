@@ -575,14 +575,14 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         if (diffuseB64) iframe.contentWindow.postMessage("T-Shirt:back_black_diffuse: " + diffuseB64, "*");
         if (opacityB64) iframe.contentWindow.postMessage("T-Shirt:back_black_opacity: " + opacityB64, "*");
       } else {
-        // if (opacityB64) iframe.contentWindow.postMessage("T-Shirt:back_white_diffuse: " + opacityB64, "*");
-        // if (opacityB64) iframe.contentWindow.postMessage("T-Shirt:back_white_opacity: " + opacityB64, "*");
-        if (opacityB64) invertOpacity(opacityB64, inv => {
-          iframe.contentWindow.postMessage("T-Shirt:back_white_diffuse: " + inv, "*");
-        });
-        if (opacityB64) invertOpacity(opacityB64, inv => {
-          iframe.contentWindow.postMessage("T-Shirt:back_white_opacity: " + inv, "*");
-        });
+        if (opacityB64) iframe.contentWindow.postMessage("T-Shirt:back_white_diffuse: " + opacityB64, "*");
+        if (opacityB64) iframe.contentWindow.postMessage("T-Shirt:back_white_opacity: " + opacityB64, "*");
+        // if (opacityB64) invertOpacity(opacityB64, inv => {
+        //   iframe.contentWindow.postMessage("T-Shirt:back_white_diffuse: " + inv, "*");
+        // });
+        // if (opacityB64) invertOpacity(opacityB64, inv => {
+        //   iframe.contentWindow.postMessage("T-Shirt:back_white_opacity: " + inv, "*");
+        // });
       }
     });
   };

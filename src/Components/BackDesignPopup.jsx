@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 
 const BackDesignPopup = ({ onFinish, customizations, setCustomizations, students, backDesigns }) => {
     const [activeTab, setActiveTab] = useState('T-SHIRT');
-console.log("backDesignsasdad",backDesigns);
+    console.log("backDesignsasdad", backDesigns);
 
     const productTabs = [
         { name: 'T-SHIRT', postEx: 'T-Shirt:' },
@@ -16,31 +16,57 @@ console.log("backDesignsasdad",backDesigns);
     // ✅ Apply API backDesign to all students automatically on mount
     useEffect(() => {
         if (backDesigns?.data) {
-            setCustomizations(prev => {
-                const nextCustom = { ...prev };
-                const shirtCategories = ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'];
-                students.forEach(student => {
-                    const studentName = typeof student === 'object' ? (student.name || student.id) : student;
-                    const studentData = nextCustom[studentName] || {};
+            const design = backDesigns.data;
+            const src = `${BASE_URL}${design.configured_file_path.replace(/\\/g, "/")}`;   // 👈 file_path → configured_file_path
 
-                    shirtCategories.forEach(cat => {
-                        const categoryData = studentData[cat] || {};
-                        studentData[cat] = {
-                            ...categoryData,
-                            pressureOptions: {
-                                ...(categoryData.pressureOptions || {}),
-                                backDesign: backDesigns.data
-                            }
-                        };
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+                const CANVAS_WIDTH = 480;
+                const CANVAS_HEIGHT = 350;
+                const scale = Math.min(
+                    (CANVAS_WIDTH * 0.98) / img.width,
+                    (CANVAS_HEIGHT * 0.95) / img.height
+                );
+                const w = img.width * scale;
+                const h = img.height * scale;
+
+                const backDesignObj = {
+                    src,
+                    designId: design.id,
+                    designColor: design.designColor,
+                    pos: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
+                    size: { w, h },
+                    angle: 0,
+                    locked: false,
+                };
+
+                setCustomizations(prev => {
+                    const nextCustom = { ...prev };
+                    const shirtCategories = ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'];
+                    students.forEach(student => {
+                        const studentName = typeof student === 'object' ? (student.name || student.id) : student;
+                        const studentData = nextCustom[studentName] || {};
+
+                        shirtCategories.forEach(cat => {
+                            const categoryData = studentData[cat] || {};
+                            studentData[cat] = {
+                                ...categoryData,
+                                pressureOptions: {
+                                    ...(categoryData.pressureOptions || {}),
+                                    backDesign: backDesignObj
+                                }
+                            };
+                        });
+
+                        nextCustom[studentName] = { ...studentData };
                     });
-
-                    nextCustom[studentName] = { ...studentData };
+                    return nextCustom;
                 });
-                return nextCustom;
-            });
+            };
+            img.src = src;
         }
     }, [backDesigns, students, setCustomizations]);
-
     const currentTab = productTabs.find((t) => t.name === activeTab);
 
     // Use first student's data for UI preview
