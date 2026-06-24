@@ -41,6 +41,16 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
   const designColorRef = React.useRef(initialDesignColor);
   const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" });
 
+  React.useEffect(() => {
+    const handleResend = () => {
+      if (lastBackDataRef.current?.diffuse) {
+         sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
+      }
+    };
+    window.addEventListener("resendBackDesign", handleResend);
+    return () => window.removeEventListener("resendBackDesign", handleResend);
+  }, []);
+
   const handleDesignColorChange = (newDesignColor) => {
     setDesignColor(newDesignColor);
     designColorRef.current = newDesignColor;
@@ -427,49 +437,57 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
     if (logoSrc) {
       loadImageCached(logoSrc)
         .then((img) => {
-          // No solid white background — let cloth color through
           const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height);
-          const w = img.width * ratio * 0.8; const h = img.height * ratio * 0.8;
-          const x = (CANVAS_WIDTH - w) / 2; const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 2;
-
+          const w = img.width * ratio * 0.8, h = img.height * ratio * 0.9;
+          const x = (CANVAS_WIDTH - w) / 2, y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 20;
           ctx.drawImage(img, x, y, w, h);
 
-          // Overlay text centered on logo area
           if (text?.trim()) {
             let fontSize = 48;
             ctx.font = `bold ${fontSize}px Arial`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
             while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
-              fontSize -= 2;
-              ctx.font = `bold ${fontSize}px Arial`;
+              fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`;
             }
             ctx.fillStyle = textColor;
             ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
           }
 
-          // Opacity canvas construction
           const opacityCanvas = document.createElement("canvas");
           opacityCanvas.width = CANVAS_WIDTH; opacityCanvas.height = CANVAS_HEIGHT;
           const octx = opacityCanvas.getContext("2d");
-
-          // Pure black background
-          octx.fillStyle = "#fff";
-          octx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-          octx.drawImage(img, x, y, w, h);
-          const imgData = octx.getImageData(0, 0, opacityCanvas.width, opacityCanvas.height);
-          for (let i = 0; i < imgData.data.length; i += 4) {
-            const r = imgData.data[i], g = imgData.data[i + 1], b = imgData.data[i + 2], a = imgData.data[i + 3];
-            const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-            let bw = 0;
-            if (a > 10 && brightness < 240) {
-              bw = 255;
-            }
-            imgData.data[i] = imgData.data[i + 1] = imgData.data[i + 2] = bw;
-            imgData.data[i + 3] = 255;
+          const tmpC = document.createElement("canvas");
+          tmpC.width = img.width; tmpC.height = img.height;
+          const tmpCtx2 = tmpC.getContext("2d");
+          tmpCtx2.drawImage(img, 0, 0);
+          const tmpD = tmpCtx2.getImageData(0, 0, img.width, img.height);
+          let imgHasAlpha = false;
+          for (let i = 3; i < tmpD.data.length; i += 4) {
+            if (tmpD.data[i] < 254) { imgHasAlpha = true; break; }
           }
-          octx.putImageData(imgData, 0, 0);
+          if (imgHasAlpha) {
+            octx.drawImage(img, x, y, w, h);
+            const d = octx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            for (let i = 0; i < d.data.length; i += 4) {
+              const bw = d.data[i + 3] > 127 ? 255 : 0;
+              d.data[i] = d.data[i+1] = d.data[i+2] = bw; d.data[i+3] = 255;
+            }
+            octx.putImageData(d, 0, 0);
+          } else {
+            const gC = (px, py) => { const idx=(py*img.width+px)*4; return [tmpD.data[idx],tmpD.data[idx+1],tmpD.data[idx+2]]; };
+            const corners = [gC(0,0),gC(img.width-1,0),gC(0,img.height-1),gC(img.width-1,img.height-1)];
+            const bgR=corners.reduce((s,c)=>s+c[0],0)/4, bgG=corners.reduce((s,c)=>s+c[1],0)/4, bgB=corners.reduce((s,c)=>s+c[2],0)/4;
+            const thr = 90;
+            octx.drawImage(img, x, y, w, h);
+            const d = octx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            for (let i = 0; i < d.data.length; i += 4) {
+              const a = d.data[i+3]; let bw;
+              if (a < 10) { bw = 0; }
+              else { const diff=Math.abs(d.data[i]-bgR)+Math.abs(d.data[i+1]-bgG)+Math.abs(d.data[i+2]-bgB); bw = diff > thr ? 255 : 0; }
+              d.data[i]=d.data[i+1]=d.data[i+2]=bw; d.data[i+3]=255;
+            }
+            octx.putImageData(d, 0, 0);
+          }
           callback(canvas.toDataURL("image/png"), opacityCanvas.toDataURL("image/png"));
           return;
         })
@@ -563,7 +581,15 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
             if (formattedDiffuse) iframe.contentWindow.postMessage("SweatShirt:back_black_diffuse: " + formattedDiffuse, "*");
             if (formattedOpacity) iframe.contentWindow.postMessage("SweatShirt:back_black_opacity: " + formattedOpacity, "*");
           } else {
-            if (formattedOpacity) iframe.contentWindow.postMessage("SweatShirt:back_white_diffuse: " + formattedOpacity, "*");
+            const whiteCanvas = document.createElement("canvas");
+            whiteCanvas.width = 4096;
+            whiteCanvas.height = 4096;
+            const wctx = whiteCanvas.getContext("2d");
+            wctx.fillStyle = "#ffffff";
+            wctx.fillRect(0, 0, 4096, 4096);
+            const whiteDiffuse = whiteCanvas.toDataURL("image/png", 1.0);
+
+            iframe.contentWindow.postMessage("SweatShirt:back_white_diffuse: " + whiteDiffuse, "*");
             if (formattedOpacity) iframe.contentWindow.postMessage("SweatShirt:back_white_opacity: " + formattedOpacity, "*");
           }
         });
@@ -779,8 +805,6 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
           if (iframe?.contentWindow) {
             const msg = `SweatShirt:${area}_diffuse: ${diffuseBase}`;
             iframe.contentWindow.postMessage(msg, "*");
-            console.log("fahhhhh", msg);
-            // Logo opacity ? brightness-inverted
             if (logoOpacityBase) {
               iframe.contentWindow.postMessage(`SweatShirt:${area}_opacity: ${logoOpacityBase}`, "*");
             }

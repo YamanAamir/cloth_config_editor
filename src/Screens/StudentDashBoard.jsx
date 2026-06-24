@@ -773,8 +773,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                 }
                             }
                         }
-                        // Force Test component to remount and re-send back design
-                        setBackDesignKey(k => k + 1);
+                        // Trigger re-send of back design without remounting component
+                        window.dispatchEvent(new Event("resendBackDesign"));
                     }, 300);
                 }
             });
@@ -1271,12 +1271,12 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                 </div>
                                 <div className="p-6 space-y-8">
 
-                                    {activeMenu === 'T-SHIRT' && <Tshirt key={`tshirt-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {activeMenu === "SWEATSHIRT" && <SweatShirt key={`sweatshirt-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {activeMenu === "HOODIE" && <Hoodie key={`hoodie-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {activeMenu === "ZIPPERHOODIE" && <ZippedHoodie key={`zipper-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {activeMenu === "SWEATPANTS" && <SweatPants key={`sweatpants-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {activeMenu === "SHORTS" && <Shorts key={`shorts-${backDesignKey}`} isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {activeMenu === 'T-SHIRT' && <Tshirt key="tshirt" isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {activeMenu === "SWEATSHIRT" && <SweatShirt key="sweatshirt" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {activeMenu === "HOODIE" && <Hoodie key="hoodie" isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {activeMenu === "ZIPPERHOODIE" && <ZippedHoodie key="zipper" isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {activeMenu === "SWEATPANTS" && <SweatPants key="sweatpants" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {activeMenu === "SHORTS" && <Shorts key="shorts" isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
                                 </div>
                             </div>
                         </div>

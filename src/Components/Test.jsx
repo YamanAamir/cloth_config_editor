@@ -45,21 +45,33 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
     designColorRef.current = designColor || backDesigns?.designColor;
   }, [designColor, backDesigns]);
 
+  // Global cache outside component to persist across mounts
+  if (!window.__globalImageCache) {
+    window.__globalImageCache = {};
+  }
 
   const loadImageSafe = (src, callback) => {
+    if (window.__globalImageCache[src]) {
+      callback(window.__globalImageCache[src]);
+      return;
+    }
     fetch(src, { mode: 'cors' })
       .then(res => res.blob())
       .then(blob => {
         const blobUrl = URL.createObjectURL(blob);
         const img = new Image();
         img.onload = () => {
+          window.__globalImageCache[src] = img;
           callback(img);
           URL.revokeObjectURL(blobUrl);
         };
         img.onerror = () => {
           const img2 = new Image();
           img2.crossOrigin = "anonymous";
-          img2.onload = () => callback(img2);
+          img2.onload = () => {
+            window.__globalImageCache[src] = img2;
+            callback(img2);
+          };
           img2.onerror = () => callback(null);
           img2.src = src;
         };
@@ -68,7 +80,10 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       .catch(() => {
         const img = new Image();
         img.crossOrigin = "anonymous";
-        img.onload = () => callback(img);
+        img.onload = () => {
+          window.__globalImageCache[src] = img;
+          callback(img);
+        };
         img.onerror = () => callback(null);
         img.src = src;
       });
