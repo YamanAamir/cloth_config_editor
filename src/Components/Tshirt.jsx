@@ -187,14 +187,24 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
             try {
               const img = await loadImageCached(logoSrc);
 
-              // ── Logo size — height thodi barha di (pehle 0.9 thi) ──
+              // ── Logo size ──
               const LOGO_W_SCALE = 0.8;
               const LOGO_H_SCALE = 0.9;
               const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height);
+
+              // Normal path dimensions
               const w = img.width * ratio * LOGO_W_SCALE;
               const h = img.height * ratio * LOGO_H_SCALE;
               const x = (CANVAS_WIDTH - w) / 2;
               const y = TEXT_HEIGHT + (FLAG_HEIGHT - h) / 20;
+
+              // Two-tone path dimensions
+              const TWOTONE_W_SCALE = 0.8;
+              const TWOTONE_H_SCALE = 1.1; // 👈 yahan apni marzi ki value do
+              const wTT = img.width * ratio * TWOTONE_W_SCALE;
+              const hTT = img.height * ratio * TWOTONE_H_SCALE;
+              const xTT = (CANVAS_WIDTH - wTT) / 2;
+              const yTT = TEXT_HEIGHT + (FLAG_HEIGHT - hTT) / 20;
 
               const W = CANVAS_WIDTH, H = CANVAS_HEIGHT;
 
@@ -232,7 +242,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
                 const workC = document.createElement("canvas");
                 workC.width = W; workC.height = H;
                 const wctx = workC.getContext("2d");
-                wctx.drawImage(img, x, y, w, h);
+                wctx.drawImage(img, xTT, yTT, wTT, hTT); // 👈 TT dimensions
                 const wd = wctx.getImageData(0, 0, W, H);
 
                 const shapeWhite = !bgIsWhite;      // bg black -> shape white
