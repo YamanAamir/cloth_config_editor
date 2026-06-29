@@ -12,6 +12,7 @@ import StudentRegister from './Pages/StudentRegister.jsx';
 import StudentLogin from './Pages/StudentLogin.jsx';
 import { useAuth } from './context/AuthContext';
 import useBackDesignStore from './store/backDesignStore';
+import { getMyOrder, getMyOrderHistory, getMyClassBackDesigns } from './api/api';
 
 function App() {
   const { user, loading } = useAuth();
@@ -29,14 +30,65 @@ function App() {
   const userObj = getUser ? JSON.parse(getUser) : null;
   const getClassId = userObj?.class_id;
 
+  // Initial data pre-fetched for StudentDashboard (faster first paint)
+  const [initialOrderData, setInitialOrderData] = useState(null);
+  const [initialHistoryData, setInitialHistoryData] = useState(null);
+  const [initialBackDesignData, setInitialBackDesignData] = useState(null);
+
+  useEffect(() => {
+    if (user && user.role === 'student') {
+      Promise.all([
+        getMyOrder(),
+        getMyOrderHistory(),
+        getMyClassBackDesigns()
+      ]).then(([orderRes, historyRes, backDesignRes]) => {
+        if (orderRes.data?.success) setInitialOrderData(orderRes.data.data);
+        if (historyRes.data?.success) setInitialHistoryData(historyRes.data.data);
+        if (backDesignRes.data?.success) setInitialBackDesignData(backDesignRes.data.data);
+      }).catch(err => console.error("Initial data fetch error:", err));
+    }
+  }, [user]);
+
   useEffect(() => {
     if (getClassId) {
       fetchBackDesigns({ page: 1, limit: 100, class_id: getClassId });
     }
   }, [getClassId]);
 
-  // Save customizations internally
+  // Customizations ko localStorage mein debounce ke saath save karo
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem('studentCustomizations', JSON.stringify(customizations));
+      } catch (e) {
+        console.warn('localStorage save failed:', e);
+      }
+    }, 800); // 800ms debounce — har keystroke pe save nahi hoga
+    return () => clearTimeout(timer);
+  }, [customizations]);
 
+  // Working days complete hone ke baad localStorage cleanup
+  useEffect(() => {
+    const checkAndCleanup = () => {
+      try {
+        const holdDeadlineStr = localStorage.getItem('orderHoldDeadline');
+        if (holdDeadlineStr) {
+          const holdDeadline = new Date(holdDeadlineStr);
+          const now = new Date();
+          if (now > holdDeadline) {
+            // Working days complete — saved data remove karo
+            localStorage.removeItem('studentCustomizations');
+            localStorage.removeItem('orderHoldDeadline');
+            setCustomizations({});
+            console.log('Order hold period expired — localStorage cleared');
+          }
+        }
+      } catch (e) {
+        console.warn('Cleanup check failed:', e);
+      }
+    };
+    checkAndCleanup();
+  }, []);
 
   // Sync isAppReady from PlayCanvas
   useEffect(() => {
@@ -95,6 +147,9 @@ function App() {
                   customizations={customizations}
                   setCustomizations={setCustomizations}
                   setShowBackPopup={setShowBackPopup}
+                  initialOrderData={initialOrderData}
+                  initialHistoryData={initialHistoryData}
+                  initialBackDesignData={initialBackDesignData}
                 // setShowBackTextPopup={setShowBackTextPopup} // COMMENTED: Back text feature disabled
               />
             </>

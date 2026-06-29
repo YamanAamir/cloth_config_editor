@@ -1,7 +1,8 @@
 import React from "react";
 import { XCircle, ShoppingCart } from "lucide-react";
-
+import { useNavigate } from 'react-router-dom'
 const CancelScreen = ({ handleResetModal, onClose }) => {
+  const navigate = useNavigate()
   return (
     <div className="overflow-y-auto px-6 py-12">
       <div className="max-w-2xl mx-auto text-center">
@@ -26,8 +27,9 @@ const CancelScreen = ({ handleResetModal, onClose }) => {
           <button
             onClick={() => {
               handleResetModal?.();
-              window.location.href =
-                "https://shop.studentlife.dk/packages/";
+              navigate(-1)
+              // window.location.href =
+              //   "https://shop.studentlife.dk/packages/";
               onClose?.();
             }}
             className="flex items-center justify-center px-6 py-3 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-all duration-200"

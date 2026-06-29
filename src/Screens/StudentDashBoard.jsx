@@ -16,18 +16,20 @@ import SweatPants from '../Components/SweatPants';
 import SweatShirt from '../Components/SweatShirt';
 import QuoteModal from '../Components/Modal';
 import HistoryModal from '../Components/HistoryModal';
-import { useParams, useSearchParams } from 'react-router-dom';
-import { GraduationCap, ChevronUp, ChevronDown, LogOut, Settings, LayoutGrid, Lock, History, Package, User, RefreshCw, RotateCcw } from 'lucide-react';
+import { useParams, useSearchParams, useLocation } from 'react-router-dom';
+import { GraduationCap, ChevronUp, ChevronDown, LogOut, Settings, LayoutGrid, Lock, History, Package, User, CreditCard, Clock } from 'lucide-react';
 import StudentPopup from '../Components/Popup';
 import useLogoStore from '../store/logoStore';
 import useSettingsStore from '../store/settingsStore';
 import { useAuth } from '../context/AuthContext';
-import { getMyOrder, getMyOrderHistory, placeOrder, unlockOrder, lockOrder, deleteHistory, getStudentProfile, updateStudentProfile, changePasswordAuth, getMyClassBackDesigns, resetOrder, createFreshOrder } from '../api/api';
+import { getMyOrder, getMyOrderHistory, placeOrder, getStudentProfile, updateStudentProfile, changePasswordAuth, getMyClassBackDesigns, createCheckoutSession, getOrderPaymentBreakdown } from '../api/api';
 import useBackDesignStore from '../store/backDesignStore';
+import { getFlagUrl } from '../utils/flags';
+import { BASE_URL } from '../utils/const';
 
 import useSocket from '../hooks/useSocket';
 
-const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup /*, setShowBackTextPopup */ }) => { // COMMENTED: Back text feature disabled
+const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup, initialOrderData, initialHistoryData, initialBackDesignData /*, setShowBackTextPopup */ }) => { // COMMENTED: Back text feature disabled
     const { logout } = useAuth();
     const { backDesigns } = useBackDesignStore();
     const { fetchBackDesigns } = useBackDesignStore();
@@ -36,7 +38,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
     const DEFAULT_SELECTIONS = {
         'T-SHIRT': {
             selectedColor: 'Red',
-            selectedSize: '',
+            selectedSize: 'S',
             pressureOptions: {
                 rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
                 leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
@@ -47,7 +49,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         },
         'SWEATSHIRT': {
             selectedColor: 'Red',
-            selectedSize: '',
+            selectedSize: 'S',
             pressureOptions: {
                 rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
                 leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
@@ -58,7 +60,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         },
         'HOODIE': {
             selectedColor: 'Red',
-            selectedSize: '',
+            selectedSize: 'S',
             pressureOptions: {
                 rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
                 leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
@@ -70,7 +72,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         },
         'ZIPPERHOODIE': {
             selectedColor: 'Red',
-            selectedSize: '',
+            selectedSize: 'S',
             pressureOptions: {
                 rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
                 leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
@@ -81,7 +83,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         },
         'SWEATPANTS': {
             selectedColor: 'Red',
-            selectedSize: '',
+            selectedSize: 'S',
             pressureOptions: {
                 rightLegText: '', rightLegFlag: '', rightLegLogoPredefined: '', rightLegLogoCustom: '', rightLegType: '', rightLegTextColor: '#ffffff',
                 leftLegText: '', leftLegFlag: '', leftLegLogoPredefined: '', leftLegLogoCustom: '', leftLegType: '', leftLegTextColor: '#ffffff',
@@ -89,7 +91,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         },
         'SHORTS': {
             selectedColor: 'Red',
-            selectedSize: '',
+            selectedSize: 'S',
             pressureOptions: {
                 rightLegText: '', rightLegFlag: '', rightLegLogoPredefined: '', rightLegLogoCustom: '', rightLegType: '', rightLegTextColor: '#ffffff',
                 leftLegText: '', leftLegFlag: '', leftLegLogoPredefined: '', leftLegLogoCustom: '', leftLegType: '', leftLegTextColor: '#ffffff',
@@ -171,7 +173,19 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
     };
 
     // 2. State
-    const [allSelections, setAllSelections] = useState(DEFAULT_SELECTIONS);
+    const [allSelections, setAllSelections] = useState(() => {
+        // Refresh pe localStorage se data load karo — user directly localStorage se padho
+        try {
+            const rawUser = localStorage.getItem('user');
+            const sName = rawUser ? (JSON.parse(rawUser)?.name || "") : "";
+            if (sName) {
+                const saved = localStorage.getItem('studentCustomizations');
+                const parsed = saved ? JSON.parse(saved) : null;
+                if (parsed && parsed[sName]) return parsed[sName];
+            }
+        } catch { /* ignore */ }
+        return DEFAULT_SELECTIONS;
+    });
     const [activeMenu, setActiveMenu] = useState('T-SHIRT');
     const [garmentTab, setGarmentTab] = useState('size'); // 'size' | 'pressure'
     const [backDesignKey, setBackDesignKey] = useState(0); // force Test remount on page switch
@@ -183,6 +197,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
     const [undoAvailable, setUndoAvailable] = useState(false);
     const [searchParams] = useSearchParams();
+    const location = useLocation();
     const packageName = searchParams.get("package");
     const program = searchParams.get("program");
     const [isConfigOpen, setIsConfigOpen] = useState(false);
@@ -203,19 +218,36 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
     const [historyIndex, setHistoryIndex] = useState(-1);
     const [dbHistory, setDbHistory] = useState([]);
     const [isAdmin, setIsAdmin] = useState(false);
-    const [selectedStudent, setSelectedStudent] = useState("");
+    // selectedStudent — user login hote hi name se initialize karo
+    const userStr = localStorage.getItem("user");
+    const user = userStr ? JSON.parse(userStr) : null;
+    const [selectedStudent, setSelectedStudent] = useState(() => {
+        // Direct localStorage se padho taake React state order matter na kare
+        try {
+            const rawUser = localStorage.getItem('user');
+            return rawUser ? (JSON.parse(rawUser)?.name || "") : "";
+        } catch { return ""; }
+    });
     const [existingDeliveryDetails, setExistingDeliveryDetails] = useState(null);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [orderId, setOrderId] = useState(null);
     const [amountPaid, setAmountPaid] = useState(0);
-    const [paymentStatus, setPaymentStatus] = useState('unpaid');
+    const [paymentStatus, setPaymentStatus] = useState(null);
     const [editDeadline, setEditDeadline] = useState(null);
     const [classStatus, setClassStatus] = useState(null); // tracking.class_status
     const [backDesignStatus, setBackDesignStatus] = useState(null); // back design approval status
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [isResetting, setIsResetting] = useState(false);
-    const [showResetModal, setShowResetModal] = useState(false);
+    // New lifecycle state
+    const [processStatus, setProcessStatus] = useState(null); // on_hold | locked_awaiting_payment | partial_paid | paid | production | dispatched
+    const [holdDeadline, setHoldDeadline] = useState(null); // Date when hold period expires
+
+    // Payment breakdown state (per-product paid vs unpaid)
+    const [paymentBreakdown, setPaymentBreakdown] = useState(null);
+    const [isPayingBalance, setIsPayingBalance] = useState(false);
+    const [editWindowOpen, setEditWindowOpen] = useState(false);
+    // Product types already in the current order — locked from being unselected once purchased
+    const [existingProductTypes, setExistingProductTypes] = useState([]);
 
     // 3. Derived State
     const calculateTotalPrice = () => {
@@ -241,8 +273,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
 
 
     const { logos, loading, fetchLogos } = useLogoStore();
-    const userStr = localStorage.getItem("user");
-    const user = userStr ? JSON.parse(userStr) : null;
     const school_id = user?.school_id;
     useEffect(() => {
         if (school_id) {
@@ -261,38 +291,85 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
     // --- Real-time Socket Updates ---
     const userId = user?.id;
 
+    const processOrderResponse = (order) => {
+        if (!order) return;
+        setOrderId(order.id);
+        const ps = order.process_status || null;
+        setProcessStatus(ps);
+        if (order.hold_deadline) setHoldDeadline(new Date(order.hold_deadline));
+        const editWindowStillOpen = order.edit_deadline
+            ? new Date() < new Date(order.edit_deadline)
+            : false;
+        setEditWindowOpen(editWindowStillOpen);
+        const locked = order.is_locked ||
+            ps === 'locked_awaiting_payment' ||
+            ps === 'production' ||
+            ps === 'dispatched' ||
+            (ps === 'paid' && !editWindowStillOpen) ||
+            (ps === 'partial_paid' && !editWindowStillOpen);
+        setIsLocked(locked);
+        setAmountPaid(parseFloat(order.amount_paid || 0));
+        setPaymentStatus(order?.payment_status ?? null);
+        if (order.edit_deadline) setEditDeadline(new Date(order.edit_deadline));
+        if (order.class?.change_deadline) setDeadline(new Date(order.class.change_deadline));
+        if (order.tracking?.class_status) setClassStatus(order.tracking.class_status);
+        if (order.delivery_details) {
+            const details = typeof order.delivery_details === 'string'
+                ? JSON.parse(order.delivery_details) : order.delivery_details;
+            setExistingDeliveryDetails(details);
+        }
+        if (order.paid_products || order.unpaid_products) {
+            const editWindowStillOpenCalc = order.edit_deadline ? new Date() < new Date(order.edit_deadline) : false;
+            setPaymentBreakdown({
+                total_amount: parseFloat(order.total_amount || 0),
+                amount_paid: parseFloat(order.amount_paid || 0),
+                balance_due: parseFloat(order.balance_due || 0),
+                paid_products: order.paid_products || [],
+                unpaid_products: order.unpaid_products || [],
+                edit_window_open: editWindowStillOpenCalc,
+                edit_deadline: order.edit_deadline
+            });
+        }
+        setExistingProductTypes((order.order_items || []).map(item => item.product_type));
+
+        if (order.order_items?.length > 0) {
+            const sName = user?.name || "Student";
+            let localData = null;
+            try {
+                const s = localStorage.getItem('studentCustomizations');
+                const parsed = s ? JSON.parse(s) : null;
+                if (parsed && parsed[sName]) localData = parsed[sName];
+            } catch { /* ignore */ }
+            if (localData) {
+                setAllSelections(localData);
+                setCustomizations(prev => ({ ...prev, [sName]: localData }));
+            } else {
+                const newSelections = JSON.parse(JSON.stringify(DEFAULT_SELECTIONS));
+                order.order_items.forEach(item => {
+                    const type = item.product_type;
+                    if (newSelections[type]) {
+                        newSelections[type].selectedColor = item.selectedColor;
+                        newSelections[type].selectedSize = item.selectedSize;
+                        newSelections[type].pressureOptions = item.design_config;
+                    }
+                });
+                setAllSelections(newSelections);
+                setCustomizations(prev => ({ ...prev, [sName]: newSelections }));
+                try {
+                    const existing = localStorage.getItem('studentCustomizations');
+                    const existingParsed = existing ? JSON.parse(existing) : {};
+                    localStorage.setItem('studentCustomizations', JSON.stringify({ ...existingParsed, [sName]: newSelections }));
+                } catch { /* ignore */ }
+            }
+            setSelectedStudent(sName);
+        }
+    };
+
     const fetchOrderData = async () => {
         try {
             const resOrder = await getMyOrder();
             if (resOrder.data?.success && resOrder.data.data) {
-                const order = resOrder.data.data;
-                setOrderId(order.id);
-                setIsLocked(order.is_locked);
-                setAmountPaid(parseFloat(order.amount_paid || 0));
-                setPaymentStatus(order.payment_status || 'unpaid');
-                if (order.edit_deadline) setEditDeadline(new Date(order.edit_deadline));
-                if (order.class?.change_deadline) setDeadline(new Date(order.class.change_deadline));
-                if (order.tracking?.class_status) setClassStatus(order.tracking.class_status);
-                if (order.delivery_details) {
-                    const details = typeof order.delivery_details === 'string'
-                        ? JSON.parse(order.delivery_details) : order.delivery_details;
-                    setExistingDeliveryDetails(details);
-                }
-                if (order.order_items?.length > 0) {
-                    const newSelections = JSON.parse(JSON.stringify(DEFAULT_SELECTIONS));
-                    order.order_items.forEach(item => {
-                        const type = item.product_type;
-                        if (newSelections[type]) {
-                            newSelections[type].selectedColor = item.selectedColor;
-                            newSelections[type].selectedSize = item.selectedSize;
-                            newSelections[type].pressureOptions = item.design_config;
-                        }
-                    });
-                    setAllSelections(newSelections);
-                    const sName = user?.name || "Student";
-                    setCustomizations(prev => ({ ...prev, [sName]: newSelections }));
-                    setSelectedStudent(sName);
-                }
+                processOrderResponse(resOrder.data.data);
             }
         } catch (err) {
             console.error("Error re-fetching order:", err);
@@ -335,72 +412,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             message.error("Failed to refresh status");
         } finally {
             setIsRefreshing(false);
-        }
-    };
-
-    const handleResetOrder = async () => {
-        console.log("🔄 Reset button clicked, orderId:", orderId);
-
-        if (!orderId) {
-            message.error("No active order found to reset.");
-            return;
-        }
-
-        setIsResetting(true);
-        try {
-            console.log("🔄 Calling resetOrder API with orderId:", orderId);
-            const response = await resetOrder(orderId);
-            console.log("🔄 Reset response:", response);
-
-            if (response.data?.success) {
-                message.success("Order reset successfully! Starting fresh design.");
-
-                // Reset local state to defaults
-                setAllSelections(DEFAULT_SELECTIONS);
-                setCustomizations(prev => ({
-                    ...prev,
-                    [selectedStudent]: DEFAULT_SELECTIONS
-                }));
-
-                // Refresh data
-                await fetchOrderData();
-                await fetchHistoryData();
-
-                setShowResetModal(false);
-            }
-        } catch (err) {
-            console.error("Error resetting order:", err);
-            message.error(err.response?.data?.message || "Failed to reset order.");
-        } finally {
-            setIsResetting(false);
-        }
-    };
-
-    const handleCreateFreshOrder = async () => {
-        setIsResetting(true);
-        try {
-            const response = await createFreshOrder();
-            if (response.data?.success) {
-                message.success("Fresh order created! Start designing from scratch.");
-
-                // Reset local state to defaults
-                setAllSelections(DEFAULT_SELECTIONS);
-                setCustomizations(prev => ({
-                    ...prev,
-                    [selectedStudent]: DEFAULT_SELECTIONS
-                }));
-
-                // Refresh data
-                await fetchOrderData();
-                await fetchHistoryData();
-
-                setShowResetModal(false);
-            }
-        } catch (err) {
-            console.error("Error creating fresh order:", err);
-            message.error(err.response?.data?.message || "Failed to create fresh order.");
-        } finally {
-            setIsResetting(false);
         }
     };
 
@@ -451,14 +462,97 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         }
     );
 
-    // --- Fetch Existing Order & History ---
+    // ── Auto-poll when payment is pending (webhook not yet fired) ──────────────
+    // Polls every 4 seconds until status changes from pending_payment
+    // Also triggers on mount if initial fetchOrderData returns pending_payment
+    const [isPolling, setIsPolling] = useState(false);
+
+    useEffect(() => {
+        if (processStatus !== 'pending_payment') {
+            setIsPolling(false);
+            return;
+        }
+
+        let cancelled = false;
+        let attempt = 0;
+        const MAX = 20; // max 20 attempts = 80 seconds total
+
+        setIsPolling(true);
+
+        const poll = async () => {
+            if (cancelled || attempt >= MAX) {
+                if (!cancelled) setIsPolling(false);
+                return;
+            }
+            attempt++;
+            try {
+                const res = await getMyOrder();
+                if (!res.data?.success || !res.data?.data) {
+                    if (!cancelled) setTimeout(poll, 4000);
+                    return;
+                }
+                const o = res.data.data;
+                if (o.process_status !== 'pending_payment') {
+                    // Webhook fired — update all dashboard state
+                    if (!cancelled) {
+                        setIsPolling(false);
+                        await fetchOrderData();
+                        await fetchHistoryData();
+                        message.success('Payment confirmed! Your order is updated.');
+                    }
+                    return;
+                }
+                // Still pending — retry
+                if (!cancelled) setTimeout(poll, 4000);
+            } catch {
+                if (!cancelled) setTimeout(poll, 4000);
+            }
+        };
+
+        // Start polling immediately (no delay) so first check is instant
+        poll();
+
+        return () => {
+            cancelled = true;
+            setIsPolling(false);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [processStatus]);
+    // --- Fetch Existing Order & History on mount ---
+    useEffect(() => {
+        if (user && user.role === 'student') {
+            // Use pre-fetched data from App.jsx immediately (no API wait)
+            if (initialOrderData) processOrderResponse(initialOrderData);
+            if (initialHistoryData) setDbHistory(initialHistoryData);
+            if (initialBackDesignData) {
+                const data = initialBackDesignData;
+                let latestDesign = null;
+                if (Array.isArray(data)) {
+                    latestDesign = data.find(d => d.class_id === user?.class_id) || data[0];
+                } else if (data && typeof data === 'object') {
+                    latestDesign = data;
+                }
+                if (latestDesign) setBackDesignStatus(latestDesign.approval_status);
+            }
+
+            // Always fetch fresh data in background to ensure up-to-date state
+            Promise.all([
+                fetchOrderData(),
+                fetchHistoryData(),
+                fetchBackDesignStatus()
+            ]).catch(err => console.error("Background refresh error:", err));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // ── Refetch when navigating BACK to dashboard from Stripe payment ──
+    // location.key changes every navigation — catches back-from-success
     useEffect(() => {
         if (user && user.role === 'student') {
             fetchOrderData();
-            fetchHistoryData();
-            fetchBackDesignStatus();
         }
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.key]);
 
     useEffect(() => {
         if (user) {
@@ -479,12 +573,43 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             if (editDeadline && now > editDeadline && user.role === 'student' && paymentStatus === 'paid') {
                 setIsLocked(true);
             }
+
+            // 3. Derive lock from processStatus (backend-authoritative)
+            if (processStatus && ['locked_awaiting_payment', 'production', 'dispatched', 'pending_payment'].includes(processStatus)) {
+                setIsLocked(true);
+            }
+            // For paid / partial_paid: lock only when edit window is closed
+            if ((processStatus === 'paid' || processStatus === 'partial_paid') && !editWindowOpen) {
+                setIsLocked(true);
+            }
         }
-    }, [user, editDeadline, paymentStatus]);
+    }, [user, editDeadline, paymentStatus, processStatus]);
 
     const handleLogout = () => {
         logout();
         window.location.reload();
+    };
+
+    // ── Pay Now handler — launches Stripe checkout (first OR additional payment) ──
+    const handlePayNow = async () => {
+        if (!orderId) { message.error("No order found."); return; }
+        setIsPayingBalance(true);
+        try {
+            const res = await createCheckoutSession({ orderId });
+            if (res.data?.url) {
+                window.location.href = res.data.url;
+            } else if (res.data?.no_payment_needed) {
+                message.success("Order is already fully paid.");
+                await fetchOrderData();
+            } else {
+                message.error("Could not open payment page. Please try again.");
+            }
+        } catch (err) {
+            console.error("Payment error:", err);
+            message.error(err.response?.data?.message || "Payment failed.");
+        } finally {
+            setIsPayingBalance(false);
+        }
     };
 
     const handleChangeMode = () => {
@@ -502,6 +627,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
 
     const handleUpdateSelection = (category, updates) => {
         console.log("HANDLE UPDATE:", category, updates);
+
+        // selectedStudent empty ho toh user name se fallback — data "" key pe na jaye
+        const activeStudent = selectedStudent || user?.name || "Student";
+        if (!selectedStudent && activeStudent) setSelectedStudent(activeStudent);
 
         if (isLocked && !isAdmin) {
             message.warning("Editing is locked after the deadline.");
@@ -565,7 +694,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
 
             // 2. Schedule parent state update
             setCustomizations(prevCustom => {
-                const updated = { ...prevCustom, [selectedStudent]: next };
+                const updated = { ...prevCustom, [activeStudent]: next };
 
                 // (BackDesign batch sync removed as multi-student mode is disabled)
 
@@ -670,12 +799,43 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         setIsSaving(true);
         setShowSaveModal(false);
         try {
-            const garments = selectedTypes.map(type => ({
-                product_type: type,
-                selectedColor: allSelections[type].selectedColor,
-                selectedSize: allSelections[type].selectedSize,
-                design_config: allSelections[type].pressureOptions || {}
-            }));
+            const garments = selectedTypes.map(type => {
+                const designConfig = { ...(allSelections[type].pressureOptions || {}) };
+
+                // Add URLs for all flags and predefined logos
+                const logosList = useLogoStore.getState().logos || [];
+                Object.keys(designConfig).forEach(key => {
+                    if ((key.endsWith("Flag") || key.endsWith("Flag2")) && designConfig[key]) {
+                        designConfig[key + "Url"] = getFlagUrl(designConfig[key]);
+                    }
+                    if (key.endsWith("LogoPredefined") && designConfig[key]) {
+                        const logoName = designConfig[key];
+                        const foundLogo = logosList.find(l => l.name === logoName);
+                        if (foundLogo?.file_path) {
+                            const cleanPath = foundLogo.file_path.replace(/\\/g, '/');
+                            designConfig[key + "Url"] = `${BASE_URL}${cleanPath}`;
+                        }
+                    }
+                });
+
+                // Specific handling for 2 flags on a sleeve
+                if (Number(designConfig.rightSleeveFlagCount) === 2) {
+                    designConfig.twoFlagsSleeve = "right";
+                    designConfig.twoFlagsFirstUrl = getFlagUrl(designConfig.rightSleeveFlag);
+                    designConfig.twoFlagsSecondUrl = getFlagUrl(designConfig.rightSleeveFlag2);
+                } else if (Number(designConfig.leftSleeveFlagCount) === 2) {
+                    designConfig.twoFlagsSleeve = "left";
+                    designConfig.twoFlagsFirstUrl = getFlagUrl(designConfig.leftSleeveFlag);
+                    designConfig.twoFlagsSecondUrl = getFlagUrl(designConfig.leftSleeveFlag2);
+                }
+
+                return {
+                    product_type: type,
+                    selectedColor: allSelections[type].selectedColor,
+                    selectedSize: allSelections[type].selectedSize,
+                    design_config: designConfig
+                };
+            });
 
             const response = await placeOrder({
                 student_id: user?.id,
@@ -686,7 +846,27 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
             });
 
             if (response.data?.success) {
-                message.success("Design saved successfully!");
+                const savedData = response.data.data;
+                const requiresPayment = savedData?.requires_additional_payment || savedData?.balance_due > 0;
+
+                // If edit-window and new products added → redirect to Stripe immediately
+                if (requiresPayment && savedData?.orderId) {
+                    message.info("Design saved! Redirecting to payment for new products…");
+                    try {
+                        const payRes = await createCheckoutSession({ orderId: savedData.orderId });
+                        if (payRes.data?.url) {
+                            window.location.href = payRes.data.url;
+                            return;
+                        }
+                    } catch (payErr) {
+                        console.error("Payment redirect failed:", payErr);
+                        message.warning("Design saved. Please pay the balance from the dashboard.");
+                    }
+                } else {
+                    message.success("Design saved successfully!");
+                }
+
+                await fetchOrderData();
                 const resHistory = await getMyOrderHistory();
                 if (resHistory.data?.success) setDbHistory(resHistory.data.data);
             }
@@ -698,22 +878,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         }
     };
 
-    const handleAdminUnlock = async () => {
-        if (!orderId) {
-            message.error("No order found to unlock.");
-            return;
-        }
-        try {
-            const res = await unlockOrder(orderId);
-            if (res.data?.success) {
-                setIsLocked(false);
-                message.success("Order unlocked for student.");
-            }
-        } catch (err) {
-            console.error("Error unlocking order:", err);
-            message.error("Failed to unlock order.");
-        }
-    };
+
     const menuItems = [
         { name: 'T-SHIRT', icon: img1 },
         { name: 'SWEATSHIRT', icon: img2 },
@@ -808,12 +973,47 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         };
     }, []);
 
+    // ── Refresh ke baad full pressureOptions resend ──
+    // isAppReady true hone ke baad garment components ke pressureOptions useEffect
+    // fire nahi hote (state change nahi hoti) — toh manually force-trigger karo
+    const allSelectionsRef = React.useRef(allSelections);
+    useEffect(() => { allSelectionsRef.current = allSelections; }, [allSelections]);
+
+    useEffect(() => {
+        if (!isAppReady) return;
+
+        // Thodi der baad fire karo — Page switch message pehle process ho jaye
+        const timer = setTimeout(() => {
+            // Active garment ke pressureOptions force re-send karo
+            // Har garment component ka pressureOptions useEffect tab fire hota hai
+            // jab pressureOptions object change ho — ek dummy setAllSelections se trigger karo
+            setAllSelections(prev => {
+                // Deep clone se naya reference banta hai — useEffect fire hoga
+                return JSON.parse(JSON.stringify(prev));
+            });
+            console.log("✅ Full pressureOptions resend triggered after app:ready");
+        }, 800);
+
+        return () => clearTimeout(timer);
+    }, [isAppReady]);
+
     // Jab selected student change ho → uske customizations load karo
     useEffect(() => {
         if (!selectedStudent) return;
 
         // Ensure customizations has an entry for this student
         if (!customizations[selectedStudent]) {
+            // LocalStorage se direct check karo — React state sync delay ho sakta hai
+            try {
+                const saved = localStorage.getItem('studentCustomizations');
+                const parsed = saved ? JSON.parse(saved) : null;
+                if (parsed && parsed[selectedStudent]) {
+                    setCustomizations(prev => ({ ...prev, [selectedStudent]: parsed[selectedStudent] }));
+                    setAllSelections(parsed[selectedStudent]);
+                    return;
+                }
+            } catch { /* ignore */ }
+
             setCustomizations(prev => ({
                 ...prev,
                 [selectedStudent]: DEFAULT_SELECTIONS
@@ -822,9 +1022,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
         } else {
             setAllSelections(customizations[selectedStudent]);
         }
-    }, [selectedStudent, customizations]);
+    }, [selectedStudent]);
     console.log("logosasasad", logos);
-    console.log("🔄 Debug - showResetModal:", showResetModal, "orderId:", orderId, "isResetting:", isResetting);
     return (
         <>
             {/* ── Copy Design Prompt Modal ── */}
@@ -917,49 +1116,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                 </div>
             )}
 
-            {/* ── Reset Order Modal ── */}
-            {showResetModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-                    <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-100">
-                        <h3 className="text-lg font-bold text-slate-800 mb-2">Reset Order</h3>
-                        <p className="text-sm text-slate-500 mb-6">
-                            This will clear all your current designs and start fresh. This action cannot be undone.
-                        </p>
-                        <div className="space-y-3 mb-6">
-                            <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl">
-                                <p className="text-sm text-orange-700 font-medium">⚠️ Warning</p>
-                                <p className="text-xs text-orange-600 mt-1">All current garment configurations will be lost</p>
-                            </div>
-                            <div className="text-xs text-slate-500">
-                                Debug: orderId = {orderId}
-                            </div>
-                        </div>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => {
-                                    console.log("🔄 Reset Order button clicked in modal");
-                                    handleResetOrder();
-                                }}
-                                disabled={isResetting}
-                                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-all disabled:opacity-50"
-                            >
-                                {isResetting ? 'Resetting...' : 'Reset Order'}
-                            </button>
-                            <button
-                                onClick={() => {
-                                    console.log("🔄 Cancel button clicked in modal");
-                                    setShowResetModal(false);
-                                }}
-                                disabled={isResetting}
-                                className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
                 {/* Global Header */}
                 <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-40">
@@ -980,33 +1136,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                     </div>
 
                     <div className="flex items-center space-x-2 sm:space-x-4">
-                        {/* Refresh Status Button */}
-                        <button
-                            onClick={handleRefreshStatus}
-                            disabled={isRefreshing}
-                            className="flex items-center space-x-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all font-medium text-sm border border-blue-200 disabled:opacity-50"
-                            title="Refresh approval status"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                            <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
-                        </button>
-
-                        {/* Reset Order Button */}
-                        {orderId && (
-                            <button
-                                onClick={() => {
-                                    console.log("🔄 Reset button clicked, orderId:", orderId, "isLocked:", isLocked, "isAdmin:", isAdmin);
-                                    setShowResetModal(true);
-                                }}
-                                disabled={isResetting || (isLocked && !isAdmin)}
-                                className="flex items-center space-x-2 px-3 py-2 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-all font-medium text-sm border border-orange-200 disabled:opacity-50"
-                                title="Reset order and start fresh"
-                            >
-                                <RotateCcw className={`w-4 h-4 ${isResetting ? 'animate-spin' : ''}`} />
-                                <span className="hidden sm:inline">Reset</span>
-                            </button>
-                        )}
-
                         {undoAvailable && (
                             <button
                                 onClick={handleUndo}
@@ -1090,6 +1219,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                     </div>
                 </header>
 
+
                 {/* Status Bar for Locked / Deadline / Progress */}
                 <div className="bg-white border-b border-slate-200 px-6 py-2 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-4 flex-wrap">
@@ -1120,18 +1250,55 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                             </>
                         )}
 
-                        {/* Payment status badge */}
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${paymentStatus === 'paid' ? 'bg-green-100 text-green-700' :
-                            paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-slate-100 text-slate-500'
-                            }`}>
-                            {paymentStatus}
-                        </span>
-
+                        {processStatus ? (() => {
+                            const psMap = {
+                                on_hold: { label: 'On Hold – Editing open', dot: 'bg-amber-400', text: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
+                                pending_payment: { label: 'Payment Processing…', dot: 'bg-yellow-400 animate-pulse', text: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200' },
+                                locked_awaiting_payment: { label: 'Awaiting Payment', dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50 border-red-200' },
+                                partial_paid: { label: 'Partial Paid – Balance Due', dot: 'bg-orange-500', text: 'text-orange-700', bg: 'bg-orange-50 border-orange-200' },
+                                paid: { label: editWindowOpen ? 'Paid ✓ – Edit window open' : 'Paid ✓', dot: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+                                in_production: { label: 'In Production', dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
+                                production: { label: 'In Production', dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
+                                dispatched: { label: 'Dispatched', dot: 'bg-purple-500', text: 'text-purple-700', bg: 'bg-purple-50 border-purple-200' },
+                            };
+                            const ps = psMap[processStatus];
+                            if (!ps) return null;
+                            const balanceDueVal = paymentBreakdown?.balance_due || 0;
+                            return (
+                                <div key="process-badge" className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-bold tracking-wider ${ps.bg} ${ps.text}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${ps.dot}`} />
+                                    <span>{ps.label}</span>
+                                    {processStatus === 'pending_payment' && isPolling && (
+                                        <span className="ml-1 flex items-center gap-1 text-yellow-700 font-bold">
+                                            <span className="w-2.5 h-2.5 border border-yellow-600 border-t-transparent rounded-full animate-spin inline-block" />
+                                            Checking…
+                                        </span>
+                                    )}
+                                    {(processStatus === 'locked_awaiting_payment' || processStatus === 'partial_paid') && !isAdmin && (
+                                        <button
+                                            key="pay-now-btn"
+                                            onClick={handlePayNow}
+                                            disabled={isPayingBalance}
+                                            className={`ml-1 underline font-bold transition-colors ${processStatus === 'partial_paid' ? 'text-orange-700 hover:text-orange-900' : 'text-red-700 hover:text-red-900'}`}
+                                        >
+                                            {isPayingBalance ? 'Opening...' : processStatus === 'partial_paid' ? `Pay ${balanceDueVal.toFixed(2)} DKK` : 'Pay Now'}
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })() : null}
+{/* (
+                            <span key="payment-fallback" className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${paymentStatus === 'paid' ? 'bg-green-100 text-green-700' :
+                                paymentStatus === 'partial' ? 'bg-orange-100 text-orange-700' :
+                                    'bg-slate-100 text-slate-500'
+                                }`}>
+                                {paymentStatus}
+                            </span>
+                        ) */}
                         {/* Class tracking status */}
                         {classStatus && (() => {
                             const statusMap = {
-                                active: { label: 'Order in progress', color: 'bg-blue-100 text-blue-700' },
+                                // active: { label: 'Order in progress', color: 'bg-blue-100 text-blue-700' },
                                 orders_locked: { label: 'Order locked – going to production', color: 'bg-orange-100 text-orange-700' },
                                 production_ready: { label: 'Being produced', color: 'bg-purple-100 text-purple-700' },
                                 shipped: { label: 'Shipped – check email for tracking', color: 'bg-indigo-100 text-indigo-700' },
@@ -1182,28 +1349,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                         )}
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        {/* Locked badge */}
-                        {isLocked && (
-                            <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 px-2.5 py-1 rounded-lg">
-                                <Lock className="w-3 h-3 text-red-500" />
-                                <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider">
-                                    {editDeadline && new Date() > editDeadline ? 'Window Expired' : deadline && new Date() > deadline ? 'Deadline Passed' : 'Locked'}
-                                </span>
-                            </div>
-                        )}
 
-                        {/* Admin unlock */}
-                        {isAdmin && isLocked && (
-                            <button
-                                onClick={handleAdminUnlock}
-                                className="text-xs font-bold text-blue-600 hover:text-blue-700 underline"
-                            >
-                                Unlock
-                            </button>
-                        )}
-                    </div>
                 </div>
+
+
 
                 <div className="hidden md:flex h-[calc(96vh-80px)] w-full relative">
                     {/* Sidebar */}
@@ -1287,16 +1436,63 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                     <span className="text-2xl font-bold text-slate-900">{GARMENT_PRICES[activeMenu]} DKK</span>
                                 </div>
                             </div>
+                            {/* pending_payment — payment being confirmed by Stripe */}
+                            {processStatus === 'pending_payment' && (
+                                <div className="mb-4 flex items-center gap-2 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                                    <div className="w-4 h-4 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                                    <div className="flex-1">
+                                        <p className="text-xs font-bold text-yellow-800">Payment being confirmed…</p>
+                                        <p className="text-[10px] text-yellow-600">Stripe is processing. Refresh in a few seconds.</p>
+                                    </div>
+                                    <button
+                                        onClick={handleRefreshStatus}
+                                        className="text-xs font-bold text-yellow-700 underline hover:text-yellow-900 flex-shrink-0"
+                                    >
+                                        {isRefreshing ? '…' : 'Refresh'}
+                                    </button>
+                                </div>
+                            )}
+
                             <button
-                                onClick={() => setIsQuoteModalOpen(true)}
-                                disabled={!sizeFlag}
+                                onClick={() => {
+                                    if (processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0) {
+                                        handlePayNow();
+                                    } else if (processStatus === 'paid' && !editWindowOpen) {
+                                        // Edit window closed — nothing to do
+                                    } else {
+                                        setIsQuoteModalOpen(true);
+                                    }
+                                }}
+                                disabled={
+                                    !sizeFlag ||
+                                    isPayingBalance ||
+                                    processStatus === 'pending_payment' ||
+                                    (processStatus === 'paid' && !editWindowOpen)
+                                }
                                 className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 shadow-md
-           
-        ${sizeFlag
-                                        ? "bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 hover:shadow-lg"
-                                        : "bg-gray-300 text-gray-500 cursor-not-allowed"}`}
+                                    ${(processStatus === 'pending_payment') || (processStatus === 'paid' && !editWindowOpen)
+                                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                        : !sizeFlag
+                                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                            : processStatus === 'partial_paid'
+                                                ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 hover:shadow-lg"
+                                                : processStatus === 'paid' && editWindowOpen
+                                                    ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 hover:shadow-lg"
+                                                    : "bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 hover:shadow-lg"
+                                    }`}
                             >
-                                {balanceDue <= 0 && paymentStatus === 'paid' ? 'Save Changes' : (balanceDue > 0 && amountPaid > 0 ? `Pay Balance (${balanceDue} DKK)` : 'Approve and Pay')}
+                                {isPayingBalance
+                                    ? 'Opening payment…'
+                                    : processStatus === 'pending_payment'
+                                        ? 'Awaiting payment confirmation…'
+                                        : processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0
+                                            ? `Pay Balance – ${(paymentBreakdown?.balance_due || 0).toFixed(2)} DKK`
+                                            : processStatus === 'paid' && editWindowOpen
+                                                ? 'Add More Products & Pay'
+                                                : processStatus === 'paid' && !editWindowOpen
+                                                    ? 'Edit Window Closed'
+                                                    : 'Approve and Pay'
+                                }
                             </button>
                         </div>
                     </div>
@@ -1306,12 +1502,12 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                         <div className="flex-1">
                             <div className="bg-white/50  h-full flex flex-col border border-slate-200">
                                 <div className="flex-1 overflow-hidden relative">
-                                    {!isIframeLoaded && (
+                                    {/* {!isIframeLoaded && (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10">
                                             <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-3"></div>
                                             <p className="text-sm text-slate-500">Loading 3D Preview...</p>
                                         </div>
-                                    )}
+                                    )} */}
                                     <iframe
                                         id="preview-iframe"
                                         src={'https://playcanv.as/e/p/1b1eadeb/'}
@@ -1372,12 +1568,12 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                             pointerEvents: isConfigOpen ? 'none' : 'auto',
                                         }}
                                     >
-                                        {!isIframeLoaded && (
+                                        {/* {!isIframeLoaded && (
                                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10">
                                                 <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-3"></div>
                                                 <p className="text-sm text-slate-500">Loading 3D Preview...</p>
                                             </div>
-                                        )}
+                                        )} */}
                                         <iframe
                                             id="preview-iframe2"
                                             src={'https://playcanv.as/e/p/1b1eadeb/'}
@@ -1497,15 +1693,41 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                                 )}
                             </div>
                             <button
-                                onClick={() => setIsQuoteModalOpen(true)}
-                                // disabled={!sizeFlag}
-                                // disabled={!sizeFlag}
-                                className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 shadow-md
-        ${sizeFlag
-                                        ? "bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 hover:shadow-lg"
-                                        : "bg-gray-300 text-gray-500 cursor-not-allowed"}`}
+                                onClick={() => {
+                                    if (processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0) {
+                                        handlePayNow();
+                                    } else if (processStatus === 'paid' && !editWindowOpen) {
+                                        // do nothing
+                                    } else {
+                                        setIsQuoteModalOpen(true);
+                                    }
+                                }}
+                                disabled={
+                                    isPayingBalance ||
+                                    processStatus === 'pending_payment' ||
+                                    (processStatus === 'paid' && !editWindowOpen)
+                                }
+                                className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 shadow-md ${processStatus === 'pending_payment' || (processStatus === 'paid' && !editWindowOpen)
+                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                    : processStatus === 'partial_paid'
+                                        ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 hover:shadow-lg"
+                                        : processStatus === 'paid' && editWindowOpen
+                                            ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 hover:shadow-lg"
+                                            : "bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 hover:shadow-lg"
+                                    }`}
                             >
-                                Approve and Pay
+                                {isPayingBalance
+                                    ? 'Opening payment…'
+                                    : processStatus === 'pending_payment'
+                                        ? 'Awaiting confirmation…'
+                                        : processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0
+                                            ? `Pay Balance – ${(paymentBreakdown?.balance_due || 0).toFixed(2)} DKK`
+                                            : processStatus === 'paid' && editWindowOpen
+                                                ? 'Add More Products & Pay'
+                                                : processStatus === 'paid' && !editWindowOpen
+                                                    ? 'Edit Window Closed'
+                                                    : 'Approve and Pay'
+                                }
                             </button>
                         </div>
                     </div>
@@ -1524,6 +1746,13 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup 
                     packageName={packageName}
                     program={program}
                     initialDeliveryDetails={existingDeliveryDetails}
+                    processStatus={processStatus}
+                    editWindowOpen={editWindowOpen}
+                    existingOrderId={orderId}
+                    paymentBreakdown={paymentBreakdown}
+                    onPayNow={handlePayNow}
+                    isPayingBalance={isPayingBalance}
+                    existingProductTypes={existingProductTypes}
                 />
                 <HistoryModal
                     isOpen={isHistoryModalOpen}

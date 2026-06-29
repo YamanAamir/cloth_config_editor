@@ -1,29 +1,50 @@
 import React, { useState } from 'react';
 import { message } from 'antd';
-import { X, Printer, Download, Mail, CheckCircle, Package, Star, User, CreditCard, ArrowLeft, ArrowRight, Loader2, ShoppingCart, Settings, History } from 'lucide-react';
+import { X, Printer, Download, Mail, CheckCircle, Package, Star, User, CreditCard, ArrowLeft, ArrowRight, Loader2, ShoppingCart, Settings, History, Shirt, Check, ChevronDown } from 'lucide-react';
 // import { loadStripe } from "@stripe/stripe-js";
 import { useRef } from 'react';
 import { useEffect } from 'react';
 import { placeOrder, createCheckoutSession, getShippingRates, getMyClassInfo } from '../api/api';
 import useSettingsStore from '../store/settingsStore';
+import { getFlagUrl } from '../utils/flags';
+import useLogoStore from '../store/logoStore';
+import { BASE_URL } from '../utils/const';
+import PaymentBreakdown from './PaymentBreakdown';
 // const stripePromise = loadStripe("pk_test_51S0HgS2ZnQzLDaK40M9tlj1n72wtQNsUNhG986xbE6bfHxWmFfOMJfWGAbg4QrAlFtnhVCtOajoIqUbRgSBnRnkb00iMo1bD1o");
 
-const QuoteModal = ({ 
-  isOpen, 
-  onClose, 
-  selectedOptions, 
-  defaultSelections = {}, 
-  price, 
+const getGarmentIcon = (category) => {
+  const cat = (category || '').toUpperCase();
+  if (cat.includes('TSHIRT') || cat.includes('T-SHIRT') || cat.includes('SWEATSHIRT') || cat.includes('HOODIE') || cat.includes('ZIPPER')) {
+    return Shirt;
+  }
+  return Package;
+};
+
+const QuoteModal = ({
+  isOpen,
+  onClose,
+  selectedOptions,
+  defaultSelections = {},
+  price,
   amountPaid = 0,
   paymentStatus = 'unpaid',
   balanceDue = 0,
   editDeadline = null,
-  onContinueConfiguring, 
-  packageName, 
-  program, 
-  initialDeliveryDetails 
+  onContinueConfiguring,
+  packageName,
+  program,
+  initialDeliveryDetails,
+  // New: edit-window flow
+  processStatus = null,
+  editWindowOpen = false,
+  existingOrderId = null,
+  paymentBreakdown = null,
+  onPayNow,
+  isPayingBalance = false,
+  existingProductTypes = [],
 }) => {
-
+  // Is this an "add more products during edit window" flow?
+  const isEditWindowFlow = processStatus === 'paid' && editWindowOpen;
   // Helper: Check if a garment has been actually configured (differs from defaults)
   const isGarmentConfigured = (garmentType, garmentData) => {
     const defaults = defaultSelections[garmentType];
@@ -58,7 +79,7 @@ const QuoteModal = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
-  
+
   // Shipping rates from API
   const [shippingRates, setShippingRates] = useState([]);
   const [shippingLoading, setShippingLoading] = useState(false);
@@ -68,7 +89,7 @@ const QuoteModal = ({
       setShippingLoading(true);
       try {
         const { data } = await getShippingRates();
-        if (data?.success) setShippingRates(data.data || []);
+        if (data?.success) setShippingRates(data.data.filter(i => i.status === 0));
       } catch {
         // silently fail — delivery section will still work
       } finally {
@@ -95,19 +116,27 @@ const QuoteModal = ({
     };
     fetchClassInfo();
   }, []);
-  
+
   // Track which garments are selected for purchase — start empty, user explicitly selects
   const [selectedGarments, setSelectedGarments] = useState(() => {
-    const configured = {};
-    Object.entries(selectedOptions).forEach(([type, options]) => {
-      configured[type] = isGarmentConfigured(type, options);
+    const selections = {};
+    Object.keys(selectedOptions).forEach((type) => {
+      selections[type] = type === 'T-SHIRT' || existingProductTypes.includes(type);
     });
-    // T-SHIRT by default selected jab modal khule
-    if ('T-SHIRT' in configured) {
-      configured['T-SHIRT'] = true;
-    }
-    return configured;
+    return selections;
   });
+
+  // Already-purchased garments must always stay selected — re-sync whenever the
+  // existing order's items become known (they may load after this component mounts)
+  // or whenever the modal is reopened.
+  useEffect(() => {
+    if (existingProductTypes.length === 0) return;
+    setSelectedGarments(prev => {
+      const next = { ...prev };
+      existingProductTypes.forEach(type => { next[type] = true; });
+      return next;
+    });
+  }, [existingProductTypes, isOpen]);
 
   const [customerDetails, setCustomerDetails] = useState({
     firstName: initialDeliveryDetails?.firstName || '',
@@ -218,21 +247,64 @@ const QuoteModal = ({
   }, [currentStep]); // Re-run when step changes
 
   const [orderDate, setOrderDate] = useState(`ORD-${Date.now().toString()}`);
+  const [expandedImageKey, setExpandedImageKey] = useState(null);
+  const [expandedAreaKey, setExpandedAreaKey] = useState(null); // accordion for area items
+
+  // Toggle function for expanding/collapsing image sections
+  const toggleExpand = (id) => {
+    setExpandedImageKey(prev => (prev === id ? null : id));
+  };
+
+  // Toggle function for area accordion — sirf ek area ek waqt open
+  const toggleAreaExpand = (id) => {
+    setExpandedAreaKey(prev => (prev === id ? null : id));
+  };
+
+  const getOptionImageUrl = (category, key, value, options) => {
+    if (!selectedOptions || !options) return null;
+    const po = options.pressureOptions || {};
+
+    if (key.includes("(Flag") || key.includes("Flag")) {
+      return getFlagUrl(value);
+    }
+
+    if (key.includes("Custom Logo")) {
+      const areaName = key.split(' (')[0];
+      const areaKey = areaName.charAt(0).toLowerCase() + areaName.slice(1).replace(' ', '');
+      return po[`${areaKey}LogoCustom`];
+    }
+
+    if (key.includes("(Logo)") || key.includes("Logo")) {
+      const logosList = useLogoStore.getState().logos || [];
+      const foundLogo = logosList.find(l => l.name === value);
+      if (foundLogo?.file_path) {
+        const cleanPath = foundLogo.file_path.replace(/\\/g, '/');
+        return `${BASE_URL}${cleanPath}`;
+      }
+    }
+
+    return null;
+  };
 
   // Garment prices from backend settings (with fallback) — must be before any early return
   const { getGarmentPrice, getVat, getHandlingFeeEnabled, getBaseHandlingFee, getThreshold, getExtraFeeAboveThreshold } = useSettingsStore();
   const GARMENT_PRICES = {
-    'T-SHIRT':      getGarmentPrice('T-SHIRT')      || 1200,
-    'SWEATSHIRT':   getGarmentPrice('SWEATSHIRT')   || 1500,
-    'HOODIE':       getGarmentPrice('HOODIE')        || 2000,
+    'T-SHIRT': getGarmentPrice('T-SHIRT') || 1200,
+    'SWEATSHIRT': getGarmentPrice('SWEATSHIRT') || 1500,
+    'HOODIE': getGarmentPrice('HOODIE') || 2000,
     'ZIPPERHOODIE': getGarmentPrice('ZIPPERHOODIE') || 2200,
-    'SWEATPANTS':   getGarmentPrice('SWEATPANTS')   || 2000,
-    'SHORTS':       getGarmentPrice('SHORTS')        || 1500,
+    'SWEATPANTS': getGarmentPrice('SWEATPANTS') || 2000,
+    'SHORTS': getGarmentPrice('SHORTS') || 1500,
   };
 
   if (!isOpen) return null;
 
-  const steps = orderComplete ? ['Thank You'] : ['Order Overview', 'Delivery Information', 'Order Confirmation'];
+  // Edit-window flow: only 2 steps (select products → confirm & pay), no delivery re-entry
+  const steps = orderComplete
+    ? ['Thank You']
+    : isEditWindowFlow
+      ? ['Select Products', 'Confirm & Pay']
+      : ['Order Overview', 'Delivery Information', 'Order Confirmation'];
 
   // ✨ NEW: Calculate dynamic total price
   const calculateTotalPrice = () => {
@@ -267,10 +339,10 @@ const QuoteModal = ({
   const getHandlingFeePerStudent = () => {
     if (!getHandlingFeeEnabled()) return 0;
     if (!classStudentCount || classStudentCount <= 0) return 0;
-    const baseFee    = getBaseHandlingFee();
-    const threshold  = getThreshold();
-    const extraFee   = getExtraFeeAboveThreshold();
-    const totalFee   = classStudentCount > threshold ? baseFee + extraFee : baseFee;
+    const baseFee = getBaseHandlingFee();
+    const threshold = getThreshold();
+    const extraFee = getExtraFeeAboveThreshold();
+    const totalFee = classStudentCount > threshold ? baseFee + extraFee : baseFee;
     return Math.round((totalFee / classStudentCount) * 100) / 100; // round to 2 decimals
   };
   const handlingFeePerStudent = getHandlingFeePerStudent();
@@ -286,6 +358,7 @@ const QuoteModal = ({
 
   // ✨ NEW: Toggle garment selection
   const toggleGarmentSelection = (garmentType) => {
+    if (existingProductTypes.includes(garmentType)) return; // already purchased — can't be removed
     setSelectedGarments(prev => ({
       ...prev,
       [garmentType]: !prev[garmentType]
@@ -575,15 +648,31 @@ const QuoteModal = ({
       }
     }
 
-    if (displayValue === '' || displayValue === 'Ikke valgt') {
+    let mappedValue = displayValue;
+    if (key && (key.toLowerCase() === 'size' || key.toLowerCase() === 'selectedsize' || key.toLowerCase() === 'størrelse')) {
+      const sizeMap = {
+        's': 'Small',
+        'm': 'Medium',
+        'l': 'Large',
+        'xl': 'Extra Large',
+        'xxl': 'Double Extra Large',
+        'xxxl': 'Triple Extra Large'
+      };
+      const valLower = displayValue.toLowerCase().trim();
+      if (sizeMap[valLower]) {
+        mappedValue = sizeMap[valLower];
+      }
+    }
+
+    if (mappedValue === '' || mappedValue === 'Ikke valgt') {
       return 'Ikke valgt';
     }
 
     if (price > 0) {
-      return `${displayValue} (+${price} DKK)`;
+      return `${mappedValue} (+${price} DKK)`;
     }
 
-    return displayValue;
+    return mappedValue;
   };
 
   // Filter out empty or default values for cleaner display
@@ -659,24 +748,45 @@ const QuoteModal = ({
 
     if (options.pressureOptions) {
       const po = options.pressureOptions;
-      if (po.rightChestText) filtered['Right Chest (Text)'] = po.rightChestText;
-      if (po.rightChestFlag) filtered['Right Chest (Flag)'] = po.rightChestFlag;
-      if (po.leftChestText) filtered['Left Chest (Text)'] = po.leftChestText;
-      if (po.leftChestFlag) filtered['Left Chest (Flag)'] = po.leftChestFlag;
+      const areas = [
+        { key: 'rightChest', name: 'Right Chest' },
+        { key: 'leftChest', name: 'Left Chest' },
+        { key: 'bottomChest', name: 'Bottom Chest' },
+        { key: 'rightSleeve', name: 'Right Sleeve' },
+        { key: 'leftSleeve', name: 'Left Sleeve' },
+        { key: 'rightLeg', name: 'Right Leg' },
+        { key: 'leftLeg', name: 'Left Leg' }
+      ];
 
-      if (po.bottomChestText) filtered['Bottom Chest (Text)'] = po.bottomChestText;
-      
-      if (po.rightSleeveText) filtered['Right Sleeve (Text)'] = po.rightSleeveText;
-      if (po.rightSleeveFlag) filtered['Right Sleeve (Flag)'] = po.rightSleeveFlag;
-      if (po.leftSleeveText) filtered['Left Sleeve (Text)'] = po.leftSleeveText;
-      if (po.leftSleeveFlag) filtered['Left Sleeve (Flag)'] = po.leftSleeveFlag;
+      areas.forEach(area => {
+        const textVal = po[`${area.key}Text`]?.trim();
+        const flagVal = po[`${area.key}Flag`]?.trim();
+        const flag2Val = po[`${area.key}Flag2`]?.trim();
+        const logoPreVal = po[`${area.key}LogoPredefined`]?.trim();
+        const logoCustomVal = po[`${area.key}LogoCustom`]?.trim();
+        const typeVal = po[`${area.key}Type`]?.trim(); // "text", "flag", "logo"
 
-      if (po.rightLegText) filtered['Right Leg (Text)'] = po.rightLegText;
-      if (po.rightLegFlag) filtered['Right Leg (Flag)'] = po.rightLegFlag;
-      if (po.leftLegText) filtered['Left Leg (Text)'] = po.leftLegText;
-      if (po.leftLegFlag) filtered['Left Leg (Flag)'] = po.leftLegFlag;
+        if (typeVal === 'flag') {
+          if (flagVal) filtered[`${area.name} (Flag)`] = flagVal;
+          if (flag2Val) filtered[`${area.name} (Flag 2)`] = flag2Val;
+        } else if (typeVal === 'logo') {
+          if (logoPreVal) filtered[`${area.name} (Logo)`] = logoPreVal;
+          if (logoCustomVal) filtered[`${area.name} (Custom Logo)`] = 'Uploaded';
+        } else if (typeVal === 'text') {
+          if (textVal) filtered[`${area.name} (Text)`] = textVal;
+        } else {
+          // Fallback if typeVal is not set but fields have values
+          if (textVal) filtered[`${area.name} (Text)`] = textVal;
+          if (flagVal) filtered[`${area.name} (Flag)`] = flagVal;
+          if (flag2Val) filtered[`${area.name} (Flag 2)`] = flag2Val;
+          if (logoPreVal) filtered[`${area.name} (Logo)`] = logoPreVal;
+          if (logoCustomVal) filtered[`${area.name} (Custom Logo)`] = 'Uploaded';
+        }
+      });
 
-      if (po.backDesign) filtered['Back Design'] = po.backDesign.name || 'Custom';
+      if (po.backDesign) {
+        filtered['Back Design'] = po.backDesign.name || 'Custom';
+      }
 
       // Remove the raw object so it doesn't show up as [Object object]
       delete filtered.pressureOptions;
@@ -756,12 +866,43 @@ const QuoteModal = ({
         throw new Error("No garments selected. Please select at least one garment before placing an order.");
       }
 
-      const garments = configuredEntries.map(([type, options]) => ({
-        product_type: type,
-        selectedColor: options.selectedColor,
-        selectedSize: options.selectedSize,
-        design_config: options.pressureOptions || {}
-      }));
+      const garments = configuredEntries.map(([type, options]) => {
+        const designConfig = { ...(options.pressureOptions || {}) };
+        const logosList = useLogoStore.getState().logos || [];
+
+        // Add URLs for all flags and predefined logos
+        Object.keys(designConfig).forEach(key => {
+          if ((key.endsWith("Flag") || key.endsWith("Flag2")) && designConfig[key]) {
+            designConfig[key + "Url"] = getFlagUrl(designConfig[key]);
+          }
+          if (key.endsWith("LogoPredefined") && designConfig[key]) {
+            const logoName = designConfig[key];
+            const foundLogo = logosList.find(l => l.name === logoName);
+            if (foundLogo?.file_path) {
+              const cleanPath = foundLogo.file_path.replace(/\\/g, '/');
+              designConfig[key + "Url"] = `${BASE_URL}${cleanPath}`;
+            }
+          }
+        });
+
+        // Specific handling for 2 flags on a sleeve
+        if (Number(designConfig.rightSleeveFlagCount) === 2) {
+          designConfig.twoFlagsSleeve = "right";
+          designConfig.twoFlagsFirstUrl = getFlagUrl(designConfig.rightSleeveFlag);
+          designConfig.twoFlagsSecondUrl = getFlagUrl(designConfig.rightSleeveFlag2);
+        } else if (Number(designConfig.leftSleeveFlagCount) === 2) {
+          designConfig.twoFlagsSleeve = "left";
+          designConfig.twoFlagsFirstUrl = getFlagUrl(designConfig.leftSleeveFlag);
+          designConfig.twoFlagsSecondUrl = getFlagUrl(designConfig.leftSleeveFlag2);
+        }
+
+        return {
+          product_type: type,
+          selectedColor: options.selectedColor,
+          selectedSize: options.selectedSize,
+          design_config: designConfig
+        };
+      });
 
       // Extract logo_id from any configured garment's pressureOptions
       let logo_id = null;
@@ -772,50 +913,49 @@ const QuoteModal = ({
         }
       }
 
-      // Check if balance exists
-      if (computedBalanceDue <= 0) {
-        const saveResponse = await placeOrder({
-          student_id: studentId,
-          class_id: classId,
-          garments,
-          delivery_details: customerDetails,
-          logo_id
-        });
-
-        if (saveResponse.data?.success) {
-          message.success("Order details updated successfully!");
-          setOrderComplete(true);
-          return;
-        }
-      }
-
-      // Prepare Stripe session
-      const tempOrderData = {
+      // Submit order first
+      const saveResponse = await placeOrder({
         student_id: studentId,
         class_id: classId,
-        garments: garments,
+        garments,
         delivery_details: customerDetails,
         logo_id
-      };
-
-      const stripeResponse = await createCheckoutSession({
-        orderData: tempOrderData,
-        amount: computedBalanceDue
       });
 
-      if (stripeResponse.data?.success && stripeResponse.data?.url) {
-        window.location.href = stripeResponse.data.url;
-        return;
-      } else {
-        if (stripeResponse.data?.message) {
-          throw new Error(stripeResponse.data.message);
-        } else {
-          throw new Error("Failed to create Stripe checkout session");
+      if (!saveResponse.data?.success) {
+        throw new Error(saveResponse.data?.message || "Failed to submit order. Please try again.");
+      }
+
+      const savedOrderId = saveResponse.data?.data?.orderId || existingOrderId;
+      const balanceDueFromServer = parseFloat(saveResponse.data?.data?.balance_due || 0);
+
+      // ── Always redirect to payment immediately ──
+      // First order: pay full amount now
+      // Edit-window addition: pay the balance_due for extra products
+      if (balanceDueFromServer > 0 && savedOrderId) {
+        try {
+          const payRes = await createCheckoutSession({ orderId: savedOrderId });
+          if (payRes.data?.url) {
+            window.location.href = payRes.data.url;
+            return;
+          }
+          if (payRes.data?.no_payment_needed) {
+            setOrderComplete(true);
+            setIsLoading(false);
+            return;
+          }
+        } catch (payErr) {
+          console.error("Payment redirect failed:", payErr);
+          message.warning("Order saved. Please use the 'Pay Balance' button to complete payment.");
         }
       }
 
+      // balance_due = 0 — no payment needed, show thank you
+      setOrderComplete(true);
+      setIsLoading(false);
+
     } catch (error) {
-      console.error("Error during checkout:", error);
+      console.error("Error submitting order:", error);
       if (error.response?.data?.message) {
         message.error(error.response.data.message);
       } else if (error.message) {
@@ -846,6 +986,27 @@ const QuoteModal = ({
     });
   };
 
+  const handleTabClick = (index) => {
+    if (index === currentStep) return;
+
+    if (index > 0) {
+      if (Object.values(selectedGarments).every(v => !v)) {
+        message.error('Please select at least one garment.');
+        return;
+      }
+    }
+
+    if (index > 1) {
+      if (!validateCustomerDetails()) {
+        message.error('Please fill in all required fields.');
+        return;
+      }
+    }
+
+    setCurrentStep(index);
+  };
+
+
   // Step 1: Quote Review (Original content)
   const renderQuoteReview = () => (
     <div className="overflow-y-auto px-6 py-6 space-y-8 custom-scrollbar-premium">
@@ -856,7 +1017,7 @@ const QuoteModal = ({
           <div>
             <h4 className="font-bold text-blue-900 text-sm mb-1">Select Items to Purchase</h4>
             <p className="text-blue-700 text-xs">
-              Click the checkbox on each garment card to select/deselect items for your order. 
+              Click the checkbox on each garment card to select/deselect items for your order.
               Price will update automatically based on your selection.
             </p>
           </div>
@@ -864,90 +1025,147 @@ const QuoteModal = ({
       </div>
 
       <div className="grid grid-cols-1 gap-8">
-        {Object.entries(selectedOptions).filter(([category, options]) => isGarmentConfigured(category, options)).map(([category, options], categoryIndex) => {
+        {Object.entries(selectedOptions).map(([category, options], categoryIndex) => {
           const filteredOptions = filterOptions(options);
 
           if (Object.keys(filteredOptions).length === 0) return null;
 
           const isSelected = selectedGarments[category] || false;
+          const isLockedItem = existingProductTypes.includes(category);
           const garmentPrice = GARMENT_PRICES[category] || 0;
 
           return (
             <div
               key={category}
-              className={`bg-white rounded-3xl p-6 shadow-sm border-2 transition-all duration-500 group overflow-hidden relative cursor-pointer ${
-                isSelected 
-                  ? 'border-green-500 shadow-xl shadow-green-200/50' 
-                  : 'border-slate-200 hover:border-slate-300 opacity-60'
-              }`}
+              className={`bg-white rounded-3xl p-6 shadow-sm border-2 transition-all duration-500 group overflow-hidden relative ${isLockedItem ? 'cursor-not-allowed' : 'cursor-pointer'} ${isSelected
+                ? 'border-green-500 shadow-xl shadow-green-200/50'
+                : 'border-slate-200 hover:border-slate-300 opacity-60'
+                }`}
               onClick={() => toggleGarmentSelection(category)}
             >
               {/* ✨ NEW: Selection Checkbox */}
               <div className="absolute top-4 right-4 z-20">
-                <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all ${
-                  isSelected 
-                    ? 'bg-green-600 border-green-600' 
-                    : 'bg-white border-slate-300'
-                }`}>
+                <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all ${isSelected
+                  ? 'bg-green-600 border-green-600'
+                  : 'bg-white border-slate-300'
+                  }`}>
                   {isSelected && <CheckCircle className="w-5 h-5 text-white" />}
                 </div>
               </div>
 
               {/* Background Accent */}
-              <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -mr-16 -mt-16 transition-colors duration-500 ${
-                isSelected ? 'bg-green-50' : 'bg-slate-50'
-              }`}></div>
+              <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -mr-16 -mt-16 transition-colors duration-500 ${isSelected ? 'bg-green-50' : 'bg-slate-50'
+                }`}></div>
 
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-6 pr-10">
                   <div className="flex items-center space-x-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-all duration-500 ${
-                      isSelected 
-                        ? 'bg-gradient-to-br from-green-500 to-green-600 shadow-green-200' 
-                        : 'bg-gradient-to-br from-slate-400 to-slate-500 shadow-slate-200'
-                    }`}>
-                      <Star className="w-6 h-6 text-white" />
-                    </div>
+                    {(() => {
+                      const Icon = getGarmentIcon(category);
+                      return (
+                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-all duration-500 ${isSelected
+                          ? 'bg-gradient-to-br from-green-500 to-green-600 shadow-green-200'
+                          : 'bg-gradient-to-br from-slate-400 to-slate-500 shadow-slate-200'
+                          }`}>
+                          <Icon className="w-5.5 h-5.5 text-white" />
+                        </div>
+                      );
+                    })()}
                     <div>
-                      <h3 className="text-xl font-extrabold text-slate-800 capitalize tracking-tight">
+                      <h3 className="text-lg font-bold text-slate-800 capitalize tracking-tight">
                         {category.replace(/([A-Z])/g, ' $1').trim()}
                       </h3>
-                      <p className="text-sm text-slate-500 font-medium">Custom Configuration</p>
+                      <p className="text-xs text-slate-500 font-medium">Custom Configuration</p>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <div className={`px-4 py-1.5 text-xs font-bold rounded-full border uppercase tracking-widest ${
-                      isSelected 
-                        ? 'bg-green-50 text-green-700 border-green-100' 
-                        : 'bg-slate-50 text-slate-500 border-slate-200'
-                    }`}>
-                      {isSelected ? 'Selected' : 'Not Selected'}
+                  <div className="flex flex-col items-end gap-1.5">
+                    <div className={`px-3 py-1 text-[10px] font-bold rounded-full border uppercase tracking-widest ${isSelected
+                      ? 'bg-green-50 text-green-700 border-green-100'
+                      : 'bg-slate-50 text-slate-500 border-slate-200'
+                      }`}>
+                      {isLockedItem ? 'Already Purchased' : isSelected ? 'Selected' : 'Not Selected'}
                     </div>
                     <div className="text-right">
-                      <span className={`text-2xl font-bold ${isSelected ? 'text-green-600' : 'text-slate-400'}`}>
+                      <span className={`text-xl font-bold ${isSelected ? 'text-green-600' : 'text-slate-400'}`}>
                         {garmentPrice}
                       </span>
-                      <span className={`text-sm font-semibold ml-1 ${isSelected ? 'text-green-600' : 'text-slate-400'}`}>
+                      <span className={`text-xs font-semibold ml-1 ${isSelected ? 'text-green-600' : 'text-slate-400'}`}>
                         DKK
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {Object.entries(filteredOptions).map(([key, value]) => (
-                    <div
-                      key={key}
-                      className="group/item relative flex flex-col p-4 bg-slate-50/50 rounded-2xl border border-transparent hover:border-green-100 hover:bg-white hover:shadow-md transition-all duration-300"
-                    >
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 group-hover/item:text-green-600 transition-colors">
-                        {key.replace(/([A-Z])/g, ' $1').trim()}
-                      </span>
-                      <span className="text-sm font-bold text-slate-700 group-hover/item:text-slate-900 transition-colors truncate">
-                        {formatValue(value, category, key)}
-                      </span>
-                    </div>
-                  ))}
+                {/* Area items — original grid layout, sirf image walon mein dropdown */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+                  {Object.entries(filteredOptions).map(([key, value]) => {
+                    const imgUrl = getOptionImageUrl(category, key, value, options);
+                    const hasImage = !!imgUrl;
+                    const areaId = `${category}-${key}`;
+                    const isExpanded = expandedAreaKey === areaId;
+
+                    return (
+                      <div
+                        key={key}
+                        className={`group/item relative flex flex-col p-3 bg-slate-50/50 rounded-2xl border transition-all duration-300 ${hasImage
+                          ? 'border-green-200 hover:bg-white hover:shadow-md cursor-pointer'
+                          : 'border-transparent'
+                          }`}
+                        onClick={(e) => {
+                          if (hasImage) {
+                            e.stopPropagation();
+                            toggleAreaExpand(areaId);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col flex-1 min-w-0">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5 group-hover/item:text-green-600 transition-colors">
+                              {key.replace(/([A-Z])/g, ' $1').trim()}
+                            </span>
+                            <span className="text-xs font-bold text-slate-700 group-hover/item:text-slate-900 transition-colors truncate">
+                              {formatValue(value, category, key)}
+                            </span>
+                          </div>
+
+                          {/* Dropdown arrow — sirf image walon pe */}
+                          {hasImage && (
+                            <button
+                              type="button"
+                              className="p-1 rounded-lg hover:bg-slate-200/50 transition-colors ml-2 flex-shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleAreaExpand(areaId);
+                              }}
+                            >
+                              <ChevronDown
+                                className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-green-600' : ''
+                                  }`}
+                              />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Image — sirf is item ka open hone par */}
+                        {hasImage && isExpanded && (
+                          <div
+                            className="mt-3 p-2 bg-white rounded-xl border border-slate-100 flex items-center justify-center animate-in slide-in-from-top-2 duration-200"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <img
+                              src={imgUrl}
+                              alt={value}
+                              className="max-h-24 object-contain rounded-lg shadow-sm"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = 'https://via.placeholder.com/100?text=Error';
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -989,205 +1207,225 @@ const QuoteModal = ({
       }
     };
 
-    const inputClasses = "w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 focus:bg-white transition-all duration-300 outline-none text-slate-700 font-medium placeholder:text-slate-400 shadow-sm";
-    const labelClasses = "block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1";
+    const inputClasses = "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 focus:bg-white transition-all duration-300 outline-none text-slate-700 text-xs font-medium placeholder:text-slate-400 shadow-sm";
+    const labelClasses = "block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest ml-1";
 
     return (
       <div className="overflow-y-auto px-6 py-6 space-y-8 custom-scrollbar-premium">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Left Column */}
-              <div className="space-y-6">
-                <div>
-                  <label className={labelClasses}>First Name *</label>
-                  <input
-                    ref={refs.firstName}
-                    name="firstName"
-                    type="text"
-                    value={customerDetails.firstName || ""}
-                    onChange={(e) => handleInputChange("firstName", e.target.value)}
-                    onKeyPress={(e) => handleKeyPress(e, "firstName")}
-                    className={inputClasses}
-                    placeholder="Enter your first name"
-                  />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* First Name */}
+              <div>
+                <label className={labelClasses}>First Name *</label>
+                <input
+                  ref={refs.firstName}
+                  name="firstName"
+                  type="text"
+                  value={customerDetails.firstName || ""}
+                  onChange={(e) => handleInputChange("firstName", e.target.value)}
+                  onKeyPress={(e) => handleKeyPress(e, "firstName")}
+                  className={inputClasses}
+                  placeholder="Enter your first name"
+                />
+              </div>
 
-                <div>
-                  <label className={labelClasses}>Email Address *</label>
-                  <input
-                    ref={refs.email}
-                    name="email"
-                    type="email"
-                    value={customerDetails.email || ""}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    onKeyPress={(e) => handleKeyPress(e, "email")}
-                    className={inputClasses}
-                    placeholder="name@example.com"
-                  />
-                </div>
+              {/* Last Name */}
+              <div>
+                <label className={labelClasses}>Last Name *</label>
+                <input
+                  ref={refs.lastName}
+                  name="lastName"
+                  type="text"
+                  value={customerDetails.lastName || ""}
+                  onChange={(e) => handleInputChange("lastName", e.target.value)}
+                  onKeyPress={(e) => handleKeyPress(e, "lastName")}
+                  className={inputClasses}
+                  placeholder="Enter your last name"
+                />
+              </div>
 
-                <div>
-                  <label className={labelClasses}>School Name *</label>
-                  <input
-                    ref={refs.Skolenavn}
-                    name="Skolenavn"
-                    type="text"
-                    value={customerDetails.Skolenavn || ""}
-                    onChange={(e) => handleInputChange("Skolenavn", e.target.value)}
-                    onKeyPress={(e) => handleKeyPress(e, "Skolenavn")}
-                    className={inputClasses}
-                    placeholder="e.g. Copenhagen High"
-                  />
-                  <div className="mt-4 flex items-center group cursor-pointer" onClick={() => handleInputChange("deliverToSchool", !customerDetails.deliverToSchool)}>
-                    <div className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${customerDetails.deliverToSchool ? 'bg-green-600' : 'bg-slate-200'}`}>
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 transform ${customerDetails.deliverToSchool ? 'translate-x-4' : 'translate-x-0'}`}></div>
+              {/* Email Address */}
+              <div>
+                <label className={labelClasses}>Email Address *</label>
+                <input
+                  ref={refs.email}
+                  name="email"
+                  type="email"
+                  value={customerDetails.email || ""}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  onKeyPress={(e) => handleKeyPress(e, "email")}
+                  className={inputClasses}
+                  placeholder="name@example.com"
+                />
+              </div>
+
+              {/* Phone Number */}
+              <div>
+                <label className={labelClasses}>Phone Number *</label>
+                <input
+                  ref={refs.phone}
+                  name="phone"
+                  type="tel"
+                  value={customerDetails.phone || ""}
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                  onKeyPress={(e) => handleKeyPress(e, "phone")}
+                  className={inputClasses}
+                  placeholder="+45 00 00 00 00"
+                />
+              </div>
+
+              {/* School Name */}
+              <div>
+                <label className={labelClasses}>School Name *</label>
+                <input
+                  ref={refs.Skolenavn}
+                  name="Skolenavn"
+                  type="text"
+                  value={customerDetails.Skolenavn || ""}
+                  onChange={(e) => handleInputChange("Skolenavn", e.target.value)}
+                  onKeyPress={(e) => handleKeyPress(e, "Skolenavn")}
+                  className={inputClasses}
+                  placeholder="e.g. Copenhagen High"
+                />
+              </div>
+
+              <div className="flex flex-col justify-end">
+                <label className={labelClasses}>Delivery Location</label>
+                <div
+                  onClick={() => handleInputChange("deliverToSchool", !customerDetails.deliverToSchool)}
+                  className={`flex items-center justify-between px-5 py-3 rounded-full border-2 cursor-pointer transition-all duration-300 ${customerDetails.deliverToSchool
+                    ? 'border-green-600 bg-green-50/30'
+                    : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
+                    }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${customerDetails.deliverToSchool ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                      <Package className="w-4 h-4" />
                     </div>
-                    <label className="ml-3 text-sm font-bold text-slate-600 cursor-pointer">
-                      Deliver to school campus
-                    </label>
+                    <div>
+                      <p className="text-xs font-bold text-slate-700">Deliver to school campus</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Saves shipping & delivery fees</p>
+                    </div>
                   </div>
-                </div>
-
-                <div>
-                  <label className={labelClasses}>City *</label>
-                  <input
-                    ref={refs.city}
-                    name="city"
-                    type="text"
-                    value={customerDetails.city || ""}
-                    onChange={(e) => handleInputChange("city", e.target.value)}
-                    onKeyPress={(e) => handleKeyPress(e, "city")}
-                    className={inputClasses}
-                    placeholder="e.g. Copenhagen"
-                  />
+                  <div className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${customerDetails.deliverToSchool ? 'bg-green-600' : 'bg-slate-200'}`}>
+                    <div className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 transform ${customerDetails.deliverToSchool ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                  </div>
                 </div>
               </div>
 
-              {/* Right Column */}
-              <div className="space-y-6">
+              {/* Street Address */}
+              <div className="md:col-span-2">
+                <label className={labelClasses}>Street Address *</label>
+                <input
+                  ref={refs.address}
+                  name="address"
+                  type="text"
+                  value={customerDetails.address || ""}
+                  onChange={(e) => handleInputChange("address", e.target.value)}
+                  onKeyPress={(e) => handleKeyPress(e, "address")}
+                  className={inputClasses}
+                  placeholder="Enter street and number"
+                />
+              </div>
+
+              {/* City */}
+              <div>
+                <label className={labelClasses}>City *</label>
+                <input
+                  ref={refs.city}
+                  name="city"
+                  type="text"
+                  value={customerDetails.city || ""}
+                  onChange={(e) => handleInputChange("city", e.target.value)}
+                  onKeyPress={(e) => handleKeyPress(e, "city")}
+                  className={inputClasses}
+                  placeholder="e.g. Copenhagen"
+                />
+              </div>
+
+              {/* Postal Code & Country */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelClasses}>Last Name *</label>
+                  <label className={labelClasses}>Postal Code *</label>
                   <input
-                    ref={refs.lastName}
-                    name="lastName"
+                    ref={refs.postalCode}
+                    name="postalCode"
                     type="text"
-                    value={customerDetails.lastName || ""}
-                    onChange={(e) => handleInputChange("lastName", e.target.value)}
-                    onKeyPress={(e) => handleKeyPress(e, "lastName")}
+                    value={customerDetails.postalCode || ""}
+                    onChange={(e) => handleInputChange("postalCode", e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, "postalCode")}
                     className={inputClasses}
-                    placeholder="Enter your last name"
+                    placeholder="0000"
                   />
                 </div>
-
                 <div>
-                  <label className={labelClasses}>Phone Number *</label>
-                  <input
-                    ref={refs.phone}
-                    name="phone"
-                    type="tel"
-                    value={customerDetails.phone || ""}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    onKeyPress={(e) => handleKeyPress(e, "phone")}
-                    className={inputClasses}
-                    placeholder="+45 00 00 00 00"
-                  />
-                </div>
-
-                <div>
-                  <label className={labelClasses}>Street Address *</label>
-                  <input
-                    ref={refs.address}
-                    name="address"
-                    type="text"
-                    value={customerDetails.address || ""}
-                    onChange={(e) => handleInputChange("address", e.target.value)}
-                    onKeyPress={(e) => handleKeyPress(e, "address")}
-                    className={inputClasses}
-                    placeholder="Enter street and number"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelClasses}>Postal Code *</label>
-                    <input
-                      ref={refs.postalCode}
-                      name="postalCode"
-                      type="text"
-                      value={customerDetails.postalCode || ""}
-                      onChange={(e) => handleInputChange("postalCode", e.target.value)}
-                      onKeyPress={(e) => handleKeyPress(e, "postalCode")}
-                      className={inputClasses}
-                      placeholder="0000"
-                    />
-                  </div>
-                  <div>
-                    <label className={labelClasses}>Country</label>
-                    <select
-                      ref={refs.country}
-                      name="country"
-                      value={customerDetails.country || "Denmark"}
-                      onChange={(e) => handleInputChange("country", e.target.value)}
-                      onKeyPress={(e) => handleKeyPress(e, "country")}
-                      className={`${inputClasses} appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%20stroke%3D%22currentColor%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.75rem_center] bg-no-repeat`}
-                    >
-                      {shippingLoading ? (
-                        <option>Loading...</option>
-                      ) : shippingRates.length > 0 ? (
-                        shippingRates.map(r => (
-                          <option key={r.id} value={r.country_name}>{r.country_name}</option>
-                        ))
-                      ) : (
-                        <>
-                          <option value="Denmark">Denmark</option>
-                          <option value="Sweden">Sweden</option>
-                          <option value="Norway">Norway</option>
-                          <option value="Germany">Germany</option>
-                          <option value="Other">Other</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
+                  <label className={labelClasses}>Country</label>
+                  <select
+                    ref={refs.country}
+                    name="country"
+                    value={customerDetails.country || "Denmark"}
+                    onChange={(e) => handleInputChange("country", e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, "country")}
+                    className={`${inputClasses} appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%20stroke%3D%22currentColor%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.75rem_center] bg-no-repeat`}
+                  >
+                    {shippingLoading ? (
+                      <option>Loading...</option>
+                    ) : shippingRates.length > 0 ? (
+                      shippingRates.map(r => (
+                        <option key={r.id} value={r.country_name}>{r.country_name}</option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="Denmark">Denmark</option>
+                        <option value="Sweden">Sweden</option>
+                        <option value="Norway">Norway</option>
+                        <option value="Germany">Germany</option>
+                        <option value="Other">Other</option>
+                      </>
+                    )}
+                  </select>
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100">
+            {/* Delivery Preference */}
+            <div className="pt-6 border-t border-slate-100">
               <label className={labelClasses}>Delivery Preference</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                 <button
                   onClick={() => handleInputChange("deliveryType", "regular")}
-                  className={`flex items-start p-4 rounded-2xl border-2 transition-all duration-300 text-left ${customerDetails.deliveryType === "regular" ? 'border-green-600 bg-green-50/50 shadow-md' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                  className={`flex items-center px-6 py-3 rounded-full border-2 transition-all duration-300 text-left ${customerDetails.deliveryType === "regular" ? 'border-green-600 bg-green-50/50 shadow-md' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
                 >
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 mr-3 transition-colors ${customerDetails.deliveryType === "regular" ? 'border-green-600 bg-green-600' : 'border-slate-300 bg-white'}`}>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 flex-shrink-0 transition-colors ${customerDetails.deliveryType === "regular" ? 'border-green-600 bg-green-600' : 'border-slate-300 bg-white'}`}>
                     {customerDetails.deliveryType === "regular" && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-800">Regular Delivery</p>
-                    <p className="text-xs text-slate-500 font-medium">
-                      {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (customerDetails.country||'').toLowerCase()); return r ? `${r.regular_delivery_rate} DKK — Est. 6 weeks` : 'Est. 6 weeks'; })()}
+                    <p className="text-xs font-bold text-slate-800">Regular Delivery</p>
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (customerDetails.country || '').toLowerCase()); return r ? `${r.regular_delivery_rate} DKK — Est. 6 weeks` : 'Est. 6 weeks'; })()}
                     </p>
                   </div>
                 </button>
                 <button
                   onClick={() => handleInputChange("deliveryType", "express")}
-                  className={`flex items-start p-4 rounded-2xl border-2 transition-all duration-300 text-left ${customerDetails.deliveryType === "express" ? 'border-green-600 bg-green-50/50 shadow-md' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                  className={`flex items-center px-6 py-3 rounded-full border-2 transition-all duration-300 text-left ${customerDetails.deliveryType === "express" ? 'border-green-600 bg-green-50/50 shadow-md' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
                 >
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 mr-3 transition-colors ${customerDetails.deliveryType === "express" ? 'border-green-600 bg-green-600' : 'border-slate-300 bg-white'}`}>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 flex-shrink-0 transition-colors ${customerDetails.deliveryType === "express" ? 'border-green-600 bg-green-600' : 'border-slate-300 bg-white'}`}>
                     {customerDetails.deliveryType === "express" && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-800">Express Priority</p>
-                    <p className="text-xs text-slate-500 font-medium">
-                      {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (customerDetails.country||'').toLowerCase()); return r ? `${r.express_delivery_rate} DKK — Est. 3 weeks` : 'Est. 3 weeks'; })()}
+                    <p className="text-xs font-bold text-slate-800">Express Priority</p>
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (customerDetails.country || '').toLowerCase()); return r ? `${r.express_delivery_rate} DKK — Est. 3 weeks` : 'Est. 3 weeks'; })()}
                     </p>
                   </div>
                 </button>
               </div>
             </div>
 
-            <div className="pt-4">
+            {/* Notes */}
+            <div className="pt-6 border-t border-slate-100">
               <label className={labelClasses}>Order Notes (Optional)</label>
               <textarea
                 ref={refs.notes}
@@ -1206,106 +1444,104 @@ const QuoteModal = ({
     );
   };
 
-
-
   // Step 3: Order Confirmation
   const renderOrderConfirmation = () => (
-    <div className="overflow-y-auto px-6 py-6 space-y-8 custom-scrollbar-premium">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="overflow-y-auto px-6 py-6 space-y-6 custom-scrollbar-premium">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* Customer Details Summary */}
-        <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
+        <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:bg-blue-50 transition-colors duration-500"></div>
 
           <div className="relative z-10">
-            <div className="flex items-center space-x-4 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
-                <User className="w-6 h-6 text-white" />
+            <div className="flex items-center space-x-3 mb-5">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+                <User className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-extrabold text-slate-800 tracking-tight">Delivery Details</h3>
-                <p className="text-sm text-slate-500 font-medium">Verify your information</p>
+                <h3 className="text-base font-bold text-slate-800 tracking-tight">Delivery Details</h3>
+                <p className="text-xs text-slate-500 font-medium">Verify your information</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-              <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+              <div className="space-y-3">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Customer Name</span>
-                  <span className="text-sm font-bold text-slate-700">{customerDetails.firstName} {customerDetails.lastName}</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Customer Name</span>
+                  <span className="text-xs font-bold text-slate-700">{customerDetails.firstName} {customerDetails.lastName}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Email Contact</span>
-                  <span className="text-sm font-bold text-slate-700">{customerDetails.email}</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Email Contact</span>
+                  <span className="text-xs font-bold text-slate-700">{customerDetails.email}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Phone Number</span>
-                  <span className="text-sm font-bold text-slate-700">{customerDetails.phone}</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Phone Number</span>
+                  <span className="text-xs font-bold text-slate-700">{customerDetails.phone}</span>
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Shipping Address</span>
-                  <span className="text-sm font-bold text-slate-700 leading-relaxed">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Shipping Address</span>
+                  <span className="text-xs font-bold text-slate-700 leading-relaxed">
                     {customerDetails.address}<br />
-                    {customerDetails.postalCode} {customerDetails.city}<br />
+                    {customerDetails.postalCode}, {customerDetails.city}<br />
                     {customerDetails.country}
                   </span>
                 </div>
                 {customerDetails.Skolenavn && (
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Educational Institution</span>
-                    <span className="text-sm font-bold text-slate-700">{customerDetails.Skolenavn}</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Educational Institution</span>
+                    <span className="text-xs font-bold text-slate-700">{customerDetails.Skolenavn}</span>
                   </div>
                 )}
               </div>
             </div>
 
             {customerDetails.notes && (
-              <div className="mt-8 pt-6 border-t border-slate-100">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Special Instructions</span>
-                <p className="text-sm font-medium text-slate-600 bg-slate-50 p-4 rounded-xl italic">"{customerDetails.notes}"</p>
+              <div className="mt-6 pt-5 border-t border-slate-100">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Special Instructions</span>
+                <p className="text-xs font-medium text-slate-600 bg-slate-50 p-3 rounded-xl italic">"{customerDetails.notes}"</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Product Configuration Summary */}
-        <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
+        <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:bg-green-50 transition-colors duration-500"></div>
 
           <div className="relative z-10">
-            <div className="flex items-center space-x-4 mb-8">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-200">
-                <Package className="w-6 h-6 text-white" />
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-200">
+                <Package className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-extrabold text-slate-800 tracking-tight">Configuration Summary</h3>
-                <p className="text-sm text-slate-500 font-medium">Garments in your order</p>
+                <h3 className="text-base font-bold text-slate-800 tracking-tight">Configuration Summary</h3>
+                <p className="text-xs text-slate-500 font-medium">Garments in your order</p>
               </div>
             </div>
 
-            <div className="space-y-6">
-              {Object.entries(selectedOptions).filter(([category, options]) => isGarmentConfigured(category, options) && selectedGarments[category]).map(([category, options]) => {
+            <div className="space-y-4">
+              {Object.entries(selectedOptions).filter(([category]) => selectedGarments[category]).map(([category, options]) => {
                 const filteredOptions = filterOptions(options);
                 if (Object.keys(filteredOptions).length === 0) return null;
 
                 return (
-                  <div key={category} className="bg-slate-50/50 rounded-[1.5rem] p-6 border border-slate-100 hover:bg-white hover:border-green-100 transition-all duration-300">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-extrabold text-slate-800 text-sm capitalize flex items-center">
-                        <div className="w-1.5 h-4 bg-green-500 rounded-full mr-2"></div>
+                  <div key={category} className="bg-slate-50/50 rounded-[1.5rem] p-4 border border-slate-100 hover:bg-white hover:border-green-100 transition-all duration-300">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-bold text-slate-800 text-xs capitalize flex items-center">
+                        <div className="w-1 h-3.5 bg-green-500 rounded-full mr-2"></div>
                         {category.replace(/([A-Z])/g, ' $1').trim()}
                       </h4>
-                      <span className="text-lg font-bold text-green-600">
+                      <span className="text-sm font-bold text-green-600">
                         {GARMENT_PRICES[category]} DKK
                       </span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-3 gap-x-8">
                       {Object.entries(filteredOptions).map(([key, value]) => (
                         <div key={key} className="flex flex-col">
                           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                          <span className="text-xs font-bold text-slate-700">{formatValue(value, category, key)}</span>
+                          <span className="text-[11px] font-semibold text-slate-700">{formatValue(value, category, key)}</span>
                         </div>
                       ))}
                     </div>
@@ -1317,68 +1553,113 @@ const QuoteModal = ({
         </div>
 
         {/* Price Summary */}
-        <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
+        <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:bg-blue-50 transition-colors duration-500"></div>
-          
+
           <div className="relative z-10">
-            <div className="flex items-center space-x-4 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
-                <CreditCard className="w-6 h-6 text-white" />
+            <div className="flex items-center space-x-3 mb-5">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+                <CreditCard className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-extrabold text-slate-800 tracking-tight">Order Total</h3>
-                <p className="text-sm text-slate-500 font-medium">Final pricing breakdown</p>
+                <h3 className="text-base font-bold text-slate-800 tracking-tight">Order Total</h3>
+                <p className="text-xs text-slate-500 font-medium">Final pricing breakdown</p>
               </div>
             </div>
 
-            <div className="bg-slate-50/50 rounded-[1.5rem] p-6 border border-slate-100 space-y-4">
+            <div className="bg-slate-50/50 rounded-[1.5rem] p-5 border border-slate-100 space-y-3.5">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-bold text-slate-600">Subtotal</span>
-                <span className="text-lg font-bold text-slate-800">{subtotal} DKK</span>
+                <span className="text-xs font-semibold text-slate-600">Subtotal</span>
+                <span className="text-sm font-bold text-slate-800">{subtotal} DKK</span>
               </div>
               {vatPct > 0 && (
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-slate-600">VAT ({vatPct}% included)</span>
-                  <span className="text-lg font-bold text-slate-800">{vatAmount} DKK</span>
+                  <span className="text-xs font-semibold text-slate-600">VAT ({vatPct}% included)</span>
+                  <span className="text-sm font-bold text-slate-800">{vatAmount} DKK</span>
                 </div>
               )}
               {shippingRate > 0 && (
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-slate-600">
+                  <span className="text-xs font-semibold text-slate-600">
                     Shipping ({customerDetails.deliveryType === 'express' ? 'Express' : 'Regular'} — {customerDetails.country})
                   </span>
-                  <span className="text-lg font-bold text-slate-800">{shippingRate} DKK</span>
+                  <span className="text-sm font-bold text-slate-800">{shippingRate} DKK</span>
                 </div>
               )}
               {handlingFeePerStudent > 0 && (
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-slate-600">
+                  <span className="text-xs font-semibold text-slate-600">
                     Handling Fee (1/{classStudentCount} of class)
                   </span>
-                  <span className="text-lg font-bold text-slate-800">{handlingFeePerStudent} DKK</span>
+                  <span className="text-sm font-bold text-slate-800">{handlingFeePerStudent} DKK</span>
                 </div>
               )}
-              <div className="border-t border-slate-200 pt-4">
+              <div className="border-t border-slate-200 pt-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-lg font-bold text-slate-800">Total</span>
-                  <span className="text-2xl font-black text-green-600">{totalWithVat} DKK</span>
+                  <span className="text-sm font-bold text-slate-800">Total</span>
+                  <span className="text-lg font-bold text-green-600">{totalWithVat} DKK</span>
                 </div>
               </div>
               {amountPaid > 0 && (
                 <>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-bold text-green-600">Amount Already Paid</span>
-                    <span className="text-lg font-bold text-green-600">-{amountPaid} DKK</span>
+                    <span className="text-xs font-semibold text-green-600">Amount Already Paid</span>
+                    <span className="text-sm font-bold text-green-600">-{amountPaid} DKK</span>
                   </div>
-                  <div className="border-t border-slate-200 pt-4">
+                  <div className="border-t border-slate-200 pt-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold text-slate-800">Balance Due</span>
-                      <span className="text-2xl font-black text-blue-600">{computedBalanceDue} DKK</span>
+                      <span className="text-sm font-bold text-slate-800">Balance Due</span>
+                      <span className="text-lg font-bold text-orange-600">{computedBalanceDue} DKK</span>
                     </div>
                   </div>
                 </>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* ── Existing order payment breakdown (per-product paid/unpaid) ── */}
+        {paymentBreakdown && existingOrderId && (
+          <PaymentBreakdown
+            orderId={existingOrderId}
+            processStatus={processStatus}
+            totalAmount={paymentBreakdown.total_amount}
+            amountPaid={paymentBreakdown.amount_paid}
+            balanceDue={paymentBreakdown.balance_due}
+            paidProducts={paymentBreakdown.paid_products}
+            unpaidProducts={paymentBreakdown.unpaid_products}
+            editWindowOpen={paymentBreakdown.edit_window_open}
+            editDeadline={paymentBreakdown.edit_deadline}
+            onPayNow={onPayNow}
+            loading={isPayingBalance}
+          />
+        )}
+
+        {/* ── Payment redirect notice ── */}
+        <div className={`rounded-2xl p-4 border flex items-start gap-3 ${computedBalanceDue > 0
+          ? 'bg-green-50 border-green-200'
+          : 'bg-slate-50 border-slate-200'
+          }`}>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 bg-green-100">
+            <CreditCard className="w-4 h-4 text-green-600" />
+          </div>
+          <div>
+            {computedBalanceDue > 0 ? (
+              <>
+                <p className="text-sm font-bold text-green-800">
+                  Clicking "Approve &amp; Pay" will redirect you to secure payment
+                </p>
+                <p className="text-xs text-green-700 mt-1">
+                  You will pay <span className="font-bold">{computedBalanceDue} DKK</span> now via Stripe.
+                  After payment, your edit window opens until the class deadline — you can add more products anytime.
+                  Each additional product will require its own separate payment.
+                </p>
+              </>
+            ) : (
+              <p className="text-sm font-semibold text-slate-600">
+                No payment needed — your order is already fully paid.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -1395,10 +1676,36 @@ const QuoteModal = ({
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-4xl font-black text-slate-800 tracking-tight">Order Received!</h2>
+          <h2 className="text-4xl font-black text-slate-800 tracking-tight">Order Confirmed!</h2>
           <p className="text-slate-500 font-medium text-lg leading-relaxed">
-            Your premium clothing configuration has been successfully queued for production.
+            Your order has been received and payment is complete.
           </p>
+        </div>
+
+        {/* Info cards — correct flow */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+          <div className="bg-green-50 border border-green-100 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-7 h-7 bg-green-100 rounded-xl flex items-center justify-center">
+                <Check className="w-4 h-4 text-green-600" />
+              </div>
+              <span className="text-xs font-bold text-green-700 uppercase tracking-wide">Payment Done</span>
+            </div>
+            <p className="text-sm font-semibold text-slate-700">
+              Your payment has been processed successfully.
+            </p>
+          </div>
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-7 h-7 bg-blue-100 rounded-xl flex items-center justify-center">
+                <History className="w-4 h-4 text-blue-600" />
+              </div>
+              <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">Edit Window</span>
+            </div>
+            <p className="text-sm font-semibold text-slate-700">
+              You can still add products until the <span className="text-blue-600 font-bold">class deadline</span>. Each new product requires its own payment.
+            </p>
+          </div>
         </div>
 
         <div className="bg-slate-50 rounded-[2rem] p-8 border border-white shadow-inner">
@@ -1406,7 +1713,7 @@ const QuoteModal = ({
           <p className="text-2xl font-black text-slate-800 tracking-tight font-mono">{orderDate}</p>
           <div className="mt-4 pt-4 border-t border-slate-200 flex items-center justify-center space-x-2">
             <Mail className="w-4 h-4 text-green-600" />
-            <span className="text-xs font-bold text-slate-500">Receipt sent to {customerDetails.email}</span>
+            <span className="text-xs font-bold text-slate-500">Confirmation sent to {customerDetails.email}</span>
           </div>
         </div>
 
@@ -1414,21 +1721,21 @@ const QuoteModal = ({
           <button
             onClick={() => {
               handleResetModal();
-              window.location.href = "https://shop.studentlife.dk/homepage-duplicate-95/";
-              onClose()
+              navigate(-1)
+              // window.location.href = "https://shop.studentlife.dk/homepage-duplicate-95/";
+              onClose();
             }}
             className="flex-1 flex items-center justify-center px-8 py-5 bg-white border border-slate-200 rounded-2xl text-slate-700 font-bold hover:bg-slate-50 hover:border-slate-300 transition-all duration-300 shadow-sm transform active:scale-95"
           >
             <ShoppingCart className="w-5 h-5 mr-3" />
-            Continue Shopping
+            Fortsæt med at handle
           </button>
 
           <button
             onClick={() => {
               handleResetModal();
-              if (onContinueConfiguring) {
-                onContinueConfiguring();
-              }
+              if (onContinueConfiguring) onContinueConfiguring();
+              onClose();
             }}
             className="flex-1 flex items-center justify-center px-8 py-5 bg-gradient-to-br from-slate-800 to-slate-900 text-white rounded-2xl font-bold hover:from-black hover:to-slate-800 transition-all duration-300 shadow-xl shadow-slate-200 transform active:scale-95"
           >
@@ -1446,6 +1753,16 @@ const QuoteModal = ({
       return renderThankYouPage();
     }
 
+    if (isEditWindowFlow) {
+      // 2-step flow: step 0 = product selection, step 1 = confirmation
+      switch (currentStep) {
+        case 0: return renderQuoteReview();
+        case 1: return renderOrderConfirmation();
+        default: return renderQuoteReview();
+      }
+    }
+
+    // Normal 3-step flow
     switch (currentStep) {
       case 0:
         return renderQuoteReview();
@@ -1475,25 +1792,23 @@ const QuoteModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in fade-in duration-300">
-      <div className="bg-white/95 backdrop-blur-xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-white/40 rounded-2xl overflow-hidden animate-in slide-in-from-bottom duration-500">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in fade-in duration-300">
+      <div className="bg-white/95 backdrop-blur-xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] border border-slate-100 rounded-[2rem] overflow-hidden animate-in slide-in-from-bottom duration-500">
         {/* Modal Header with Step Indicator */}
-        <div className="relative bg-gradient-to-r from-green-50 via-white to-green-50 border-b border-green-100">
-          <div className="absolute inset-0 bg-gradient-to-r from-green-600/5 to-green-700/5"></div>
-          <div className="relative p-6">
-            <div className="flex justify-between items-start mb-4">
+        <div className="relative bg-white border-b border-slate-100 p-6 z-10">
+          <div className="relative">
+            <div className="flex justify-between items-center mb-6">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-gradient-to-r from-green-600 to-green-700 rounded-xl shadow-lg">
+                <div className="p-2.5 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg shadow-green-100">
                   {React.createElement(getStepIcon(currentStep), { className: "w-5 h-5 text-white" })}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                  <h2 className="text-lg font-bold text-slate-800 tracking-tight">
                     {orderComplete ? 'Order Complete' : steps[currentStep]}
                   </h2>
                   {!orderComplete && (
-                    <p className="text-gray-600 text-sm mt-1 flex items-center">
-                      <CheckCircle className="w-3 h-3 mr-1 text-green-600" />
-                      Step {currentStep + 1} of {steps.length}
+                    <p className="text-slate-400 text-[11px] mt-0.5 font-medium">
+                      Configure details, verify shipping and checkout securely
                     </p>
                   )}
                 </div>
@@ -1501,42 +1816,52 @@ const QuoteModal = ({
               {!orderComplete && (
                 <button
                   onClick={onClose}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-all duration-200 hover:scale-110 group"
+                  className="p-2 hover:bg-slate-100 rounded-xl transition-all duration-200 hover:scale-105 group border border-slate-100"
                 >
-                  <X className="w-4 h-4 text-gray-500 group-hover:text-gray-700" />
+                  <X className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
                 </button>
               )}
             </div>
 
             {/* Step Progress Indicator - Only show if not on thank you page */}
             {!orderComplete && (
-              <div className="flex items-center space-x-3 flex-wrap gap-y-2">
-                {steps.map((step, index) => (
-                  <div key={step} className="flex items-center">
-                    <div className={`flex items-center justify-center w-6 h-6 rounded-full border-2 transition-all duration-200 ${index <= currentStep
-                      ? 'bg-green-600 border-green-600 text-white'
-                      : 'border-gray-300 text-gray-400'
-                      }`}>
-                      {index < currentStep ? (
-                        <CheckCircle className="w-4 h-4" />
-                      ) : (
-                        <span className="text-xs font-bold">{index + 1}</span>
-                      )}
+              <div className={`grid gap-4 pt-4 border-t border-slate-100`} style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+                {steps.map((step, index) => {
+                  const Icon = getStepIcon(index);
+                  const isActive = index === currentStep;
+                  const isCompleted = index < currentStep;
+                  const isClickable = true; // Handled dynamically in handleTabClick
+
+                  return (
+                    <div
+                      key={step}
+                      onClick={() => handleTabClick(index)}
+                      className={`flex items-center gap-3 p-2.5 rounded-2xl border cursor-pointer transition-all duration-300 active:scale-[0.98] ${isActive
+                        ? 'bg-green-50/50 border-green-200 shadow-sm'
+                        : 'border-transparent hover:bg-slate-50/70'
+                        }`}
+                    >
+                      <div className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all ${isActive
+                        ? 'bg-green-600 text-white shadow-md shadow-green-200'
+                        : isCompleted
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-slate-100 text-slate-400'
+                        }`}>
+                        {isCompleted ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
+                      </div>
+                      <div className="hidden sm:block">
+                        <p className={`text-[11px] font-bold leading-none ${isActive ? 'text-green-800' : isCompleted ? 'text-slate-700' : 'text-slate-400'}`}>
+                          {step}
+                        </p>
+                        <p className="text-[9px] text-slate-400 mt-1 font-medium">
+                          {index === 0 ? 'Review Config' : index === 1 ? 'Shipping Details' : 'Verify & Submit'}
+                        </p>
+                      </div>
                     </div>
-                    <span className={`ml-1 text-xs font-medium ${index <= currentStep ? 'text-green-700' : 'text-gray-400'
-                      }`}>
-                      {step}
-                    </span>
-                    {index < steps.length - 1 && (
-                      <div className={`w-6 h-0.5 mx-2 ${index < currentStep ? 'bg-green-600' : 'bg-gray-300'
-                        }`} />
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
-
-
           </div>
         </div>
 
@@ -1545,90 +1870,52 @@ const QuoteModal = ({
           {getStepContent()}
         </div>
 
-        {/* Enhanced Footer with Step Navigation - Only show if not on thank you page */}
+        {/* Enhanced Compact Footer */}
         {!orderComplete && (
-          <div className="bg-gradient-to-r from-gray-50 via-white to-gray-50 border-t border-gray-100 p-6">
-            {/* Price Section */}
-            <div className="bg-gradient-to-r from-green-50 to-green-100/50 rounded-xl p-4 mb-4 border border-green-200">
-              <div className="flex justify-between items-center">
-                <div className="flex-1">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-bold text-gray-500 uppercase">Subtotal</span>
-                    <span className="text-sm font-bold text-gray-700">{subtotal} DKK</span>
-                  </div>
-                  {vatPct > 0 && (
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-bold text-gray-500 uppercase">VAT ({vatPct}% included)</span>
-                      <span className="text-sm font-bold text-gray-700">{vatAmount} DKK</span>
-                    </div>
-                  )}
-                  {shippingRate > 0 && (
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-bold text-gray-500 uppercase">
-                        Shipping ({customerDetails.deliveryType === 'express' ? 'Express' : 'Regular'})
-                      </span>
-                      <span className="text-sm font-bold text-gray-700">{shippingRate} DKK</span>
-                    </div>
-                  )}
-                  {handlingFeePerStudent > 0 && (
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-bold text-gray-500 uppercase">Handling Fee</span>
-                      <span className="text-sm font-bold text-gray-700">{handlingFeePerStudent} DKK</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center mb-1 pt-1 border-t border-gray-200">
-                    <span className="text-xs font-bold text-gray-700 uppercase">Total</span>
-                    <span className="text-lg font-bold text-gray-900">{totalWithVat} DKK</span>
-                  </div>
-                  {amountPaid > 0 && (
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-bold text-green-600 uppercase">Amount Already Paid</span>
-                      <span className="text-sm font-bold text-green-600">-{amountPaid} DKK</span>
-                    </div>
-                  )}
-                  {editDeadline && (
-                    <div className="flex items-center text-[10px] text-yellow-700 font-bold bg-yellow-100/50 px-2 py-1 rounded-md mt-2">
-                       <History className="w-3 h-3 mr-1" />
-                       Edit window expires: {editDeadline.toLocaleDateString()}
-                    </div>
-                  )}
-                </div>
-                <div className="text-right pl-6 border-l border-green-200 ml-6">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">
-                    {computedBalanceDue <= 0 ? 'STATUS' : 'BALANCE DUE'}
+          <div className="bg-slate-50 border-t border-slate-100 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Price / Status info */}
+            <div className="flex items-center gap-4">
+              <div className="bg-green-50 border border-green-100 rounded-2xl px-4 py-2.5 flex items-center gap-3">
+                <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block leading-none mb-1">
+                    {computedBalanceDue > 0 && amountPaid > 0 ? 'BALANCE DUE' : 'ORDER TOTAL'}
                   </span>
-                  <div className="flex items-baseline justify-end">
-                    <span className="text-2xl font-black bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
-                      {computedBalanceDue <= 0 ? (paymentStatus === 'paid' ? 'PAID' : 'FREE') : computedBalanceDue}
-                    </span>
-                    {computedBalanceDue > 0 && <span className="text-sm font-bold text-green-600 ml-1">DKK</span>}
-                  </div>
+                  <span className="text-lg font-extrabold text-slate-800 leading-none">
+                    {computedBalanceDue <= 0
+                      ? (paymentStatus === 'paid' ? '✓ PAID' : 'FREE')
+                      : `${computedBalanceDue} DKK`
+                    }
+                  </span>
                 </div>
               </div>
+
+              {editDeadline && (
+                <div className="hidden lg:flex items-center text-[11px] text-amber-700 font-bold bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-xl">
+                  <History className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
+                  Edit window: {editDeadline.toLocaleDateString()}
+                </div>
+              )}
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex gap-3 flex-1">
-                {currentStep > 0 && (
-                  <button
-                    onClick={() => setCurrentStep(prev => prev - 1)}
-                    className="flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium text-sm hover:border-gray-400 hover:bg-gray-50 transition-all duration-200"
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-1" />
-                    Back
-                  </button>
-                )}
-
-                {currentStep === 0 && (
-                  <button
-                    onClick={onClose}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium text-sm hover:border-gray-400 hover:bg-gray-50 transition-all duration-200"
-                  >
-                    Continue Designing
-                  </button>
-                )}
-              </div>
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              {currentStep > 0 ? (
+                <button
+                  onClick={() => setCurrentStep(prev => prev - 1)}
+                  className="flex items-center justify-center px-5 py-3 border border-slate-200 bg-white rounded-xl text-slate-700 font-bold text-sm hover:border-slate-300 hover:bg-slate-50 transition-all duration-200"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </button>
+              ) : (
+                <button
+                  onClick={onClose}
+                  className="px-5 py-3 border border-slate-200 bg-white rounded-xl text-slate-600 font-bold text-sm hover:border-slate-300 hover:bg-slate-50 transition-all duration-200"
+                >
+                  Continue Designing
+                </button>
+              )}
 
               {currentStep < steps.length - 1 ? (
                 <button
@@ -1643,44 +1930,28 @@ const QuoteModal = ({
                     }
                     setCurrentStep(prev => prev + 1);
                   }}
-                  className="flex-1 bg-gradient-to-r from-green-600 via-green-600 to-green-700 text-white py-2 px-4 rounded-lg font-medium text-sm hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-md hover:shadow-lg relative overflow-hidden group"
+                  className="flex-1 sm:flex-none flex items-center justify-center bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-6 rounded-xl font-bold text-sm hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-md hover:shadow-lg"
                 >
-                  <span className="relative z-10 flex items-center justify-center">
-                    Continue
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-green-700 to-green-800 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  Continue
+                  <ArrowRight className="w-4 h-4 ml-2" />
                 </button>
               ) : (
+                /* Final step — places order then immediately redirects to Stripe */
                 <button
                   onClick={handleConfirmOrder}
                   disabled={isLoading}
-                  className="flex-1 bg-gradient-to-r from-green-600 via-green-600 to-green-700 text-white py-2 px-4 rounded-lg font-medium text-sm hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-md hover:shadow-lg relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none flex items-center justify-center bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-7 rounded-xl font-bold text-sm hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <span className="relative z-10 flex items-center justify-center">
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        {computedBalanceDue <= 0 ? (
-                          <>
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Save and finalize design
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard className="w-4 h-4 mr-1" />
-                            Pay {computedBalanceDue} DKK
-                          </>
-                        )}
-                      </>
-                    )}
-                  </span>
-                  {!isLoading && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-green-700 to-green-800 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Redirecting to payment...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Approve &amp; Pay
+                    </>
                   )}
                 </button>
               )}
