@@ -131,6 +131,11 @@ export default function SuccessScreen() {
   const items = (order.product_price_breakdown && order.product_price_breakdown.length > 0)
     ? order.product_price_breakdown
     : (order.order_items || []).map(i => ({ id: i.id, product_type: i.product_type, color: i.selectedColor, size: i.selectedSize, price: 0 }));
+  const pricing = order.pricing_breakdown || {};
+  const productSubtotal = Number(pricing.product_subtotal ?? items.reduce((sum, item) => sum + Number(item.price || 0), 0));
+  const deliveryCharges = Number(pricing.delivery_charges || 0);
+  const handlingFee = Number(pricing.handling_fee || 0);
+  const otherCharges = Number(pricing.other_charges || 0);
 
   // ── Still pending after max retries — show processing state ──────────────────
   if (isStillPending) {
@@ -249,6 +254,28 @@ export default function SuccessScreen() {
           {/* ── Totals ─────────────────────────────────────────────────────────── */}
           <div className="flex justify-end">
             <div className="w-full sm:w-64 space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Products Subtotal</span>
+                <span className="font-semibold text-slate-800">{productSubtotal.toFixed(2)} DKK</span>
+              </div>
+              {deliveryCharges > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Delivery Charges</span>
+                  <span className="font-semibold text-slate-800">{deliveryCharges.toFixed(2)} DKK</span>
+                </div>
+              )}
+              {handlingFee > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Handling Fee</span>
+                  <span className="font-semibold text-slate-800">{handlingFee.toFixed(2)} DKK</span>
+                </div>
+              )}
+              {otherCharges > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Other Charges</span>
+                  <span className="font-semibold text-slate-800">{otherCharges.toFixed(2)} DKK</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-slate-500">Order Total</span>
                 <span className="font-semibold text-slate-800">{totalAmount.toFixed(2)} DKK</span>

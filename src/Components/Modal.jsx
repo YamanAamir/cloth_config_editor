@@ -42,9 +42,11 @@ const QuoteModal = ({
   onPayNow,
   isPayingBalance = false,
   existingProductTypes = [],
+  isLocked = false,
 }) => {
   // Is this an "add more products during edit window" flow?
-  const isEditWindowFlow = processStatus === 'paid' && editWindowOpen;
+  const effectiveEditWindowOpen = editWindowOpen && !isLocked;
+  const isEditWindowFlow = processStatus === 'paid' && effectiveEditWindowOpen;
   // Helper: Check if a garment has been actually configured (differs from defaults)
   const isGarmentConfigured = (garmentType, garmentData) => {
     const defaults = defaultSelections[garmentType];
@@ -957,6 +959,9 @@ const QuoteModal = ({
     } catch (error) {
       console.error("Error submitting order:", error);
       if (error.response?.data?.message) {
+        if (error.response.status === 403) {
+          onClose?.();
+        }
         message.error(error.response.data.message);
       } else if (error.message) {
         message.error(error.message);
@@ -1890,10 +1895,10 @@ const QuoteModal = ({
                 </div>
               </div>
 
-              {editDeadline && (
-                <div className="hidden lg:flex items-center text-[11px] text-amber-700 font-bold bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-xl">
+              {(editDeadline || isLocked) && (
+                <div className={`hidden lg:flex items-center text-[11px] font-bold px-3 py-1.5 rounded-xl border ${isLocked ? 'text-red-700 bg-red-50 border-red-100' : 'text-amber-700 bg-amber-50 border-amber-100'}`}>
                   <History className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
-                  Edit window: {editDeadline.toLocaleDateString()}
+                  {isLocked ? 'Order locked' : `Edit window: ${editDeadline.toLocaleDateString()}`}
                 </div>
               )}
             </div>
@@ -1939,10 +1944,12 @@ const QuoteModal = ({
                 /* Final step — places order then immediately redirects to Stripe */
                 <button
                   onClick={handleConfirmOrder}
-                  disabled={isLoading}
+                  disabled={isLoading || isLocked}
                   className="flex-1 sm:flex-none flex items-center justify-center bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-7 rounded-xl font-bold text-sm hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {isLoading ? (
+                  {isLocked ? (
+                    'Order Locked'
+                  ) : isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Redirecting to payment...

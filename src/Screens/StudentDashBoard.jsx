@@ -889,6 +889,18 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     ];
     // Generic handler for all option changes
     // Function to collect all selected options
+    const getSavedSelections = () => {
+        try {
+            const rawUser = localStorage.getItem('user');
+            const sName = rawUser ? (JSON.parse(rawUser)?.name || selectedStudent || user?.name || "") : selectedStudent || user?.name || "";
+            const saved = localStorage.getItem('studentCustomizations');
+            const parsed = saved ? JSON.parse(saved) : null;
+            return sName && parsed?.[sName] ? parsed[sName] : null;
+        } catch {
+            return null;
+        }
+    };
+
     // Force iframe src initialization
     useEffect(() => {
         const playcanvasUrl = 'https://playcanv.as/e/p/1b1eadeb/';
@@ -902,6 +914,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     useEffect(() => {
         if (!isAppReady) return;
 
+        const latestSelections = getSavedSelections() || allSelections;
         const menuIndex = menuItems.findIndex(item => item.name === activeMenu);
         if (menuIndex !== -1) {
             ['preview-iframe', 'preview-iframe2'].forEach((id) => {
@@ -918,7 +931,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                     setTimeout(() => {
                         const currentIframe = document.getElementById(id);
                         if (currentIframe?.contentWindow) {
-                            const currentData = allSelections[activeMenu];
+                            const currentData = latestSelections[activeMenu];
                             if (currentData) {
                                 const { selectedColor, selectedSize } = currentData;
 
@@ -943,8 +956,13 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                     }, 300);
                 }
             });
+
+            setTimeout(() => {
+                setAllSelections(JSON.parse(JSON.stringify(latestSelections)));
+                window.dispatchEvent(new Event("resendBackDesign"));
+            }, 650);
         }
-    }, [activeMenu, isAppReady]);
+    }, [activeMenu, garmentTab, isAppReady]);
 
     useEffect(() => {
         const handleMessage = (event) => {
@@ -1119,20 +1137,16 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
                 {/* Global Header */}
                 <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-40">
-                    <div className="flex items-center space-x-3">
-                        <div className="w-22 flex items-center justify-center">
+                    <div className="flex items-center gap-4">
+                        <div className="w-24 flex items-center justify-center">
                             <img src="clothLogo.png" alt="" />
                         </div>
-                        <div>
-                            <div className="flex items-center space-x-2">
-                                {isLocked && (
-                                    <Tag color="error" className="flex items-center space-x-1 px-1.5 py-0 rounded border-red-100 h-4">
-                                        <Lock className="w-2.5 h-2.5" />
-                                        <span className="text-[9px] font-bold uppercase">Locked</span>
-                                    </Tag>
-                                )}
+                        {isLocked && (
+                            <div className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-700 shadow-sm">
+                                <Lock className="w-3.5 h-3.5" />
+                                <span className="text-[11px] font-bold uppercase tracking-wide">Locked</span>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     <div className="flex items-center space-x-2 sm:space-x-4">
@@ -1146,15 +1160,15 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 <span className="hidden sm:inline">Undo</span>
                             </button>
                         )}
-                        <button
+                        {/* <button
                             onClick={handleSaveClick}
                             disabled={isSaving || (isLocked && !isAdmin)}
                             className={`flex items-center space-x-2 px-3 py-2 ${isSaving ? 'bg-slate-100' : 'bg-green-600 hover:bg-green-700'} text-white rounded-xl transition-all font-medium text-sm shadow-sm disabled:opacity-50`}
                         >
                             <Settings className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} />
                             <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save Design'}</span>
-                        </button>
-                        {dbHistory.length > 0 && (
+                        </button> */}
+                        {/* {dbHistory.length > 0 && (
                             <button
                                 onClick={() => setIsHistoryModalOpen(true)}
                                 className="flex items-center space-x-2 px-3 py-2 bg-white text-slate-600 rounded-xl hover:bg-slate-50 transition-all font-medium text-sm border border-slate-200"
@@ -1163,7 +1177,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 <History className="w-4 h-4 text-green-600" />
                                 <span className="hidden sm:inline">History</span>
                             </button>
-                        )}
+                        )} */}
                         {/* <button
                             onClick={() => setShowBackPopup(true)}
                             className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-900 transition-all font-medium text-sm shadow-md"
@@ -1256,7 +1270,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 pending_payment: { label: 'Payment Processing…', dot: 'bg-yellow-400 animate-pulse', text: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200' },
                                 locked_awaiting_payment: { label: 'Awaiting Payment', dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50 border-red-200' },
                                 partial_paid: { label: 'Partial Paid – Balance Due', dot: 'bg-orange-500', text: 'text-orange-700', bg: 'bg-orange-50 border-orange-200' },
-                                paid: { label: editWindowOpen ? 'Paid ✓ – Edit window open' : 'Paid ✓', dot: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+                                paid: { label: isLocked ? 'Paid ✓ – Order locked' : editWindowOpen ? 'Paid ✓ – Edit window open' : 'Paid ✓', dot: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50 border-green-200' },
                                 in_production: { label: 'In Production', dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
                                 production: { label: 'In Production', dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
                                 dispatched: { label: 'Dispatched', dot: 'bg-purple-500', text: 'text-purple-700', bg: 'bg-purple-50 border-purple-200' },
@@ -1336,7 +1350,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                         })()}
 
                         {/* Edit deadline */}
-                        {editDeadline && (
+                        {editDeadline && !isLocked && (
                             <>
                                 <div className="w-px h-4 bg-slate-200" />
                                 <div className="flex items-center gap-1.5">
@@ -1457,7 +1471,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 onClick={() => {
                                     if (processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0) {
                                         handlePayNow();
-                                    } else if (processStatus === 'paid' && !editWindowOpen) {
+                                    } else if ((processStatus === 'paid' && !editWindowOpen) || (isLocked && !isAdmin)) {
                                         // Edit window closed — nothing to do
                                     } else {
                                         setIsQuoteModalOpen(true);
@@ -1467,17 +1481,18 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                     !sizeFlag ||
                                     isPayingBalance ||
                                     processStatus === 'pending_payment' ||
-                                    (processStatus === 'paid' && !editWindowOpen)
+                                    (processStatus === 'paid' && !editWindowOpen) ||
+                                    (isLocked && !isAdmin)
                                 }
                                 className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 shadow-md
-                                    ${(processStatus === 'pending_payment') || (processStatus === 'paid' && !editWindowOpen)
+                                    ${(processStatus === 'pending_payment') || (processStatus === 'paid' && !editWindowOpen) || (isLocked && !isAdmin)
                                         ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                         : !sizeFlag
                                             ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                             : processStatus === 'partial_paid'
                                                 ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 hover:shadow-lg"
                                                 : processStatus === 'paid' && editWindowOpen
-                                                    ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 hover:shadow-lg"
+                                                    ? "bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 hover:shadow-lg"
                                                     : "bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 hover:shadow-lg"
                                     }`}
                             >
@@ -1485,6 +1500,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                     ? 'Opening payment…'
                                     : processStatus === 'pending_payment'
                                         ? 'Awaiting payment confirmation…'
+                                        : isLocked && !isAdmin
+                                            ? 'Order Locked'
                                         : processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0
                                             ? `Pay Balance – ${(paymentBreakdown?.balance_due || 0).toFixed(2)} DKK`
                                             : processStatus === 'paid' && editWindowOpen
@@ -1673,7 +1690,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                     <span className="text-xl font-bold text-slate-900">{GARMENT_PRICES[activeMenu]} DKK</span>
                                 </div>
                             </div>
-                            <div className="flex space-x-3 mb-4">
+                            {/* <div className="flex space-x-3 mb-4">
                                 <button
                                     onClick={handleSaveOrder}
                                     disabled={isSaving || (isLocked && !isAdmin)}
@@ -1691,12 +1708,12 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                         <span>History</span>
                                     </button>
                                 )}
-                            </div>
+                            </div> */}
                             <button
                                 onClick={() => {
                                     if (processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0) {
                                         handlePayNow();
-                                    } else if (processStatus === 'paid' && !editWindowOpen) {
+                                    } else if ((processStatus === 'paid' && !editWindowOpen) || (isLocked && !isAdmin)) {
                                         // do nothing
                                     } else {
                                         setIsQuoteModalOpen(true);
@@ -1705,14 +1722,15 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 disabled={
                                     isPayingBalance ||
                                     processStatus === 'pending_payment' ||
-                                    (processStatus === 'paid' && !editWindowOpen)
+                                    (processStatus === 'paid' && !editWindowOpen) ||
+                                    (isLocked && !isAdmin)
                                 }
-                                className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 shadow-md ${processStatus === 'pending_payment' || (processStatus === 'paid' && !editWindowOpen)
+                                className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 shadow-md ${processStatus === 'pending_payment' || (processStatus === 'paid' && !editWindowOpen) || (isLocked && !isAdmin)
                                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                     : processStatus === 'partial_paid'
                                         ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 hover:shadow-lg"
                                         : processStatus === 'paid' && editWindowOpen
-                                            ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 hover:shadow-lg"
+                                            ? "bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 hover:shadow-lg"
                                             : "bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 hover:shadow-lg"
                                     }`}
                             >
@@ -1720,6 +1738,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                     ? 'Opening payment…'
                                     : processStatus === 'pending_payment'
                                         ? 'Awaiting confirmation…'
+                                        : isLocked && !isAdmin
+                                            ? 'Order Locked'
                                         : processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0
                                             ? `Pay Balance – ${(paymentBreakdown?.balance_due || 0).toFixed(2)} DKK`
                                             : processStatus === 'paid' && editWindowOpen
@@ -1753,6 +1773,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                     onPayNow={handlePayNow}
                     isPayingBalance={isPayingBalance}
                     existingProductTypes={existingProductTypes}
+                    isLocked={isLocked && !isAdmin}
                 />
                 <HistoryModal
                     isOpen={isHistoryModalOpen}
