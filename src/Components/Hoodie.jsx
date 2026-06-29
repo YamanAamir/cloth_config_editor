@@ -266,11 +266,11 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
     if (logoSrc) {
       try {
         const img = await loadImage(logoSrc);
-        const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height);
+        const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height * 0.8);
 
         // Normal path dimensions
         const LOGO_W_SCALE = 0.8;
-        const LOGO_H_SCALE = 0.9;
+        const LOGO_H_SCALE = 1;
         const w = img.width * ratio * LOGO_W_SCALE;
         const h = img.height * ratio * LOGO_H_SCALE;
         const x = (CANVAS_WIDTH - w) / 2;

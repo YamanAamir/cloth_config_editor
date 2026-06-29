@@ -189,8 +189,8 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
 
               // ── Logo size ──
               const LOGO_W_SCALE = 0.8;
-              const LOGO_H_SCALE = 0.9;
-              const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height);
+              const LOGO_H_SCALE = 1;
+              const ratio = Math.min(CANVAS_WIDTH / img.width, FLAG_HEIGHT / img.height * 0.8);
 
               // Normal path dimensions
               const w = img.width * ratio * LOGO_W_SCALE;
@@ -219,8 +219,6 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
               for (let i = 3; i < tmpD.data.length; i += 4) {
                 if (tmpD.data[i] < 254) { imgHasAlpha = true; break; }
               }
-
-              // near-black / near-white count (opaque pixels) — two-tone check
               let nBlack = 0, nWhite = 0, nOpaque = 0;
               for (let i = 0; i < tmpD.data.length; i += 4) {
                 if (tmpD.data[i + 3] < 20) continue;
@@ -230,15 +228,13 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
                 else if (lum > 205) nWhite++;
               }
               const twoToneRatio = nOpaque ? (nBlack + nWhite) / nOpaque : 0;
-              const isTwoTone = twoToneRatio > 0.9 && nBlack > 0 && nWhite > 0; // sirf B/W logos
+              const isTwoTone = twoToneRatio > 0.9 && nBlack > 0 && nWhite > 0;
 
-              // background tone (corners average)
               const cLum = [[0, 0], [img.width - 1, 0], [0, img.height - 1], [img.width - 1, img.height - 1]]
                 .map(([px, py]) => { const k = (py * img.width + px) * 4; return 0.299 * tmpD.data[k] + 0.587 * tmpD.data[k + 1] + 0.114 * tmpD.data[k + 2]; });
               const bgIsWhite = (cLum.reduce((s, v) => s + v, 0) / 4) > 127;
 
               if (isTwoTone) {
-                // ── CLEAN PATH: white-bg+black-shape ya black-bg+white-shape ──
                 const workC = document.createElement("canvas");
                 workC.width = W; workC.height = H;
                 const wctx = workC.getContext("2d");
