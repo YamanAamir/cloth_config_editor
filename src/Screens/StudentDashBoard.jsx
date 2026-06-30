@@ -984,6 +984,35 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             }, 650);
         }
     }, [activeMenu, garmentTab, isAppReady]);
+
+    // On initial load, if saved garment data is already present, immediately resend
+    // the relevant preview messages so flag/logo payloads aren't stuck behind a tab switch.
+    useEffect(() => {
+        if (!isAppReady || !allSelections?.[activeMenu]) return;
+
+        const currentData = allSelections[activeMenu];
+        const prefixMap = {
+            'T-SHIRT': 'T-Shirt: ',
+            'SWEATSHIRT': 'SweatShirt: ',
+            'HOODIE': 'Hoodie: ',
+            'ZIPPERHOODIE': 'ZipperHoodie: ',
+            'SWEATPANTS': 'SweatPant: ',
+            'SHORTS': 'Short: '
+        };
+        const prefix = prefixMap[activeMenu];
+
+        ['preview-iframe', 'preview-iframe2'].forEach((id) => {
+            const iframe = document.getElementById(id);
+            if (iframe?.contentWindow) {
+                if (prefix) {
+                    if (currentData.selectedColor) iframe.contentWindow.postMessage(`${prefix}${currentData.selectedColor.toLowerCase()}`, "*");
+                    if (currentData.selectedSize) iframe.contentWindow.postMessage(`${prefix}size:${currentData.selectedSize}`, "*");
+                }
+            }
+        });
+
+        window.dispatchEvent(new Event("resendBackDesign"));
+    }, [isAppReady, activeMenu, allSelections]);
     // Safety-net: first load pe (default T-SHIRT tab) bhi flags/logos postMessage
     // ek dafa force-resync ho jaye, jaisa tab-switch pe hota hai.
     // PlayCanvas ka asset/texture load app:ready ke baad bhi thodi der le sakta hai,

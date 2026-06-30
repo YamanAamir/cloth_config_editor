@@ -575,6 +575,14 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   const prevPressureOptionsRef = React.useRef({});
   const renderCounterRef = React.useRef({});
 
+  // Reset stale comparison when the preview app becomes ready so first-load
+  // saved flags/logos are not skipped after an early pre-ready render.
+  useEffect(() => {
+    if (isAppReady) {
+      prevPressureOptionsRef.current = {};
+    }
+  }, [isAppReady]);
+
   useEffect(() => {
     const areas = ["rightChest", "leftChest", "rightSleeve", "leftSleeve"];
 

@@ -515,22 +515,15 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
     onUpdate({
       pressureOptions: {
         ...pressureOptions,
-        [`${area}Type`]: type, [`${area}Text`]: "",
-        ...(type === "flag" ? { [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" }
-          : type === "logo" ? { [`${area}Flag`]: "" }
-            : { [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" }),
+        [`${area}Type`]: type,
+        [`${area}Flag`]: type === "flag" ? pressureOptions[`${area}Flag`] : "",
+        [`${area}Flag2`]: "",
+        [`${area}FlagCount`]: 1,
+        [`${area}LogoPredefined`]: type === "logo" ? pressureOptions[`${area}LogoPredefined`] : "",
+        [`${area}LogoCustom`]: type === "logo" ? pressureOptions[`${area}LogoCustom`] : "",
       },
     });
   };
-
-  useEffect(() => {
-    if (logos && logos.length === 1) {
-      const fields = ["rightLegLogoPredefined", "leftLegLogoPredefined"];
-      if (!fields.some(f => pressureOptions[f])) {
-        onUpdate({ pressureOptions: { ...pressureOptions, rightLegLogoPredefined: logos[0].name, selectedLogoId: logos[0].id } });
-      }
-    }
-  }, [logos]);
 
   useEffect(() => {
     if (!data?.selectedColor) onUpdate({ selectedColor: "Heather Grey" });
@@ -639,13 +632,13 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
       }
 
       // ── 2. Flag / Logo texture — send separately ──────────────────────────
-      const opacity = getEmissiveBase64("", hasFlag, hasLogo, flagCount);
+      const opacity = getEmissiveBase64(text, hasFlag, hasLogo, flagCount, textColor);
       ["preview-iframe", "preview-iframe2"].forEach(id => {
         const f = document.getElementById(id);
         if (f?.contentWindow) f.contentWindow.postMessage(`Short:${area}_opacity: ${opacity}`, "*");
       });
 
-      getDiffuseBase64(flag, logoPre, logoCustom, "", (diffuse, logoOpacityBase) => {
+      getDiffuseBase64(flag, logoPre, logoCustom, text, (diffuse, logoOpacityBase) => {
         if (renderCounterRef.current[area] !== currentRender) return;
         ["preview-iframe", "preview-iframe2"].forEach(id => {
           const f = document.getElementById(id);

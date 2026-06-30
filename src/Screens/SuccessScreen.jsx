@@ -117,11 +117,12 @@ export default function SuccessScreen() {
   }
 
   // ── Derived values ────────────────────────────────────────────────────────────
-  const totalAmount    = parseFloat(order.total_amount  || 0);
-  const amountPaid     = parseFloat(order.amount_paid   || 0);
-  const balanceDue     = parseFloat(order.balance_due   || Math.max(0, totalAmount - amountPaid));
+  const pricing = order.pricing_breakdown || {};
+  const totalAmount    = parseFloat(pricing.order_total ?? order.total_amount ?? 0);
+  const amountPaid     = parseFloat(pricing.amount_paid ?? order.amount_paid ?? 0);
+  const balanceDue     = parseFloat(pricing.balance_due ?? order.balance_due ?? Math.max(0, totalAmount - amountPaid));
   const editDeadline   = order.edit_deadline ? new Date(order.edit_deadline) : null;
-  const editWindowOpen = editDeadline ? new Date() < editDeadline : false;
+  const editWindowOpen = Boolean(order.edit_window_open ?? (editDeadline ? new Date() < editDeadline : false));
   const isPartial      = order.process_status === "partial_paid";
   const isStillPending = order.process_status === "pending_payment";
   const delivery        = parseDeliveryDetails(order.delivery_details);
@@ -131,7 +132,6 @@ export default function SuccessScreen() {
   const items = (order.product_price_breakdown && order.product_price_breakdown.length > 0)
     ? order.product_price_breakdown
     : (order.order_items || []).map(i => ({ id: i.id, product_type: i.product_type, color: i.selectedColor, size: i.selectedSize, price: 0 }));
-  const pricing = order.pricing_breakdown || {};
   const productSubtotal = Number(pricing.product_subtotal ?? items.reduce((sum, item) => sum + Number(item.price || 0), 0));
   const deliveryCharges = Number(pricing.delivery_charges || 0);
   const handlingFee = Number(pricing.handling_fee || 0);
@@ -234,19 +234,23 @@ export default function SuccessScreen() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, i) => (
-                  <tr key={item.id || i} className="border-b border-slate-100">
-                    <td className="py-2.5 font-medium text-slate-700">{PRODUCT_LABELS[item.product_type] || item.product_type}</td>
-                    <td className="py-2.5 text-slate-600">{item.color || "—"}</td>
-                    <td className="py-2.5 text-slate-600">{item.size || "—"}</td>
-                    {isPartial && (
-                      <td className={`py-2.5 font-semibold ${paidIds.has(item.id) ? "text-green-600" : "text-orange-600"}`}>
-                        {paidIds.has(item.id) ? "Paid" : "Pending"}
-                      </td>
-                    )}
-                    <td className="py-2.5 text-right font-semibold text-slate-800">{Number(item.price || 0).toFixed(2)} DKK</td>
-                  </tr>
-                ))}
+                {items.map((item, i) => {
+                  const productKey = item.product_type?.toUpperCase?.() ?? "";
+
+                  return (
+                    <tr key={item.id || i} className="border-b border-slate-100">
+                      <td className="py-2.5 font-medium text-slate-700">{PRODUCT_LABELS[productKey] || item.product_type}</td>
+                      <td className="py-2.5 text-slate-600">{item.color || "—"}</td>
+                      <td className="py-2.5 text-slate-600">{item.size || "—"}</td>
+                      {isPartial && (
+                        <td className={`py-2.5 font-semibold ${paidIds.has(item.id) ? "text-green-600" : "text-orange-600"}`}>
+                          {paidIds.has(item.id) ? "Paid" : "Pending"}
+                        </td>
+                      )}
+                      <td className="py-2.5 text-right font-semibold text-slate-800">{Number(item.price || 0).toFixed(2)} DKK</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
