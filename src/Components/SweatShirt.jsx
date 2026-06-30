@@ -44,7 +44,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
   React.useEffect(() => {
     const handleResend = () => {
       if (lastBackDataRef.current?.diffuse) {
-         sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
+        sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
       }
     };
     window.addEventListener("resendBackDesign", handleResend);
@@ -563,21 +563,21 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
             const d = octx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
             for (let i = 0; i < d.data.length; i += 4) {
               const bw = d.data[i + 3] > 127 ? 255 : 0;
-              d.data[i] = d.data[i+1] = d.data[i+2] = bw; d.data[i+3] = 255;
+              d.data[i] = d.data[i + 1] = d.data[i + 2] = bw; d.data[i + 3] = 255;
             }
             octx.putImageData(d, 0, 0);
           } else {
-            const gC = (px, py) => { const idx=(py*img.width+px)*4; return [tmpD.data[idx],tmpD.data[idx+1],tmpD.data[idx+2]]; };
-            const corners = [gC(0,0),gC(img.width-1,0),gC(0,img.height-1),gC(img.width-1,img.height-1)];
-            const bgR=corners.reduce((s,c)=>s+c[0],0)/4, bgG=corners.reduce((s,c)=>s+c[1],0)/4, bgB=corners.reduce((s,c)=>s+c[2],0)/4;
+            const gC = (px, py) => { const idx = (py * img.width + px) * 4; return [tmpD.data[idx], tmpD.data[idx + 1], tmpD.data[idx + 2]]; };
+            const corners = [gC(0, 0), gC(img.width - 1, 0), gC(0, img.height - 1), gC(img.width - 1, img.height - 1)];
+            const bgR = corners.reduce((s, c) => s + c[0], 0) / 4, bgG = corners.reduce((s, c) => s + c[1], 0) / 4, bgB = corners.reduce((s, c) => s + c[2], 0) / 4;
             const thr = 90;
             octx.drawImage(img, x, y, w, h); // 👈 normal dimensions
             const d = octx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
             for (let i = 0; i < d.data.length; i += 4) {
-              const a = d.data[i+3]; let bw;
+              const a = d.data[i + 3]; let bw;
               if (a < 10) { bw = 0; }
-              else { const diff=Math.abs(d.data[i]-bgR)+Math.abs(d.data[i+1]-bgG)+Math.abs(d.data[i+2]-bgB); bw = diff > thr ? 255 : 0; }
-              d.data[i]=d.data[i+1]=d.data[i+2]=bw; d.data[i+3]=255;
+              else { const diff = Math.abs(d.data[i] - bgR) + Math.abs(d.data[i + 1] - bgG) + Math.abs(d.data[i + 2] - bgB); bw = diff > thr ? 255 : 0; }
+              d.data[i] = d.data[i + 1] = d.data[i + 2] = bw; d.data[i + 3] = 255;
             }
             octx.putImageData(d, 0, 0);
           }
@@ -885,7 +885,6 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
           if (iframe?.contentWindow) {
             const msg = `SweatShirt:${area}_opacity: ${opacity}`;
             iframe.contentWindow.postMessage(msg, "*");
-            console.log("fahhh", msg);
           }
         });
       }

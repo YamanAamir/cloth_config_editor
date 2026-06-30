@@ -10,8 +10,7 @@ const useBackDesignStore = create((set) => ({
         set({ loading: true, error: null });
         try {
             const { data } = await getMyClassBackDesigns(params);
-            console.log("Fetched BackDesign:", data.data);
-
+            
             if (data.success) {
                 set({
                     // Store the design regardless of approval status so students can see their submitted design

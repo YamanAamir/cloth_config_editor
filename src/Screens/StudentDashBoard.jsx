@@ -99,6 +99,43 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         }
     };
 
+    // Tops chest/sleeve fields use rakhte hain, bottoms sirf leg fields — copy ke waqt inhe mix nahi karna
+    const GARMENT_FAMILY = {
+        'T-SHIRT': 'top', 'SWEATSHIRT': 'top', 'HOODIE': 'top', 'ZIPPERHOODIE': 'top',
+        'SWEATPANTS': 'bottom', 'SHORTS': 'bottom',
+    };
+
+    // Source garment ke pressureOptions ko target garment ke field-naming (Chest<->Leg) mein translate karta hai
+    // aur sirf wahi keys rakhta hai jo target garment ke schema mein actually exist karti hain (e.g. Sleeve/bottomChest
+    // fields ka koi equivalent SHORTS/SWEATPANTS pe nahi hota, isliye woh drop ho jati hain)
+    const mapPressureOptionsForGarment = (sourceOptions, sourceGarment, targetGarment) => {
+        const targetDefaults = DEFAULT_SELECTIONS[targetGarment]?.pressureOptions || {};
+        const sameFamily = GARMENT_FAMILY[sourceGarment] === GARMENT_FAMILY[targetGarment];
+        const mapped = {};
+
+        Object.entries(sourceOptions || {}).forEach(([key, value]) => {
+            if (key === 'backDesign') {
+                mapped.backDesign = value;
+                return;
+            }
+
+            let targetKey = key;
+            if (!sameFamily) {
+                if (key.startsWith('rightChest')) targetKey = 'rightLeg' + key.slice('rightChest'.length);
+                else if (key.startsWith('leftChest')) targetKey = 'leftLeg' + key.slice('leftChest'.length);
+                else if (key.startsWith('rightLeg')) targetKey = 'rightChest' + key.slice('rightLeg'.length);
+                else if (key.startsWith('leftLeg')) targetKey = 'leftChest' + key.slice('leftLeg'.length);
+                else return; // Sleeve*/bottomChest* — dusri family mein koi equivalent field nahi
+            }
+
+            if (targetDefaults.hasOwnProperty(targetKey)) {
+                mapped[targetKey] = value;
+            }
+        });
+
+        return mapped;
+    };
+
     const { fetchSettings, getGarmentPrice, getVat, getMaxCharsClothText } = useSettingsStore();
 
     // Fetch settings on mount
@@ -431,7 +468,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         userId ? `order_update_${userId}` : null,
         `order_update_${userId}`,
         (data) => {
-            console.log('🔔 Real-time order update received:', data);
             fetchOrderData();
             fetchHistoryData();
             fetchBackDesignStatus(); // Also refresh back design status
@@ -442,7 +478,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         userId ? `history_update_${userId}` : null,
         `history_update_${userId}`,
         (data) => {
-            console.log('🔔 Real-time history update received:', data);
             fetchHistoryData();
         }
     );
@@ -452,7 +487,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         user?.class_id ? `back_design_update_${user.class_id}` : null,
         `back_design_update_${user.class_id}`,
         (data) => {
-            console.log('🔔 Real-time back design update received:', data);
             fetchBackDesignStatus();
             if (data.approval_status === 'approved') {
                 message.success('🎉 Your back design has been approved!');
@@ -626,7 +660,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     }, [selectedStudent, customizations]);
 
     const handleUpdateSelection = (category, updates) => {
-        console.log("HANDLE UPDATE:", category, updates);
 
         // selectedStudent empty ho toh user name se fallback — data "" key pe na jaye
         const activeStudent = selectedStudent || user?.name || "Student";
@@ -639,7 +672,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
         // 1. Update LOCAL state immediately for responsive UI
         setAllSelections(prev => {
-            console.log("PREV STATE:", prev[category]);
             const next = JSON.parse(JSON.stringify(prev));
 
             // Color — sirf active garment pe apply hoga (sync band)
@@ -709,7 +741,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                 return updated;
             });
 
-            console.log("NEXT STATE:", next[category]);
             return next;
         });
     };
@@ -889,17 +920,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     ];
     // Generic handler for all option changes
     // Function to collect all selected options
-    const getSavedSelections = () => {
-        try {
-            const rawUser = localStorage.getItem('user');
-            const sName = rawUser ? (JSON.parse(rawUser)?.name || selectedStudent || user?.name || "") : selectedStudent || user?.name || "";
-            const saved = localStorage.getItem('studentCustomizations');
-            const parsed = saved ? JSON.parse(saved) : null;
-            return sName && parsed?.[sName] ? parsed[sName] : null;
-        } catch {
-            return null;
-        }
-    };
 
     // Force iframe src initialization
     useEffect(() => {
@@ -914,14 +934,15 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     useEffect(() => {
         if (!isAppReady) return;
 
-        const latestSelections = getSavedSelections() || allSelections;
+        // Stale localStorage read hata diya — allSelections hi hamesha authoritative/fresh state hai
+        // (localStorage write App.jsx mein 800ms debounce hai, isliye seedha localStorage padhna purana data de sakta hai)
+        const latestSelections = allSelections;
         const menuIndex = menuItems.findIndex(item => item.name === activeMenu);
         if (menuIndex !== -1) {
             ['preview-iframe', 'preview-iframe2'].forEach((id) => {
                 const iframe = document.getElementById(id);
                 if (iframe?.contentWindow) {
                     const pageNum = menuIndex + 1;
-                    console.log(`Sending Page : ${pageNum} for ${activeMenu}`);
 
                     // 1. Switch Page
                     iframe.contentWindow.postMessage(`Page : ${pageNum}`, "*");
@@ -963,11 +984,40 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             }, 650);
         }
     }, [activeMenu, garmentTab, isAppReady]);
+    // Safety-net: first load pe (default T-SHIRT tab) bhi flags/logos postMessage
+    // ek dafa force-resync ho jaye, jaisa tab-switch pe hota hai.
+    // PlayCanvas ka asset/texture load app:ready ke baad bhi thodi der le sakta hai,
+    // isliye ek single timer ki bajaye multiple retries karte hain taake reliably catch ho jaye.
+    const didInitialForceSync = useRef(false);
+    useEffect(() => {
+        if (!isAppReady || didInitialForceSync.current) return;
+        didInitialForceSync.current = true;
 
+        const doSync = () => {
+            const menuIndex = menuItems.findIndex(item => item.name === activeMenu);
+            if (menuIndex !== -1) {
+                ['preview-iframe', 'preview-iframe2'].forEach((id) => {
+                    const iframe = document.getElementById(id);
+                    if (iframe?.contentWindow) {
+                        const pageNum = menuIndex + 1;
+                        iframe.contentWindow.postMessage(`Page : ${pageNum}`, "*");
+                        iframe.contentWindow.postMessage('Tilvælg:no', "*");
+                    }
+                });
+            }
+            // Yeh hi line asal mein flags/logos/text components ko re-trigger karti hai
+            setAllSelections(prev => JSON.parse(JSON.stringify(prev)));
+            window.dispatchEvent(new Event("resendBackDesign"));
+        };
+
+        // Multiple retries — 1s, 2.5s, 4s — taake variable load time cover ho jaye
+        const timers = [1000, 2500, 4000].map(delay => setTimeout(doSync, delay));
+
+        return () => timers.forEach(clearTimeout);
+    }, [isAppReady]);
     useEffect(() => {
         const handleMessage = (event) => {
             if (event.data === 'app:ready') {
-                console.log("App Ready signal received in Dashboard");
                 setIsAppReady(true);
             }
         };
@@ -991,31 +1041,21 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         };
     }, []);
 
-    // ── Refresh ke baad full pressureOptions resend ──
-    // isAppReady true hone ke baad garment components ke pressureOptions useEffect
-    // fire nahi hote (state change nahi hoti) — toh manually force-trigger karo
     const allSelectionsRef = React.useRef(allSelections);
     useEffect(() => { allSelectionsRef.current = allSelections; }, [allSelections]);
 
     useEffect(() => {
         if (!isAppReady) return;
 
-        // Thodi der baad fire karo — Page switch message pehle process ho jaye
         const timer = setTimeout(() => {
-            // Active garment ke pressureOptions force re-send karo
-            // Har garment component ka pressureOptions useEffect tab fire hota hai
-            // jab pressureOptions object change ho — ek dummy setAllSelections se trigger karo
             setAllSelections(prev => {
-                // Deep clone se naya reference banta hai — useEffect fire hoga
                 return JSON.parse(JSON.stringify(prev));
             });
-            console.log("✅ Full pressureOptions resend triggered after app:ready");
         }, 800);
 
         return () => clearTimeout(timer);
     }, [isAppReady]);
 
-    // Jab selected student change ho → uske customizations load karo
     useEffect(() => {
         if (!selectedStudent) return;
 
@@ -1041,7 +1081,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             setAllSelections(customizations[selectedStudent]);
         }
     }, [selectedStudent]);
-    console.log("logosasasad", logos);
     return (
         <>
             {/* ── Copy Design Prompt Modal ── */}
@@ -1058,15 +1097,19 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                         <div className="flex gap-3">
                             <button
                                 onClick={() => {
-                                    // Copy pressureOptions from source to target
+                                    // Copy pressureOptions from source to target — via handleUpdateSelection
+                                    // taake customizations (parent state) bhi update ho aur localStorage autosave/undo history ke saath sync rahe
+                                    // Field names bhi target garment ke schema mein translate hote hain (Chest<->Leg), warna
+                                    // SHORTS/SWEATPANTS jaise garments pe chest/sleeve fields ghuskar pollute kar dete hain
                                     const sourceData = allSelections[copyDesignPrompt.from];
-                                    setAllSelections(prev => ({
-                                        ...prev,
-                                        [copyDesignPrompt.to]: {
-                                            ...prev[copyDesignPrompt.to],
-                                            pressureOptions: { ...sourceData.pressureOptions }
-                                        }
-                                    }));
+                                    const mappedOptions = mapPressureOptionsForGarment(
+                                        sourceData.pressureOptions,
+                                        copyDesignPrompt.from,
+                                        copyDesignPrompt.to
+                                    );
+                                    handleUpdateSelection(copyDesignPrompt.to, {
+                                        pressureOptions: mappedOptions
+                                    });
                                     setActiveMenu(copyDesignPrompt.to);
                                     setCopyDesignPrompt(null);
                                 }}
@@ -1301,7 +1344,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 </div>
                             );
                         })() : null}
-{/* (
+                        {/* (
                             <span key="payment-fallback" className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${paymentStatus === 'paid' ? 'bg-green-100 text-green-700' :
                                 paymentStatus === 'partial' ? 'bg-orange-100 text-orange-700' :
                                     'bg-slate-100 text-slate-500'
@@ -1502,13 +1545,13 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                         ? 'Awaiting payment confirmation…'
                                         : isLocked && !isAdmin
                                             ? 'Order Locked'
-                                        : processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0
-                                            ? `Pay Balance – ${(paymentBreakdown?.balance_due || 0).toFixed(2)} DKK`
-                                            : processStatus === 'paid' && editWindowOpen
-                                                ? 'Add More Products & Pay'
-                                                : processStatus === 'paid' && !editWindowOpen
-                                                    ? 'Edit Window Closed'
-                                                    : 'Approve and Pay'
+                                            : processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0
+                                                ? `Pay Balance – ${(paymentBreakdown?.balance_due || 0).toFixed(2)} DKK`
+                                                : processStatus === 'paid' && editWindowOpen
+                                                    ? 'Add More Products & Pay'
+                                                    : processStatus === 'paid' && !editWindowOpen
+                                                        ? 'Edit Window Closed'
+                                                        : 'Approve and Pay'
                                 }
                             </button>
                         </div>
@@ -1740,13 +1783,13 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                         ? 'Awaiting confirmation…'
                                         : isLocked && !isAdmin
                                             ? 'Order Locked'
-                                        : processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0
-                                            ? `Pay Balance – ${(paymentBreakdown?.balance_due || 0).toFixed(2)} DKK`
-                                            : processStatus === 'paid' && editWindowOpen
-                                                ? 'Add More Products & Pay'
-                                                : processStatus === 'paid' && !editWindowOpen
-                                                    ? 'Edit Window Closed'
-                                                    : 'Approve and Pay'
+                                            : processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0
+                                                ? `Pay Balance – ${(paymentBreakdown?.balance_due || 0).toFixed(2)} DKK`
+                                                : processStatus === 'paid' && editWindowOpen
+                                                    ? 'Add More Products & Pay'
+                                                    : processStatus === 'paid' && !editWindowOpen
+                                                        ? 'Edit Window Closed'
+                                                        : 'Approve and Pay'
                                 }
                             </button>
                         </div>

@@ -94,7 +94,6 @@ function App() {
   useEffect(() => {
     const handleMessage = (event) => {
       if (typeof event.data === 'string' && event.data === 'app:ready') {
-        console.log("App Ready signal received");
         setIsAppReady(true);
       }
     };

@@ -22,7 +22,7 @@ const colors = [
 ];
 
 const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText = 25, activeTab: externalTab }) => {
-  console.log("🎽 Tshirt component received backDesigns:", backDesigns);
+
   const [internalTab, setInternalTab] = useState("size");
   const activeTab = externalTab || internalTab;
   const setActiveTab = externalTab ? () => { } : setInternalTab;
@@ -618,7 +618,6 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
           const iframe = document.getElementById(id);
           if (iframe?.contentWindow) {
             iframe.contentWindow.postMessage(`T-Shirt:${area}_opacity: ${opacity}`, "*");
-            console.log("aassqwqwsasqwwsasasO", area, "-->", opacity);
           }
         });
       }
@@ -738,7 +737,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   useEffect(() => {
     const handleResend = () => {
       if (lastBackDataRef.current?.diffuse) {
-         sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
+        sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
       }
     };
     window.addEventListener("resendBackDesign", handleResend);
@@ -763,14 +762,6 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       });
     }
   };
-
-  useEffect(() => {
-    if (pressureOptions?.backDesign && isAppReady) {
-      console.log("Back design detected, triggering canvas update:", pressureOptions.backDesign);
-    }
-  }, [pressureOptions?.backDesign, isAppReady]);
-
-  // Filter colors based on garment toggle — dark garment shows dark colors, light shows light colors
   const visibleColors = backDesigns
     ? colors.filter(c => (designColor === "dark" ? c.dark : !c.dark))
     : colors;
@@ -779,32 +770,6 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
 
   return (
     <div className="max-w-md mx-auto">
-      {/* Tab Navigation — sirf jab external tab na ho */}
-      {/* {!externalTab && (
-      <div className="flex gap-4 mb-8">
-        <button
-          onClick={() => setActiveTab("size")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeTab === "size"
-            ? "bg-white shadow-sm border-2 border-green-700"
-            : "bg-white border-2 border-transparent hover:border-gray-300"
-            }`}
-        >
-          <span className="font-medium text-gray-900">Size and color</span>
-          <img className="w-10" src={cog} alt="settings" />
-        </button>
-        <button
-          onClick={() => setActiveTab("pressure")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeTab === "pressure"
-            ? "bg-white shadow-sm border-2 border-green-700"
-            : "bg-white border-2 border-transparent hover:border-gray-300"
-            }`}
-        >
-          <span className="font-medium text-gray-900">Pressure</span>
-          <img className="w-10" src={plus} alt="add" />
-        </button>
-      </div>
-      )} */}
-
       {activeTab === "size" ? (
         <>
           <h1 className="text-lg font-bold mb-3 text-gray-900">T-shirt</h1>
@@ -832,7 +797,6 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
               </div>
             </div>
           )}
-          {/* Color — 2-row grid */}
           <div className="mb-4">
             <h2 className="text-xs font-semibold mb-2 text-gray-500 uppercase tracking-wide">Color</h2>
             <div className="grid grid-flow-col grid-rows-1 gap-2 w-fit">
@@ -846,7 +810,6 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
             </div>
             {selectedColor && <p className="text-xs text-gray-500 mt-1.5">{selectedColor}</p>}
           </div>
-          {/* Size */}
           <div className="mb-5">
             <h2 className="text-xs font-semibold mb-2 text-gray-500 uppercase tracking-wide">Size</h2>
             <div className="flex flex-wrap gap-2">
@@ -980,13 +943,6 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
 
             {["rightSleeve", "leftSleeve"].map((area) => (
               <div key={area} className="bg-white rounded-lg p-4 mb-4">
-                {
-                  console.log(
-                    area,
-                    pressureOptions[`${area}FlagCount`],
-                    Number(pressureOptions[`${area}FlagCount`] || 1)
-                  )
-                }
                 <h3 className="font-semibold text-gray-900 mb-3">
                   {area === "rightSleeve" ? "Right Sleeve:" : "Left Sleeve:"}
                 </h3>
@@ -1062,16 +1018,11 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
                           {[1, 2].map((n) => (
                             <button key={n} type="button"
                               onClick={() => {
-                                console.log("clicked", n);
-
                                 const updatedOptions = {
                                   ...pressureOptions,
                                   [`${area}FlagCount`]: n,
                                   ...(n === 1 ? { [`${area}Flag2`]: "" } : {}),
                                 };
-
-                                console.log("updatedOptions", updatedOptions);
-
                                 onUpdate({
                                   pressureOptions: updatedOptions,
                                 });

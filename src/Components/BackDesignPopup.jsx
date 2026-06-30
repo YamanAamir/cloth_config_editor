@@ -4,7 +4,6 @@ import { X } from 'lucide-react';
 
 const BackDesignPopup = ({ onFinish, customizations, setCustomizations, students, backDesigns }) => {
     const [activeTab, setActiveTab] = useState('T-SHIRT');
-    console.log("backDesignsasdad", backDesigns);
 
     const productTabs = [
         { name: 'T-SHIRT', postEx: 'T-Shirt:' },

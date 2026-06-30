@@ -198,38 +198,29 @@ const QuoteModal = ({
   // Track which field was last focused - ONLY on step 1
   useEffect(() => {
     if (currentStep !== 1) return;
-    console.log('first');
-
     const handleFocus = (index) => {
       lastFocusedIndex.current = index;
-      console.log('second');
     };
 
-    // Add focus event listeners to all refs
     refOrder.forEach((ref, index) => {
       if (ref.current) {
         ref.current.addEventListener("focus", () => handleFocus(index));
-        console.log('third');
       }
     });
 
     return () => {
-      // Cleanup focus event listeners
       refOrder.forEach((ref) => {
         if (ref.current) {
           ref.current.removeEventListener("focus", () => { });
-          console.log('fourth');
         }
       });
     };
   }, [currentStep]); // Re-run when step changes
 
-  // Click outside → focus next field - ONLY on step 1
   useEffect(() => {
     if (currentStep !== 1) return;
 
     const handleClick = (e) => {
-      // Don't trigger if clicking on form elements or buttons
       if (e.target.matches('input, textarea, select')) {
         return;
       }
