@@ -211,14 +211,14 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
     // 2. State
     const [allSelections, setAllSelections] = useState(() => {
-        // Refresh pe localStorage se data load karo — user directly localStorage se padho
+        // Refresh pe localStorage se data load karo — email ko key ki tarah use karo
         try {
             const rawUser = localStorage.getItem('user');
-            const sName = rawUser ? (JSON.parse(rawUser)?.name || "") : "";
-            if (sName) {
+            const sKey = rawUser ? (JSON.parse(rawUser)?.email || "") : "";
+            if (sKey) {
                 const saved = localStorage.getItem('studentCustomizations');
                 const parsed = saved ? JSON.parse(saved) : null;
-                if (parsed && parsed[sName]) return parsed[sName];
+                if (parsed && parsed[sKey]) return parsed[sKey];
             }
         } catch { /* ignore */ }
         return DEFAULT_SELECTIONS;
@@ -255,14 +255,13 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     const [historyIndex, setHistoryIndex] = useState(-1);
     const [dbHistory, setDbHistory] = useState([]);
     const [isAdmin, setIsAdmin] = useState(false);
-    // selectedStudent — user login hote hi name se initialize karo
+    // selectedStudent — user login hote hi EMAIL se initialize karo (unique key)
     const userStr = localStorage.getItem("user");
     const user = userStr ? JSON.parse(userStr) : null;
     const [selectedStudent, setSelectedStudent] = useState(() => {
-        // Direct localStorage se padho taake React state order matter na kare
         try {
             const rawUser = localStorage.getItem('user');
-            return rawUser ? (JSON.parse(rawUser)?.name || "") : "";
+            return rawUser ? (JSON.parse(rawUser)?.email || "") : "";
         } catch { return ""; }
     });
     const [existingDeliveryDetails, setExistingDeliveryDetails] = useState(null);
@@ -318,11 +317,57 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     }, [school_id, fetchLogos]);
 
     // Auto-fetch back designs on mount so Test.jsx gets them without button
+    // Also update localStorage studentCustomizations with fresh backDesign src
+    // so stale cached image URLs get replaced with the latest from API on every refresh
     useEffect(() => {
         const classId = user?.class_id;
-        if (classId) {
-            fetchBackDesigns({ class_id: classId });
-        }
+        if (!classId) return;
+
+        fetchBackDesigns({ class_id: classId });
+
+        // Fetch latest back design and sync backDesign.src in localStorage
+        getMyClassBackDesigns().then(res => {
+            if (!res.data?.success || !res.data?.data) return;
+            const design = res.data.data;
+            const latestSrc = design.configured_file_path
+                ? `${BASE_URL}${design.configured_file_path.replace(/\\/g, '/')}`
+                : null;
+            if (!latestSrc) return;
+
+            const sName = user?.name;
+            if (!sName) return;
+
+            try {
+                const stored = localStorage.getItem('studentCustomizations');
+                if (!stored) return;
+                const parsed = JSON.parse(stored);
+                if (!parsed[sName]) return;
+
+                let updated = false;
+                const studentData = JSON.parse(JSON.stringify(parsed[sName]));
+
+                // Update backDesign.src in ALL garment types where it is set
+                Object.keys(studentData).forEach(garmentType => {
+                    const po = studentData[garmentType]?.pressureOptions;
+                    if (po?.backDesign?.src && po.backDesign.src !== latestSrc) {
+                        po.backDesign.src     = latestSrc;
+                        po.backDesign.designId = design.id;
+                        updated = true;
+                    }
+                });
+
+                if (updated) {
+                    parsed[sName] = studentData;
+                    localStorage.setItem('studentCustomizations', JSON.stringify(parsed));
+                    // Update React state so UI immediately shows latest image
+                    setAllSelections(studentData);
+                    setCustomizations(prev => ({ ...prev, [sName]: studentData }));
+                    console.log('✅ backDesign.src synced with latest API image');
+                }
+            } catch (err) {
+                console.error('Failed to update backDesign src in localStorage:', err);
+            }
+        }).catch(() => {});
     }, []);
 
     // --- Real-time Socket Updates ---
