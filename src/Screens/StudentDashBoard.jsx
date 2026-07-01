@@ -350,7 +350,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                 Object.keys(studentData).forEach(garmentType => {
                     const po = studentData[garmentType]?.pressureOptions;
                     if (po?.backDesign?.src && po.backDesign.src !== latestSrc) {
-                        po.backDesign.src     = latestSrc;
+                        po.backDesign.src = latestSrc;
                         po.backDesign.designId = design.id;
                         updated = true;
                     }
@@ -367,7 +367,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             } catch (err) {
                 console.error('Failed to update backDesign src in localStorage:', err);
             }
-        }).catch(() => {});
+        }).catch(() => { });
     }, []);
 
     // --- Real-time Socket Updates ---
@@ -599,7 +599,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     }, [processStatus]);
     // --- Fetch Existing Order & History on mount ---
     useEffect(() => {
-        if (user && user.role === 'student') {
+        if (user && ['student', 'class_representative'].includes(user.role)) {
             // Use pre-fetched data from App.jsx immediately (no API wait)
             if (initialOrderData) processOrderResponse(initialOrderData);
             if (initialHistoryData) setDbHistory(initialHistoryData);
@@ -627,7 +627,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     // ── Refetch when navigating BACK to dashboard from Stripe payment ──
     // location.key changes every navigation — catches back-from-success
     useEffect(() => {
-        if (user && user.role === 'student') {
+        if (user && ['student', 'class_representative'].includes(user.role)) {
             fetchOrderData();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1352,7 +1352,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
 
                 {/* Status Bar for Locked / Deadline / Progress */}
-                <div className="bg-white border-b border-slate-200 px-6 py-2 flex items-center justify-between shadow-sm">
+                <div className="bg-white border-b border-slate-200 lg:px-6 px-3 py-2 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-4 flex-wrap">
                         {/* Items configured */}
                         <div className="flex items-center gap-1.5">
@@ -1487,10 +1487,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
                 <div className="hidden md:flex h-[calc(96vh-80px)] w-full relative">
                     {/* Sidebar */}
-                    <div className="flex flex-col h-full border-r border-slate-200 bg-white shadow-xl z-10 w-[600px] min-w-[500px]">
+                    <div className="flex flex-col h-full border-r border-slate-200 bg-white shadow-xl z-10 lg:w-[600px] w-[450px]">
                         <div className='flex flex-1 min-h-0'>
                             <div className="bg-white/70 border-r border-slate-200 overflow-y-auto firstdiv custom-scrollbar-premium min-w-[100px]">
-                                <div className="p-6">
+                                <div className="lg:p-6 p-3">
                                     <h2 className="text-sm font-semibold text-center text-slate-600 uppercase tracking-wider mb-4">
                                         Clothing
                                     </h2>
@@ -1549,7 +1549,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                         </button>
                                     </div>
                                 </div>
-                                <div className="p-6 space-y-8">
+                                <div className="lg:p-6 p-3 lg:space-y-8 space-y-4">
 
                                     {activeMenu === 'T-SHIRT' && <Tshirt key="tshirt" isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
                                     {activeMenu === "SWEATSHIRT" && <SweatShirt key="sweatshirt" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
@@ -1656,219 +1656,112 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                         </div>
                     </div>
                 </div>
-                <div className="md:hidden flex flex-col ">
-                    {/* Mobile Preview Panel - Top */}
-                    <div className="flex flex-col h-screen">
-                        {/* Main content area that will scroll */}
-                        <div className="flex-1 flex flex-col overflow-hidden">
-                            {/* Preview section */}
-                            <div
-                                // className={`transition-all duration-300 ${isConfigOpen ? 'h-[35vh]' : 'h-[70vh]'
-                                className={`transition-all duration-300 ${isConfigOpen ? 'h-[35vh]' : 'h-[35vh]'
-                                    }`}
-                            >
-                                <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 h-full">
-                                    <div className="flex items-center justify-between p-4 border-b border-slate-200">
-                                        <div className="flex items-center space-x-3">
-                                            <div className="w-8 h-8 bg-gradient-to-r from-green-600 to-green-600 rounded-xl flex items-center justify-center">
-                                                <GraduationCap className="w-4 h-4 text-white" />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-semibold text-slate-800 text-sm">Selected {activeMenu}</h4>
-                                                {/* <p className="text-xs text-slate-600 capitalize" >{program.toUpperCase()}</p> */}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            {isLocked && (
-                                                <Tag color="error" className="flex items-center space-x-1 px-2 py-0.5 rounded-full border-red-100">
-                                                    <Lock className="w-3 h-3" />
-                                                    <span className="text-[10px] font-bold uppercase tracking-tight">Locked</span>
-                                                </Tag>
-                                            )}
-                                            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                                            <span className="text-xs font-medium text-slate-600">LIVE</span>
-                                        </div>
-                                    </div>
-                                    {/* Scrolling Message */}
-                                    {/* <div className="bg-yellow-100 border-y border-yellow-300 px-4 py-2">
-                  <p className="text-[10px] text-yellow-800 font-semibold text-center">
-                    Ændringen vises ikke på huen, men bare rolig — det er ikke en fejl 😉 Din hue bliver præcis, som du designer den.
-                    Er du i tvivl? Skriv til os på Instagram eller TikTok, så uploader vi en video af en hue, der ligner din 🎥✨
-                  </p>
-                </div> */}
-                                    <div
-                                        className="h-[calc(100%-60px)] rounded-b-2xl overflow-hidden relative"
-                                        style={{
-                                            pointerEvents: isConfigOpen ? 'none' : 'auto',
-                                        }}
+                <div className="md:hidden flex flex-col h-screen overflow-y-auto bg-gradient-to-br from-slate-50 to-slate-100">
+
+                    {/* ── Product strip (garment selector) ── */}
+                    <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+                        <div className="px-3 py-2">
+                            <div className="flex overflow-x-auto gap-1 scrollbar-none" style={{scrollbarWidth:'none',msOverflowStyle:'none'}}>
+                                {menuItems.map((item, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => setActiveMenu(item.name)}
+                                        className={`flex-shrink-0 flex flex-col items-center p-2 rounded-xl transition-all duration-200 min-w-[52px] ${
+                                            activeMenu === item.name
+                                                ? 'bg-green-50 border border-green-200 shadow-sm'
+                                                : 'hover:bg-slate-50'
+                                        }`}
                                     >
-                                        {/* {!isIframeLoaded && (
-                                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10">
-                                                <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-                                                <p className="text-sm text-slate-500">Loading 3D Preview...</p>
-                                            </div>
-                                        )} */}
-                                        <iframe
-                                            id="preview-iframe2"
-                                            src={'https://playcanv.as/e/p/1b1eadeb/'}
-                                            className="w-full h-full"
-                                            frameBorder="0"
-                                            title="3D Student Card Preview"
-                                            onLoad={() => setIsIframeLoaded(true)}
-                                            onError={() => setIsIframeLoaded(true)}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            {/* Config Toggle Button */}
-                            <div className="px-4 py-2 bg-white/80 border-t border-slate-200 flex justify-center flex-shrink-0">
-                                <button
-                                    onClick={() => setIsConfigOpen(!isConfigOpen)}
-                                    className="flex items-center justify-center w-full py-2 bg-slate-100 rounded-lg text-slate-700 font-medium"
-                                >
-                                    {isConfigOpen ? (
-                                        <>
-                                            <ChevronDown className="w-4 h-4 mr-1" />
-                                            Hide Configuration
-                                        </>
-                                    ) : (
-                                        <>
-                                            <ChevronUp className="w-4 h-4 mr-1" />
-                                            Show Configuration
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                            {/* Config Panel (collapsible + scrollable) */}
-                            {/* Config Panel (collapsible + scrollable) */}
-                            <div
-                                // className={`transition-all duration-300 overflow-y-auto ${isConfigOpen ? '' : 'flex-none h-0'
-                                // }`}
-                                className={`transition-all duration-300 overflow-y-auto max-h-[30vh] md:max-h-full ${isConfigOpen ? 'max-h-[30vh]' : 'max-h-0'
-                                    }`}
-                            >
-                                {isConfigOpen && (
-                                    <div className="p-4 space-y-6">
-                                        {/* Keep all components mounted but conditionally show based on activeMenu */}
-                                        {activeMenu === 'T-SHIRT' && <Tshirt isAppReady={isAppReady} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} maxCharsText={getMaxCharsClothText()} />}
-                                        {activeMenu === "SWEATSHIRT" && <SweatShirt isAppReady={isAppReady} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} maxCharsText={getMaxCharsClothText()} />}
-                                        {activeMenu === "HOODIE" && <Hoodie isAppReady={isAppReady} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} maxCharsText={getMaxCharsClothText()} />}
-                                        {activeMenu === "ZIPPERHOODIE" && <ZippedHoodie isAppReady={isAppReady} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} maxCharsText={getMaxCharsClothText()} />}
-                                        {activeMenu === "SWEATPANTS" && <SweatPants isAppReady={isAppReady} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} maxCharsText={getMaxCharsClothText()} />}
-                                        {activeMenu === "SHORTS" && <Shorts isAppReady={isAppReady} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} maxCharsText={getMaxCharsClothText()} />}
-                                    </div>
-                                )}
-                            </div>
-                            {/* Sidebar - Now inside the scrollable area but above footer */}
-                            <div className="bg-white/70 border-t border-slate-200 flex-shrink-0">
-                                <div className="px-4 pt-2">
-                                    <h3 className="text-xs font-semibold text-center text-slate-600 uppercase tracking-wider mb-3">
-                                        Clothing
-                                    </h3>
-                                    <div className="flex overflow-x-auto space-x-3 pb-2">
-                                        {menuItems.map((item, index) => (
-                                            <button
-                                                key={index}
-                                                onClick={() => {
-                                                    setActiveMenu(item.name)
-                                                }}
-                                                className={`flex-shrink-0 flex flex-col items-center px-3 rounded-xl transition-all duration-200 min-w-[80px] ${activeMenu === item.name
-                                                    ? 'bg-gradient-to-r from-green-50 to-green-50 border border-green-200 shadow-sm'
-                                                    : 'hover:bg-slate-50 hover:shadow-sm'
-                                                    }`}
-                                            >
-                                                <div
-                                                    className={`w-8 rounded-lg flex items-center justify-center mb-2 transition-transform duration-200 ${activeMenu === item.name ? 'scale-110' : 'hover:scale-105'
-                                                        }`}
-                                                >
-                                                    <img
-                                                        src={item.icon}
-                                                        alt={item.name}
-                                                        className="w-6 h-6 object-contain"
-                                                    />
-                                                </div>
-                                                <span className="text-xs font-medium text-slate-600 text-center leading-tight">
-                                                    {item.name.replace(' ', '\n')}
-                                                </span>
-                                                {activeMenu === item.name && (
-                                                    <div className="mt-1 w-2 h-2 bg-green-500 rounded-full"></div>
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
+                                        <img src={item.icon} alt={item.name} className="w-7 h-7 object-contain" />
+                                        {activeMenu === item.name && (
+                                            <div className="mt-0.5 w-1.5 h-1.5 bg-green-500 rounded-full" />
+                                        )}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-                        {/* Fixed Footer - Always visible at bottom */}
-                        <div className="border-t border-slate-200 p-4 bg-white/90 backdrop-blur-sm flex-shrink-0">
-                            <div className="mb-3 space-y-1">
-                                <div className="flex justify-between items-center pt-1">
-                                    <span className="text-sm font-semibold text-slate-700">Price</span>
-                                    <span className="text-xl font-bold text-slate-900">{GARMENT_PRICES[activeMenu]} DKK</span>
-                                </div>
-                            </div>
-                            {/* <div className="flex space-x-3 mb-4">
-                                <button
-                                    onClick={handleSaveOrder}
-                                    disabled={isSaving || (isLocked && !isAdmin)}
-                                    className="flex-1 flex items-center justify-center space-x-2 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold transition-all hover:bg-slate-200 disabled:opacity-50"
-                                >
-                                    <Settings className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} />
-                                    <span>{isSaving ? 'Saving...' : 'Save Design'}</span>
-                                </button>
-                                {dbHistory.length > 0 && (
-                                    <button
-                                        onClick={() => setIsHistoryModalOpen(true)}
-                                        className="flex-1 flex items-center justify-center space-x-2 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold transition-all hover:bg-slate-50"
-                                    >
-                                        <History className="w-4 h-4 text-green-600" />
-                                        <span>History</span>
-                                    </button>
-                                )}
-                            </div> */}
+                    </div>
+
+                    {/* ── Tab navigation (Color & Size / Design) ── */}
+                    <div className="bg-white border-b border-slate-200 px-4 py-2 sticky top-[52px] z-10">
+                        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
                             <button
-                                onClick={() => {
-                                    if (processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0) {
-                                        handlePayNow();
-                                    } else if ((processStatus === 'paid' && !editWindowOpen) || (isLocked && !isAdmin)) {
-                                        // do nothing
-                                    } else {
-                                        setIsQuoteModalOpen(true);
-                                    }
-                                }}
-                                disabled={
-                                    isPayingBalance ||
-                                    processStatus === 'pending_payment' ||
-                                    (processStatus === 'paid' && !editWindowOpen) ||
-                                    (isLocked && !isAdmin)
-                                }
-                                className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 shadow-md ${processStatus === 'pending_payment' || (processStatus === 'paid' && !editWindowOpen) || (isLocked && !isAdmin)
-                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                    : processStatus === 'partial_paid'
-                                        ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 hover:shadow-lg"
-                                        : processStatus === 'paid' && editWindowOpen
-                                            ? "bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 hover:shadow-lg"
-                                            : "bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 hover:shadow-lg"
-                                    }`}
+                                onClick={() => setGarmentTab('size')}
+                                className={`flex-1 py-2 text-sm font-semibold rounded-xl transition-all ${garmentTab === 'size' ? 'bg-green-700 text-white' : 'text-gray-500 bg-white'}`}
                             >
-                                {isPayingBalance
-                                    ? 'Opening payment…'
-                                    : processStatus === 'pending_payment'
-                                        ? 'Awaiting confirmation…'
-                                        : isLocked && !isAdmin
-                                            ? 'Order Locked'
-                                            : processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0
-                                                ? `Pay Balance – ${(paymentBreakdown?.balance_due || 0).toFixed(2)} DKK`
-                                                : processStatus === 'paid' && editWindowOpen
-                                                    ? 'Add More Products & Pay'
-                                                    : processStatus === 'paid' && !editWindowOpen
-                                                        ? 'Edit Window Closed'
-                                                        : 'Approve and Pay'
-                                }
+                                Color & Size
+                            </button>
+                            <button
+                                onClick={() => setGarmentTab('pressure')}
+                                className={`flex-1 py-2 text-sm font-semibold rounded-xl transition-all ${garmentTab === 'pressure' ? 'bg-green-700 text-white' : 'text-gray-500 bg-white'}`}
+                            >
+                                Design
                             </button>
                         </div>
                     </div>
-                    {/* Quote Modal */}
+
+                    {/* ── Garment config (color/size/design) — always visible ── */}
+                    <div className="p-4 space-y-4 bg-white">
+                        {activeMenu === 'T-SHIRT'     && <Tshirt      key="m-tshirt"   isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']}     onUpdate={(u) => handleUpdateSelection('T-SHIRT', u)}     backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === 'SWEATSHIRT'  && <SweatShirt  key="m-sweat"    isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']}  onUpdate={(u) => handleUpdateSelection('SWEATSHIRT', u)}  backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === 'HOODIE'      && <Hoodie      key="m-hoodie"   isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']}      onUpdate={(u) => handleUpdateSelection('HOODIE', u)}      backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === 'ZIPPERHOODIE'&& <ZippedHoodie key="m-zipper"  isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']}onUpdate={(u) => handleUpdateSelection('ZIPPERHOODIE', u)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === 'SWEATPANTS'  && <SweatPants  key="m-sweats"   isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']}  onUpdate={(u) => handleUpdateSelection('SWEATPANTS', u)}  maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === 'SHORTS'      && <Shorts      key="m-shorts"   isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']}      onUpdate={(u) => handleUpdateSelection('SHORTS', u)}      maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                    </div>
+
+                    {/* ── 3D Preview ── */}
+                    <div className="mx-4 my-3 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white" style={{height:'300px'}}>
+                        <iframe
+                            id="preview-iframe2"
+                            src={'https://playcanv.as/e/p/1b1eadeb/'}
+                            className="w-full h-full"
+                            frameBorder="0"
+                            title="3D Preview"
+                            onLoad={() => setIsIframeLoaded(true)}
+                            onError={() => setIsIframeLoaded(true)}
+                        />
+                    </div>
+
+                    {/* ── Footer (price + CTA) ── */}
+                    <div className="border-t border-slate-200 p-4 bg-white sticky bottom-0">
+                        <div className="flex justify-between items-center mb-3">
+                            <span className="text-sm font-semibold text-slate-700">Price</span>
+                            <span className="text-xl font-bold text-slate-900">{GARMENT_PRICES[activeMenu]} DKK</span>
+                        </div>
+                        <button
+                            onClick={() => {
+                                if (processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0) {
+                                    handlePayNow();
+                                } else if ((processStatus === 'paid' && !editWindowOpen) || (isLocked && !isAdmin)) {
+                                    // locked — nothing
+                                } else {
+                                    setIsQuoteModalOpen(true);
+                                }
+                            }}
+                            disabled={
+                                isPayingBalance ||
+                                processStatus === 'pending_payment' ||
+                                (processStatus === 'paid' && !editWindowOpen) ||
+                                (isLocked && !isAdmin)
+                            }
+                            className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 shadow-md ${
+                                processStatus === 'pending_payment' || (processStatus === 'paid' && !editWindowOpen) || (isLocked && !isAdmin)
+                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    : processStatus === 'partial_paid'
+                                        ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white'
+                                        : 'bg-gradient-to-r from-green-600 to-green-700 text-white'
+                            }`}
+                        >
+                            {isPayingBalance ? 'Opening payment…'
+                                : processStatus === 'pending_payment' ? 'Awaiting confirmation…'
+                                : isLocked && !isAdmin ? 'Order Locked'
+                                : processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0 ? `Pay Balance – ${(paymentBreakdown?.balance_due || 0).toFixed(2)} DKK`
+                                : processStatus === 'paid' && editWindowOpen ? 'Add More Products & Pay'
+                                : processStatus === 'paid' && !editWindowOpen ? 'Edit Window Closed'
+                                : 'Approve and Pay'}
+                        </button>
+                    </div>
                 </div>
                 <QuoteModal
                     isOpen={isQuoteModalOpen}

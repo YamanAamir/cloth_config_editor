@@ -103,3 +103,8 @@
   border: 1px solid transparent;
   background-clip: content-box;
 }
+
+/* Hide scrollbar for product strip on mobile */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
