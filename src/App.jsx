@@ -36,7 +36,7 @@ function App() {
   const [initialBackDesignData, setInitialBackDesignData] = useState(null);
 
   useEffect(() => {
-    if (user && user.role === 'student') {
+    if (user && ['student', 'class_representative'].includes(user.role)) {
       Promise.all([
         getMyOrder(),
         getMyOrderHistory(),
@@ -157,7 +157,8 @@ function App() {
           )
         } />
         <Route path="/login" element={!user ? <StudentLogin /> : <Navigate to="/" replace />} />
-        <Route path="/register" element={!user ? <StudentRegister /> : <Navigate to="/" replace />} />
+        {/* Register page always accessible — user might want to register a new account even if logged in */}
+        <Route path="/register" element={<StudentRegister />} />
         <Route path="/payment-success" element={<SuccessScreen />} />
         <Route path="/payment-cancelled" element={<CancelScreen />} />
       </Routes>
