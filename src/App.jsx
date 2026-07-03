@@ -143,13 +143,13 @@ function App() {
           user ? (
             <>
               <StudentDashboard
-                  customizations={customizations}
-                  setCustomizations={setCustomizations}
-                  setShowBackPopup={setShowBackPopup}
-                  initialOrderData={initialOrderData}
-                  initialHistoryData={initialHistoryData}
-                  initialBackDesignData={initialBackDesignData}
-                // setShowBackTextPopup={setShowBackTextPopup} // COMMENTED: Back text feature disabled
+                customizations={customizations}
+                setCustomizations={setCustomizations}
+                setShowBackPopup={setShowBackPopup}
+                initialOrderData={initialOrderData}
+                initialHistoryData={initialHistoryData}
+                initialBackDesignData={initialBackDesignData}
+              // setShowBackTextPopup={setShowBackTextPopup} // COMMENTED: Back text feature disabled
               />
             </>
           ) : (

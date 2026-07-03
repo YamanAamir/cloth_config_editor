@@ -607,11 +607,6 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         prev.type !== type ||
         prev.textColor !== textColor;
 
-      console.log(`[Tshirt DEBUG] - Area: ${area}, hasChanged: ${hasChanged}`, {
-        prev,
-        current: { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor }
-      });
-
       if (!hasChanged) return;
 
       prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor };
@@ -653,32 +648,6 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
 
   const sendBackDesign = (diffuseB64, opacityB64, color) => {
     if (!diffuseB64 && !opacityB64) return;
-
-    // const formatTexture = (b64, cb) => {
-    //   if (!b64) { cb(null); return; }
-    //   const img = new Image();
-    //   img.crossOrigin = "anonymous";
-    //   img.onload = () => {
-    //     const BIG_CANVAS = 2048;
-    //     const c = document.createElement("canvas");
-    //     c.width = BIG_CANVAS; c.height = BIG_CANVAS;
-    //     const ctx = c.getContext("2d");
-    //     ctx.imageSmoothingEnabled = true;
-    //     ctx.imageSmoothingQuality = "high";
-
-    //     const TARGET_PERCENT = 0.9;
-    //     const targetSize = BIG_CANVAS * TARGET_PERCENT;
-    //     const ratio = Math.min(targetSize / img.width, targetSize / img.height);
-    //     const dw = img.width * ratio;
-    //     const dh = img.height * ratio;
-    //     const dx = (BIG_CANVAS - dw) / 2;
-    //     const dy = (BIG_CANVAS - dh) / 2;
-
-    //     ctx.drawImage(img, dx, dy, dw, dh);
-    //     cb(c.toDataURL("image/png", 1.0));
-    //   };
-    //   img.src = b64;
-    // };
 
     const formatTexture = (b64, cb) => {
       if (!b64) {
@@ -728,6 +697,8 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
           const iframe = document.getElementById(id);
           if (!iframe?.contentWindow) return;
           if (color === "light") {
+            console.count("SEND back_black_diffuse");
+            console.count("SEND back_black_opacity");
             if (formattedDiffuse) iframe.contentWindow.postMessage("T-Shirt:back_black_diffuse: " + formattedDiffuse, "*");
             if (formattedOpacity) iframe.contentWindow.postMessage("T-Shirt:back_black_opacity: " + formattedOpacity, "*");
           } else {
@@ -738,7 +709,8 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
             wctx.fillStyle = "#ffffff";
             wctx.fillRect(0, 0, 4096, 4096);
             const whiteDiffuse = whiteCanvas.toDataURL("image/png", 1.0);
-
+            console.count("SEND back_white_diffuse");
+            console.log(">>> BEFORE back_white_opacity", new Error().stack);
             iframe.contentWindow.postMessage("T-Shirt:back_white_diffuse: " + whiteDiffuse, "*");
             if (formattedOpacity) iframe.contentWindow.postMessage("T-Shirt:back_white_opacity: " + formattedOpacity, "*");
           }

@@ -713,7 +713,7 @@ const QuoteModal = ({
     const relatedPairs = {
       "Broderi foran": "Broderi farve",
       "Navne broderi": "Broderifarve",
-      "Skolebroderi": "Skolebroderi farve",
+      "Navnebroderi": "Navnebroderi farve",
     };
 
     for (const [textKey, colorKey] of Object.entries(relatedPairs)) {

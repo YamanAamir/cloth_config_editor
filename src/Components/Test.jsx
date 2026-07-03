@@ -26,6 +26,9 @@ const CANVAS_HEIGHT = 350;
 
 export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, designColor, backDesigns: propBackDesigns }) {
   const canvasRef = useRef(null);
+  const prevBase64Ref = useRef({ diffuse: null, opacity: null });
+  const exportTimerRef = useRef(null);   // debounce timer for canvas export
+  const isInteractingRef = useRef(false); // true while user is dragging/resizing/rotating
   const [objects, setObjects] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [dragging, setDragging] = useState(false);
@@ -168,7 +171,8 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
     return dx * dx + dy * dy <= (HANDLE_SIZE / 2) ** 2;
   };
 
-  const draw = () => {
+  // ─── Visual-only draw: renders objects + selection handles onto canvas ───────
+  const drawVisual = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -184,108 +188,124 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       ctx.restore();
     });
 
-    const opacityCanvas = document.createElement("canvas");
-    opacityCanvas.width = CANVAS_WIDTH;
-    opacityCanvas.height = CANVAS_HEIGHT;
-    const octx = opacityCanvas.getContext("2d");
-
-    // White background first (same as PreviewModal's createOpacityTexture)
-    octx.fillStyle = "white";
-    octx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-    objects.forEach(obj => {
-      octx.save();
-      octx.translate(obj.pos.x, obj.pos.y);
-      octx.rotate((obj.angle * Math.PI) / 180);
-      if (obj.type === 'image') {
-        octx.drawImage(obj.srcObj, -obj.size.w / 2, -obj.size.h / 2, obj.size.w, obj.size.h);
+    const selected = objects.find(o => o.id === selectedId);
+    if (selected) {
+      const handles = {
+        tl: { cx: -1, cy: -1, icon: deleteIcon },
+        tr: { cx: 1, cy: -1, icon: selected.locked ? lockIcon : unlockIcon },
+        br: { cx: 1, cy: 1, icon: resizeIcon },
+        bl: { cx: -1, cy: 1, icon: rotateIcon },
+      };
+      for (const key in handles) {
+        const h = handles[key];
+        const corner = getCornerPos(selected, h.cx, h.cy);
+        ctx.save();
+        ctx.translate(corner.x, corner.y);
+        ctx.rotate((selected.angle * Math.PI) / 180);
+        if (selected.locked && key !== 'tr') ctx.globalAlpha = 0.4;
+        ctx.drawImage(h.icon, -HANDLE_SIZE / 2, -HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+        ctx.restore();
       }
-      octx.restore();
-    });
-    try {
-      const imgData = octx.getImageData(0, 0, opacityCanvas.width, opacityCanvas.height);
-      for (let i = 0; i < imgData.data.length; i += 4) {
-        const brightness = 0.299 * imgData.data[i] + 0.587 * imgData.data[i + 1] + 0.114 * imgData.data[i + 2];
-        const bw = brightness > 128 ? 0 : 255;
-        imgData.data[i] = imgData.data[i + 1] = imgData.data[i + 2] = bw;
-        imgData.data[i + 3] = 255;
-      }
-      octx.putImageData(imgData, 0, 0);
-    } catch (e) {
-      console.warn("getImageData blocked (CORS taint) — opacity map skipped:", e.message);
     }
+  };
 
-    let diffuseBase64 = "";
-    let opacityBase64 = "";
+  // Re-draw canvas whenever objects or selection changes (does NOT call onUpdate)
+  useEffect(() => { drawVisual(); }, [objects, selectedId, isAppReady]);
 
-    try {
-      const EXPORT_SCALE = 3;
+  // ─── Export effect: debounced — only fires 400ms after objects stop changing ─
+  // During drag/resize/rotate, isInteractingRef blocks the export entirely so
+  // onUpdate is NOT called on every mouse-move frame (was firing 10+ times).
+  useEffect(() => {
+    if (!onUpdate || !postEx || objects.length === 0) return;
 
-      const exportCanvas = document.createElement("canvas");
-      exportCanvas.width = CANVAS_WIDTH * EXPORT_SCALE;
-      exportCanvas.height = CANVAS_HEIGHT * EXPORT_SCALE;
-      const ectx = exportCanvas.getContext("2d");
-      ectx.imageSmoothingEnabled = true;
-      ectx.imageSmoothingQuality = "high";
-      objects.forEach(obj => {
-        ectx.save();
-        ectx.translate(obj.pos.x * EXPORT_SCALE, obj.pos.y * EXPORT_SCALE);
-        ectx.rotate((obj.angle * Math.PI) / 180);
-        if (obj.type === 'image') {
-          ectx.drawImage(
-            obj.srcObj,
-            -(obj.size.w * EXPORT_SCALE) / 2,
-            -(obj.size.h * EXPORT_SCALE) / 2,
-            obj.size.w * EXPORT_SCALE,
-            obj.size.h * EXPORT_SCALE
-          );
+    // Clear any pending export
+    if (exportTimerRef.current) clearTimeout(exportTimerRef.current);
+
+    exportTimerRef.current = setTimeout(() => {
+      // Skip export if user is still interacting (drag / resize / rotate)
+      if (isInteractingRef.current) return;
+
+      let diffuseBase64 = "";
+      let opacityBase64 = "";
+
+      try {
+        const EXPORT_SCALE = 3;
+
+        // Diffuse (color) export
+        const exportCanvas = document.createElement("canvas");
+        exportCanvas.width = CANVAS_WIDTH * EXPORT_SCALE;
+        exportCanvas.height = CANVAS_HEIGHT * EXPORT_SCALE;
+        const ectx = exportCanvas.getContext("2d");
+        ectx.imageSmoothingEnabled = true;
+        ectx.imageSmoothingQuality = "high";
+        objects.forEach(obj => {
+          ectx.save();
+          ectx.translate(obj.pos.x * EXPORT_SCALE, obj.pos.y * EXPORT_SCALE);
+          ectx.rotate((obj.angle * Math.PI) / 180);
+          if (obj.type === 'image') {
+            ectx.drawImage(
+              obj.srcObj,
+              -(obj.size.w * EXPORT_SCALE) / 2,
+              -(obj.size.h * EXPORT_SCALE) / 2,
+              obj.size.w * EXPORT_SCALE,
+              obj.size.h * EXPORT_SCALE
+            );
+          }
+          ectx.restore();
+        });
+        diffuseBase64 = exportCanvas.toDataURL("image/png", 1.0);
+
+        // Opacity (B&W) export
+        const exportOpacity = document.createElement("canvas");
+        exportOpacity.width = CANVAS_WIDTH * EXPORT_SCALE;
+        exportOpacity.height = CANVAS_HEIGHT * EXPORT_SCALE;
+        const eoctx = exportOpacity.getContext("2d");
+        eoctx.imageSmoothingEnabled = true;
+        eoctx.imageSmoothingQuality = "high";
+        eoctx.fillStyle = "#ffffff";
+        eoctx.fillRect(0, 0, exportOpacity.width, exportOpacity.height);
+        objects.forEach(obj => {
+          eoctx.save();
+          eoctx.translate(obj.pos.x * EXPORT_SCALE, obj.pos.y * EXPORT_SCALE);
+          eoctx.rotate((obj.angle * Math.PI) / 180);
+          if (obj.type === 'image') {
+            eoctx.drawImage(
+              obj.srcObj,
+              -(obj.size.w * EXPORT_SCALE) / 2,
+              -(obj.size.h * EXPORT_SCALE) / 2,
+              obj.size.w * EXPORT_SCALE,
+              obj.size.h * EXPORT_SCALE
+            );
+          }
+          eoctx.restore();
+        });
+        const eImgData = eoctx.getImageData(0, 0, exportOpacity.width, exportOpacity.height);
+        for (let i = 0; i < eImgData.data.length; i += 4) {
+          const brightness = 0.299 * eImgData.data[i] + 0.587 * eImgData.data[i + 1] + 0.114 * eImgData.data[i + 2];
+          const bw = brightness > 128 ? 0 : 255;
+          eImgData.data[i] = eImgData.data[i + 1] = eImgData.data[i + 2] = bw;
+          eImgData.data[i + 3] = 255;
         }
-        ectx.restore();
-      });
-      diffuseBase64 = exportCanvas.toDataURL("image/png", 1.0);
-
-      const exportOpacity = document.createElement("canvas");
-      exportOpacity.width = CANVAS_WIDTH * EXPORT_SCALE;
-      exportOpacity.height = CANVAS_HEIGHT * EXPORT_SCALE;
-      const eoctx = exportOpacity.getContext("2d");
-      eoctx.imageSmoothingEnabled = true;
-      eoctx.imageSmoothingQuality = "high";
-      // White background so brightness threshold works correctly
-      eoctx.fillStyle = "#ffffff";
-      eoctx.fillRect(0, 0, exportOpacity.width, exportOpacity.height);
-      objects.forEach(obj => {
-        eoctx.save();
-        eoctx.translate(obj.pos.x * EXPORT_SCALE, obj.pos.y * EXPORT_SCALE);
-        eoctx.rotate((obj.angle * Math.PI) / 180);
-        if (obj.type === 'image') {
-          eoctx.drawImage(
-            obj.srcObj,
-            -(obj.size.w * EXPORT_SCALE) / 2,
-            -(obj.size.h * EXPORT_SCALE) / 2,
-            obj.size.w * EXPORT_SCALE,
-            obj.size.h * EXPORT_SCALE
-          );
-        }
-        eoctx.restore();
-      });
-      const eImgData = eoctx.getImageData(0, 0, exportOpacity.width, exportOpacity.height);
-      for (let i = 0; i < eImgData.data.length; i += 4) {
-        const brightness = 0.299 * eImgData.data[i] + 0.587 * eImgData.data[i + 1] + 0.114 * eImgData.data[i + 2];
-        const bw = brightness > 128 ? 0 : 255;
-        eImgData.data[i] = eImgData.data[i + 1] = eImgData.data[i + 2] = bw;
-        eImgData.data[i + 3] = 255;
+        eoctx.putImageData(eImgData, 0, 0);
+        opacityBase64 = exportOpacity.toDataURL("image/png", 1.0);
+      } catch (err) {
+        console.warn("Canvas export error:", err);
+        return;
       }
-      eoctx.putImageData(eImgData, 0, 0);
-      opacityBase64 = exportOpacity.toDataURL("image/png", 1.0);
-    } catch (err) {
-      console.warn("Canvas export error:", err);
-    }
 
-    if (onUpdate && postEx && diffuseBase64 && opacityBase64) {
+      if (!diffuseBase64 || !opacityBase64) return;
+
+      // Only call onUpdate if data actually changed
+      const newDiffuse = postEx + "back_diffuse: " + diffuseBase64;
+      const newOpacity = postEx + "back_opacity: " + opacityBase64;
+      const prev = prevBase64Ref.current;
+      if (prev.diffuse === newDiffuse && prev.opacity === newOpacity) return;
+
+      prevBase64Ref.current = { diffuse: newDiffuse, opacity: newOpacity };
       onUpdate({
         canvasBase64: {
-          diffuse: postEx + "back_diffuse: " + diffuseBase64,
-          opacity: postEx + "back_opacity: " + opacityBase64,
+          diffuse: newDiffuse,
+          opacity: newOpacity,
           emissive: postEx + "back_emissive: " + diffuseBase64,
           rawData: {
             diffuse: diffuseBase64,
@@ -295,35 +315,10 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
           }
         }
       });
-    }
+    }, 400); // 400ms debounce — waits until objects stop changing
 
-    const selected = getSelected();
-    if (selected) {
-      const handles = {
-        tl: { cx: -1, cy: -1, icon: deleteIcon },
-        tr: { cx: 1, cy: -1, icon: selected.locked ? lockIcon : unlockIcon },
-        br: { cx: 1, cy: 1, icon: resizeIcon },
-        bl: { cx: -1, cy: 1, icon: rotateIcon },
-      };
-
-      for (const key in handles) {
-        const h = handles[key];
-        const corner = getCornerPos(selected, h.cx, h.cy);
-        ctx.save();
-        ctx.translate(corner.x, corner.y);
-        ctx.rotate((selected.angle * Math.PI) / 180);
-
-        if (selected.locked && key !== 'tr') {
-          ctx.globalAlpha = 0.4;
-        }
-
-        ctx.drawImage(h.icon, -HANDLE_SIZE / 2, -HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
-        ctx.restore();
-      }
-    }
-  };
-
-  useEffect(() => draw(), [objects, selectedId, isAppReady]);
+    return () => { if (exportTimerRef.current) clearTimeout(exportTimerRef.current); };
+  }, [objects]); // ← ONLY objects
 
 
 
@@ -358,7 +353,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
         });
         setSelectedId(obj.id);
         clickedOnObject = true;
-        draw();
+        drawVisual();
         return;
       }
 
@@ -371,6 +366,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       }
 
       if (isOnHandle(x, y, obj, 1, 1)) {
+        isInteractingRef.current = true;
         setSelectedId(obj.id);
         setResizing(true);
         setInitialSize(obj.size);
@@ -385,6 +381,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       }
 
       if (isOnHandle(x, y, obj, -1, 1)) {
+        isInteractingRef.current = true;
         setSelectedId(obj.id);
         setRotating(true);
         const mouseAngle = Math.atan2(y - obj.pos.y, x - obj.pos.x);
@@ -400,6 +397,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       const ly = dx * Math.sin(rad) + dy * Math.cos(rad);
 
       if (Math.abs(lx) <= obj.size.w / 2 && Math.abs(ly) <= obj.size.h / 2) {
+        isInteractingRef.current = true;
         setSelectedId(obj.id);
         setDragging(true);
         setOffset({ x: dx, y: dy });
@@ -478,6 +476,8 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
         });
       }
     }
+    // Allow export to run now that interaction is complete
+    isInteractingRef.current = false;
     setDragging(false);
     setResizing(false);
     setRotating(false);

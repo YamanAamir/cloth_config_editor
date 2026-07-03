@@ -30,6 +30,10 @@ import { BASE_URL } from '../utils/const';
 import useSocket from '../hooks/useSocket';
 
 const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup, initialOrderData, initialHistoryData, initialBackDesignData /*, setShowBackTextPopup */ }) => { // COMMENTED: Back text feature disabled
+    console.log("STUDENT_DASHBOARD RENDERED");
+    useEffect(() => {
+      console.log("=== STUDENT_DASHBOARD MOUNTED ===");
+    }, []);
     const { logout } = useAuth();
     const { backDesigns } = useBackDesignStore();
     const { fetchBackDesigns } = useBackDesignStore();
@@ -210,7 +214,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     };
 
     // 2. State
-    const [allSelections, setAllSelections] = useState(() => {
+    const [allSelections, setAllSelectionsState] = useState(() => {
         // Refresh pe localStorage se data load karo — email ko key ki tarah use karo
         try {
             const rawUser = localStorage.getItem('user');
@@ -223,6 +227,11 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         } catch { /* ignore */ }
         return DEFAULT_SELECTIONS;
     });
+    const setAllSelections = (val) => {
+        console.log("setAllSelections called! val/updater =", typeof val === 'function' ? 'function' : val);
+        console.trace("setAllSelections stack trace");
+        setAllSelectionsState(val);
+    };
     const [activeMenu, setActiveMenu] = useState('T-SHIRT');
     const [garmentTab, setGarmentTab] = useState('size'); // 'size' | 'pressure'
     const [backDesignKey, setBackDesignKey] = useState(0); // force Test remount on page switch
@@ -424,7 +433,12 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             } catch { /* ignore */ }
             if (localData) {
                 setAllSelections(localData);
-                setCustomizations(prev => ({ ...prev, [sName]: localData }));
+                // Update customizations only if different
+                setCustomizations(prev => {
+                    const existing = prev[sName];
+                    if (JSON.stringify(existing) === JSON.stringify(localData)) return prev;
+                    return { ...prev, [sName]: localData };
+                });
             } else {
                 const newSelections = JSON.parse(JSON.stringify(DEFAULT_SELECTIONS));
                 order.order_items.forEach(item => {
@@ -436,7 +450,11 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                     }
                 });
                 setAllSelections(newSelections);
-                setCustomizations(prev => ({ ...prev, [sName]: newSelections }));
+                setCustomizations(prev => {
+                    const existing = prev[sName];
+                    if (JSON.stringify(existing) === JSON.stringify(newSelections)) return prev;
+                    return { ...prev, [sName]: newSelections };
+                });
                 try {
                     const existing = localStorage.getItem('studentCustomizations');
                     const existingParsed = existing ? JSON.parse(existing) : {};
@@ -627,6 +645,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     // ── Refetch when navigating BACK to dashboard from Stripe payment ──
     // location.key changes every navigation — catches back-from-success
     useEffect(() => {
+        console.log("LOCATION.KEY EFFECT RUNNING! location.key =", location.key);
         if (user && ['student', 'class_representative'].includes(user.role)) {
             fetchOrderData();
         }
@@ -701,10 +720,14 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         if (!selectedStudent) return;
 
         const studentData = customizations[selectedStudent] || DEFAULT_SELECTIONS;
-        setAllSelections(studentData);
+        // Update only if the data reference actually changed to avoid redundant state updates
+        if (allSelections !== studentData) {
+            setAllSelections(studentData);
+        }
     }, [selectedStudent, customizations]);
 
     const handleUpdateSelection = (category, updates) => {
+        console.log("HANDLE_UPDATE_SELECTION CALLED", category, updates);
 
         // selectedStudent empty ho toh user name se fallback — data "" key pe na jaye
         const activeStudent = selectedStudent || user?.name || "Student";
@@ -1118,17 +1141,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     const allSelectionsRef = React.useRef(allSelections);
     useEffect(() => { allSelectionsRef.current = allSelections; }, [allSelections]);
 
-    useEffect(() => {
-        if (!isAppReady) return;
-
-        const timer = setTimeout(() => {
-            setAllSelections(prev => {
-                return JSON.parse(JSON.stringify(prev));
-            });
-        }, 800);
-
-        return () => clearTimeout(timer);
-    }, [isAppReady]);
+// Removed redundant isAppReady effect that was causing unnecessary state updates and re‑renders.
 
     useEffect(() => {
         if (!selectedStudent) return;
@@ -1699,15 +1712,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                         </div>
                     </div>
 
-                    {/* ── Garment config (color/size/design) — always visible ── */}
-                    <div className="p-4 space-y-4 bg-white">
-                        {activeMenu === 'T-SHIRT' && <Tshirt key="m-tshirt" isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(u) => handleUpdateSelection('T-SHIRT', u)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === 'SWEATSHIRT' && <SweatShirt key="m-sweat" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(u) => handleUpdateSelection('SWEATSHIRT', u)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === 'HOODIE' && <Hoodie key="m-hoodie" isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(u) => handleUpdateSelection('HOODIE', u)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === 'ZIPPERHOODIE' && <ZippedHoodie key="m-zipper" isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(u) => handleUpdateSelection('ZIPPERHOODIE', u)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === 'SWEATPANTS' && <SweatPants key="m-sweats" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(u) => handleUpdateSelection('SWEATPANTS', u)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === 'SHORTS' && <Shorts key="m-shorts" isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(u) => handleUpdateSelection('SHORTS', u)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                    </div>
 
                     {/* ── 3D Preview ── */}
                     <div className="mx-4 my-3 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white" style={{ height: '300px' }}>

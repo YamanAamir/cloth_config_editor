@@ -47,7 +47,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
 
   const CANVAS_HEIGHT = TEXT_HEIGHT + FLAG_HEIGHT;
 
-  const getEmissiveBase64 = (text, hasFlag = false, hasLogo = false, flagCount = 1, textColor = "#ffffff") => {
+  const getEmissiveBase64 = (hasFlag = false, hasLogo = false, flagCount = 1) => {
     const canvas = document.createElement("canvas");
 
     // 🔥 Dynamic canvas dimensions based on flag count
@@ -61,14 +61,6 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (text?.trim()) {
-      let fontSize = 48;
-      ctx.font = `bold ${fontSize}px Arial`; ctx.fillStyle = "#ffffff"; // emissive = white mask
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      while (ctx.measureText(text).width > dimensions.width - 80 && fontSize > 28) { fontSize -= 2; ctx.font = `bold ${fontSize}px Arial`; }
-      const textY = (hasFlag || hasLogo) ? TEXT_HEIGHT + dimensions.flagHeight / 2 : TEXT_HEIGHT / 2;
-      ctx.fillText(text, dimensions.width / 2, textY);
-    }
     if (hasFlag && flagCount === 2) {
       const gap = 12;
       const availableHeight = dimensions.flagHeight - 40;
@@ -196,11 +188,9 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
     flag,
     logoPre,
     logoCustom,
-    text,
     callback,
     flag2 = "",
     flagCount = 1,
-    textColor = "#ffffff",
     type = ""
   ) => {
     const canvas = document.createElement("canvas");
@@ -219,26 +209,6 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
 
         img.src = src;
       });
-
-    // ---------- TEXT ----------
-    if (text?.trim() && type === "") {
-      let fontSize = 48;
-
-      ctx.font = `bold ${fontSize}px Arial`;
-      ctx.fillStyle = textColor;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-
-      while (
-        ctx.measureText(text).width > CANVAS_WIDTH - 80 &&
-        fontSize > 28
-      ) {
-        fontSize -= 2;
-        ctx.font = `bold ${fontSize}px Arial`;
-      }
-
-      ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
-    }
 
     // ---------- DOUBLE FLAG ----------
     if (
@@ -300,19 +270,8 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
             targetHeight
           );
 
-          // Overlay text centered on flag area
-          if (text?.trim()) {
-            let fontSize = 48;
-            ctx.font = `bold ${fontSize}px Arial`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
-              fontSize -= 2;
-              ctx.font = `bold ${fontSize}px Arial`;
-            }
-            ctx.fillStyle = textColor;
-            ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
-          }
+          // NOTE: Text is handled by its own separate texture slot (top of shorts).
+          // Do NOT draw text here — it would appear in the wrong area (just above flag in 3D model).
 
           finalize();
         })
@@ -427,18 +386,8 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
           ctx.putImageData(wd, 0, 0);
           octx.putImageData(od, 0, 0);
 
-          if (text?.trim()) {
-            let fs = 48;
-            ctx.font = `bold ${fs}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fs > 28) { fs -= 2; ctx.font = `bold ${fs}px Arial`; }
-            ctx.fillStyle = textColor;
-            ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
-
-            let fs2 = 48; octx.fillStyle = "#ffffff";
-            octx.font = `bold ${fs2}px Arial`; octx.textAlign = "center"; octx.textBaseline = "middle";
-            while (octx.measureText(text).width > CANVAS_WIDTH - 80 && fs2 > 28) { fs2 -= 2; octx.font = `bold ${fs2}px Arial`; }
-            octx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
-          }
+          // NOTE: Text has its own separate texture — do NOT draw here.
+          // Drawing text on the logo canvas causes it to appear in the wrong zone in the 3D model.
 
           callback(canvas.toDataURL("image/png"), opacityCanvas.toDataURL("image/png"));
           return;
@@ -447,18 +396,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
         // ── GENERAL PATH (original, colored/normal logos — unchanged) ──
         ctx.drawImage(img, x, y, w, h);
 
-        if (text?.trim()) {
-          let fontSize = 48;
-          ctx.font = `bold ${fontSize}px Arial`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          while (ctx.measureText(text).width > CANVAS_WIDTH - 80 && fontSize > 28) {
-            fontSize -= 2;
-            ctx.font = `bold ${fontSize}px Arial`;
-          }
-          ctx.fillStyle = textColor;
-          ctx.fillText(text, CANVAS_WIDTH / 2, TEXT_HEIGHT + FLAG_HEIGHT / 2);
-        }
+        // NOTE: Text has its own separate texture — do NOT draw here.
 
         const opacityCanvas = document.createElement("canvas");
         opacityCanvas.width = CANVAS_WIDTH; opacityCanvas.height = CANVAS_HEIGHT;
@@ -632,13 +570,13 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
       }
 
       // ── 2. Flag / Logo texture — send separately ──────────────────────────
-      const opacity = getEmissiveBase64(text, hasFlag, hasLogo, flagCount, textColor);
+      const opacity = getEmissiveBase64(hasFlag, hasLogo, flagCount);
       ["preview-iframe", "preview-iframe2"].forEach(id => {
         const f = document.getElementById(id);
         if (f?.contentWindow) f.contentWindow.postMessage(`Short:${area}_opacity: ${opacity}`, "*");
       });
 
-      getDiffuseBase64(flag, logoPre, logoCustom, text, (diffuse, logoOpacityBase) => {
+      getDiffuseBase64(flag, logoPre, logoCustom, (diffuse, logoOpacityBase) => {
         if (renderCounterRef.current[area] !== currentRender) return;
         ["preview-iframe", "preview-iframe2"].forEach(id => {
           const f = document.getElementById(id);
@@ -647,7 +585,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
             if (logoOpacityBase) f.contentWindow.postMessage(`Short:${area}_opacity: ${logoOpacityBase}`, "*");
           }
         });
-      }, flag2, flagCount, textColor, type);
+      }, flag2, flagCount, type);
     });
   }, [isAppReady, pressureOptions]);
 
