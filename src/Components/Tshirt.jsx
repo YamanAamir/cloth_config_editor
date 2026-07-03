@@ -607,6 +607,11 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         prev.type !== type ||
         prev.textColor !== textColor;
 
+      console.log(`[Tshirt DEBUG] - Area: ${area}, hasChanged: ${hasChanged}`, {
+        prev,
+        current: { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor }
+      });
+
       if (!hasChanged) return;
 
       prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor };

@@ -1661,16 +1661,15 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                     {/* ── Product strip (garment selector) ── */}
                     <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
                         <div className="px-3 py-2">
-                            <div className="flex overflow-x-auto gap-1 scrollbar-none" style={{scrollbarWidth:'none',msOverflowStyle:'none'}}>
+                            <div className="flex overflow-x-auto gap-1 scrollbar-none" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                 {menuItems.map((item, index) => (
                                     <button
                                         key={index}
                                         onClick={() => setActiveMenu(item.name)}
-                                        className={`flex-shrink-0 flex flex-col items-center p-2 rounded-xl transition-all duration-200 min-w-[52px] ${
-                                            activeMenu === item.name
+                                        className={`flex-shrink-0 flex flex-col items-center p-2 rounded-xl transition-all duration-200 min-w-[52px] ${activeMenu === item.name
                                                 ? 'bg-green-50 border border-green-200 shadow-sm'
                                                 : 'hover:bg-slate-50'
-                                        }`}
+                                            }`}
                                     >
                                         <img src={item.icon} alt={item.name} className="w-7 h-7 object-contain" />
                                         {activeMenu === item.name && (
@@ -1702,16 +1701,16 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
                     {/* ── Garment config (color/size/design) — always visible ── */}
                     <div className="p-4 space-y-4 bg-white">
-                        {activeMenu === 'T-SHIRT'     && <Tshirt      key="m-tshirt"   isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']}     onUpdate={(u) => handleUpdateSelection('T-SHIRT', u)}     backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === 'SWEATSHIRT'  && <SweatShirt  key="m-sweat"    isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']}  onUpdate={(u) => handleUpdateSelection('SWEATSHIRT', u)}  backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === 'HOODIE'      && <Hoodie      key="m-hoodie"   isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']}      onUpdate={(u) => handleUpdateSelection('HOODIE', u)}      backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === 'ZIPPERHOODIE'&& <ZippedHoodie key="m-zipper"  isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']}onUpdate={(u) => handleUpdateSelection('ZIPPERHOODIE', u)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === 'SWEATPANTS'  && <SweatPants  key="m-sweats"   isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']}  onUpdate={(u) => handleUpdateSelection('SWEATPANTS', u)}  maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === 'SHORTS'      && <Shorts      key="m-shorts"   isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']}      onUpdate={(u) => handleUpdateSelection('SHORTS', u)}      maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === 'T-SHIRT' && <Tshirt key="m-tshirt" isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(u) => handleUpdateSelection('T-SHIRT', u)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === 'SWEATSHIRT' && <SweatShirt key="m-sweat" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(u) => handleUpdateSelection('SWEATSHIRT', u)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === 'HOODIE' && <Hoodie key="m-hoodie" isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(u) => handleUpdateSelection('HOODIE', u)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === 'ZIPPERHOODIE' && <ZippedHoodie key="m-zipper" isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(u) => handleUpdateSelection('ZIPPERHOODIE', u)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === 'SWEATPANTS' && <SweatPants key="m-sweats" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(u) => handleUpdateSelection('SWEATPANTS', u)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === 'SHORTS' && <Shorts key="m-shorts" isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(u) => handleUpdateSelection('SHORTS', u)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
                     </div>
 
                     {/* ── 3D Preview ── */}
-                    <div className="mx-4 my-3 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white" style={{height:'300px'}}>
+                    <div className="mx-4 my-3 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white" style={{ height: '300px' }}>
                         <iframe
                             id="preview-iframe2"
                             src={'https://playcanv.as/e/p/1b1eadeb/'}
@@ -1745,21 +1744,20 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 (processStatus === 'paid' && !editWindowOpen) ||
                                 (isLocked && !isAdmin)
                             }
-                            className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 shadow-md ${
-                                processStatus === 'pending_payment' || (processStatus === 'paid' && !editWindowOpen) || (isLocked && !isAdmin)
+                            className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 shadow-md ${processStatus === 'pending_payment' || (processStatus === 'paid' && !editWindowOpen) || (isLocked && !isAdmin)
                                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                     : processStatus === 'partial_paid'
                                         ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white'
                                         : 'bg-gradient-to-r from-green-600 to-green-700 text-white'
-                            }`}
+                                }`}
                         >
                             {isPayingBalance ? 'Opening payment…'
                                 : processStatus === 'pending_payment' ? 'Awaiting confirmation…'
-                                : isLocked && !isAdmin ? 'Order Locked'
-                                : processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0 ? `Pay Balance – ${(paymentBreakdown?.balance_due || 0).toFixed(2)} DKK`
-                                : processStatus === 'paid' && editWindowOpen ? 'Add More Products & Pay'
-                                : processStatus === 'paid' && !editWindowOpen ? 'Edit Window Closed'
-                                : 'Approve and Pay'}
+                                    : isLocked && !isAdmin ? 'Order Locked'
+                                        : processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0 ? `Pay Balance – ${(paymentBreakdown?.balance_due || 0).toFixed(2)} DKK`
+                                            : processStatus === 'paid' && editWindowOpen ? 'Add More Products & Pay'
+                                                : processStatus === 'paid' && !editWindowOpen ? 'Edit Window Closed'
+                                                    : 'Approve and Pay'}
                         </button>
                     </div>
                 </div>
