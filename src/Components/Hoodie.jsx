@@ -33,12 +33,13 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   const initialDesignColor = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase())?.dark ? "dark" : "light";
   const [designColor, setDesignColor] = useState(initialDesignColor);
   const designColorRef = React.useRef(initialDesignColor);
-  const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" });
+  const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" }); // cache last canvas data
+  const lastSentBackRef = React.useRef({ diffuse: "", opacity: "", color: "" }); // dedupe: last actually SENT data
 
   React.useEffect(() => {
     const handleResend = () => {
       if (lastBackDataRef.current?.diffuse) {
-         sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
+        sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
       }
     };
     window.addEventListener("resendBackDesign", handleResend);
@@ -398,19 +399,19 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
           }
           octx.putImageData(d, 0, 0);
         } else {
-          const gC = (px, py) => { const idx = (py * img.width + px) * 4; return [tmpD.data[idx], tmpD.data[idx+1], tmpD.data[idx+2]]; };
-          const corners = [gC(0,0), gC(img.width-1,0), gC(0,img.height-1), gC(img.width-1,img.height-1)];
-          const bgR = corners.reduce((s,c)=>s+c[0],0)/4;
-          const bgG = corners.reduce((s,c)=>s+c[1],0)/4;
-          const bgB = corners.reduce((s,c)=>s+c[2],0)/4;
+          const gC = (px, py) => { const idx = (py * img.width + px) * 4; return [tmpD.data[idx], tmpD.data[idx + 1], tmpD.data[idx + 2]]; };
+          const corners = [gC(0, 0), gC(img.width - 1, 0), gC(0, img.height - 1), gC(img.width - 1, img.height - 1)];
+          const bgR = corners.reduce((s, c) => s + c[0], 0) / 4;
+          const bgG = corners.reduce((s, c) => s + c[1], 0) / 4;
+          const bgB = corners.reduce((s, c) => s + c[2], 0) / 4;
           const thr = 90;
           octx.drawImage(img, x, y, w, h);
           const d = octx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
           for (let i = 0; i < d.data.length; i += 4) {
             const a = d.data[i + 3]; let bw;
             if (a < 10) { bw = 0; }
-            else { const diff = Math.abs(d.data[i]-bgR)+Math.abs(d.data[i+1]-bgG)+Math.abs(d.data[i+2]-bgB); bw = diff > thr ? 255 : 0; }
-            d.data[i] = d.data[i+1] = d.data[i+2] = bw; d.data[i+3] = 255;
+            else { const diff = Math.abs(d.data[i] - bgR) + Math.abs(d.data[i + 1] - bgG) + Math.abs(d.data[i + 2] - bgB); bw = diff > thr ? 255 : 0; }
+            d.data[i] = d.data[i + 1] = d.data[i + 2] = bw; d.data[i + 3] = 255;
           }
           octx.putImageData(d, 0, 0);
         }
@@ -423,8 +424,18 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
     callback(canvas.toDataURL("image/png"));
   };
 
-  const sendBackDesign = (diffuseB64, opacityB64, color) => {
+const sendBackDesign = (diffuseB64, opacityB64, color) => {
     if (!diffuseB64 && !opacityB64) return;
+
+    // Dedupe: agar same data + same color pehle hi bheja ja chuka hai, to skip
+    if (
+      lastSentBackRef.current.diffuse === diffuseB64 &&
+      lastSentBackRef.current.opacity === opacityB64 &&
+      lastSentBackRef.current.color === color
+    ) {
+      return;
+    }
+    lastSentBackRef.current = { diffuse: diffuseB64, opacity: opacityB64, color };
 
     // const formatTexture = (b64, cb) => {
     //   if (!b64) { cb(null); return; }

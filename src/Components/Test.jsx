@@ -92,9 +92,24 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       });
   };
 
+  const lastBackDesignConfigRef = useRef(null);
+
   useEffect(() => {
-    if (pressureOptions?.backDesign) {
-      const config = pressureOptions.backDesign;
+    const config = pressureOptions?.backDesign;
+
+    if (config) {
+      const serialized = JSON.stringify({
+        src: config.src,
+        pos: config.pos,
+        size: config.size,
+        angle: config.angle,
+        locked: config.locked,
+      });
+
+      // Content same hai (parent ne bas naya reference banaya) → kuch mat karo
+      if (lastBackDesignConfigRef.current === serialized) return;
+      lastBackDesignConfigRef.current = serialized;
+
       loadImageSafe(config.src, (img) => {
         if (!img) return;
         setObjects([{
@@ -109,10 +124,12 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
         setSelectedId('uploadedImage');
       });
     } else {
+      if (lastBackDesignConfigRef.current === null) return; // already empty
+      lastBackDesignConfigRef.current = null;
       setObjects([]);
       setSelectedId(null);
     }
-  }, [pressureOptions]);
+  }, [pressureOptions?.backDesign]);
   useEffect(() => {
     if (backDesigns && objects.length === 0 && !pressureOptions?.backDesign) {
       const design = backDesigns;

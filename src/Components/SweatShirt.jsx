@@ -39,7 +39,8 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
   const initialDesignColor = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase())?.dark ? "dark" : "light";
   const [designColor, setDesignColor] = useState(initialDesignColor);
   const designColorRef = React.useRef(initialDesignColor);
-  const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" });
+  const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" }); // cache last canvas data
+  const lastSentBackRef = React.useRef({ diffuse: "", opacity: "", color: "" }); // dedupe: last actually SENT data
 
   React.useEffect(() => {
     const handleResend = () => {
@@ -595,8 +596,18 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
     finalize();
   };
 
-  const sendBackDesign = (diffuseB64, opacityB64, color) => {
+const sendBackDesign = (diffuseB64, opacityB64, color) => {
     if (!diffuseB64 && !opacityB64) return;
+
+    // Dedupe: agar same data + same color pehle hi bheja ja chuka hai, to skip
+    if (
+      lastSentBackRef.current.diffuse === diffuseB64 &&
+      lastSentBackRef.current.opacity === opacityB64 &&
+      lastSentBackRef.current.color === color
+    ) {
+      return;
+    }
+    lastSentBackRef.current = { diffuse: diffuseB64, opacity: opacityB64, color };
 
     // const formatTexture = (b64, cb) => {
     //   if (!b64) { cb(null); return; }
