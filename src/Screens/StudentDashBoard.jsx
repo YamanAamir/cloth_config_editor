@@ -30,10 +30,6 @@ import { BASE_URL } from '../utils/const';
 import useSocket from '../hooks/useSocket';
 
 const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup, initialOrderData, initialHistoryData, initialBackDesignData /*, setShowBackTextPopup */ }) => { // COMMENTED: Back text feature disabled
-    console.log("STUDENT_DASHBOARD RENDERED");
-    useEffect(() => {
-      console.log("=== STUDENT_DASHBOARD MOUNTED ===");
-    }, []);
     const { logout } = useAuth();
     const { backDesigns } = useBackDesignStore();
     const { fetchBackDesigns } = useBackDesignStore();
@@ -228,8 +224,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         return DEFAULT_SELECTIONS;
     });
     const setAllSelections = (val) => {
-        console.log("setAllSelections called! val/updater =", typeof val === 'function' ? 'function' : val);
-        console.trace("setAllSelections stack trace");
         setAllSelectionsState(val);
     };
     const [activeMenu, setActiveMenu] = useState('T-SHIRT');
@@ -251,6 +245,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     const [isAppReady, setIsAppReady] = useState(false);
     const [isIframeLoaded, setIsIframeLoaded] = useState(false);
     const [extraCoverReset, setExtraCoverReset] = useState(false)
+    const lastSentPageRef = useRef(null);
+    const lastSentKeyRef = useRef("");
 
     // Garment switch copy popup state
     const [copyDesignPrompt, setCopyDesignPrompt] = useState(null); // { from, to }
@@ -371,7 +367,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                     // Update React state so UI immediately shows latest image
                     setAllSelections(studentData);
                     setCustomizations(prev => ({ ...prev, [sName]: studentData }));
-                    console.log('✅ backDesign.src synced with latest API image');
                 }
             } catch (err) {
                 console.error('Failed to update backDesign src in localStorage:', err);
@@ -645,7 +640,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     // ── Refetch when navigating BACK to dashboard from Stripe payment ──
     // location.key changes every navigation — catches back-from-success
     useEffect(() => {
-        console.log("LOCATION.KEY EFFECT RUNNING! location.key =", location.key);
         if (user && ['student', 'class_representative'].includes(user.role)) {
             fetchOrderData();
         }
@@ -727,7 +721,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     }, [selectedStudent, customizations]);
 
     const handleUpdateSelection = (category, updates) => {
-        console.log("HANDLE_UPDATE_SELECTION CALLED", category, updates);
 
         // selectedStudent empty ho toh user name se fallback — data "" key pe na jaye
         const activeStudent = selectedStudent || user?.name || "Student";
@@ -1007,14 +1000,21 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         const latestSelections = allSelections;
         const menuIndex = menuItems.findIndex(item => item.name === activeMenu);
         if (menuIndex !== -1) {
+            const pageNum = menuIndex + 1;
+            // Sirf tab bhejo jab page number actually badla ho — garmentTab switch
+            // (Size <-> Design) par pageNum same rehta hai, isliye repeat postMessage nahi jayega
+            const shouldSendPage = lastSentPageRef.current !== pageNum;
+            if (shouldSendPage) lastSentPageRef.current = pageNum;
+            console.log("shouldSendPage", shouldSendPage);
+
             ['preview-iframe', 'preview-iframe2'].forEach((id) => {
                 const iframe = document.getElementById(id);
                 if (iframe?.contentWindow) {
-                    const pageNum = menuIndex + 1;
-
-                    // 1. Switch Page
-                    iframe.contentWindow.postMessage(`Page : ${pageNum}`, "*");
-                    iframe.contentWindow.postMessage('Tilvælg:no', "*");
+                    // 1. Switch Page — sirf tab jab page number naya ho
+                    if (shouldSendPage) {
+                        iframe.contentWindow.postMessage(`Page : ${pageNum}`, "*");
+                    }
+                    // iframe.contentWindow.postMessage('Tilvælg:no', "*");
 
                     // 2. Initial state sync for the new model
                     setTimeout(() => {
@@ -1023,20 +1023,26 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                             const currentData = latestSelections[activeMenu];
                             if (currentData) {
                                 const { selectedColor, selectedSize } = currentData;
+                                const key = `${activeMenu}:${selectedColor}:${selectedSize}`;
 
-                                const prefixMap = {
-                                    'T-SHIRT': 'T-Shirt: ',
-                                    'SWEATSHIRT': 'SweatShirt: ',
-                                    'HOODIE': 'Hoodie: ',
-                                    'ZIPPERHOODIE': 'ZipperHoodie: ',
-                                    'SWEATPANTS': 'SweatPant: ',
-                                    'SHORTS': 'Short: '
-                                };
+                                // Safety-net effect ne pehle hi ye bhej diya ho to skip karo
+                                if (lastSentKeyRef.current !== key) {
+                                    lastSentKeyRef.current = key;
 
-                                const prefix = prefixMap[activeMenu];
-                                if (prefix) {
-                                    if (selectedColor) currentIframe.contentWindow.postMessage(`${prefix}${selectedColor.toLowerCase()}`, "*");
-                                    if (selectedSize) currentIframe.contentWindow.postMessage(`${prefix}size:${selectedSize}`, "*");
+                                    const prefixMap = {
+                                        'T-SHIRT': 'T-Shirt: ',
+                                        'SWEATSHIRT': 'SweatShirt: ',
+                                        'HOODIE': 'Hoodie: ',
+                                        'ZIPPERHOODIE': 'ZipperHoodie: ',
+                                        'SWEATPANTS': 'SweatPant: ',
+                                        'SHORTS': 'Short: '
+                                    };
+
+                                    const prefix = prefixMap[activeMenu];
+                                    if (prefix) {
+                                        if (selectedColor) currentIframe.contentWindow.postMessage(`${prefix}${selectedColor.toLowerCase()}`, "*");
+                                        if (selectedSize) currentIframe.contentWindow.postMessage(`${prefix}size:${selectedSize}`, "*");
+                                    }
                                 }
                             }
                         }
@@ -1047,18 +1053,80 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             });
 
             setTimeout(() => {
-                setAllSelections(JSON.parse(JSON.stringify(latestSelections)));
+                // setAllSelections(JSON.parse(JSON.stringify(latestSelections)));
                 window.dispatchEvent(new Event("resendBackDesign"));
             }, 650);
         }
     }, [activeMenu, garmentTab, isAppReady]);
-
     // On initial load, if saved garment data is already present, immediately resend
     // the relevant preview messages so flag/logo payloads aren't stuck behind a tab switch.
-    useEffect(() => {
-        if (!isAppReady || !allSelections?.[activeMenu]) return;
+    // useEffect(() => {
+    //     if (!isAppReady || !allSelections?.[activeMenu]) return;
 
-        const currentData = allSelections[activeMenu];
+    //     const currentData = allSelections[activeMenu];
+    //     const prefixMap = {
+    //         'T-SHIRT': 'T-Shirt: ',
+    //         'SWEATSHIRT': 'SweatShirt: ',
+    //         'HOODIE': 'Hoodie: ',
+    //         'ZIPPERHOODIE': 'ZipperHoodie: ',
+    //         'SWEATPANTS': 'SweatPant: ',
+    //         'SHORTS': 'Short: '
+    //     };
+    //     const prefix = prefixMap[activeMenu];
+
+    //     ['preview-iframe', 'preview-iframe2'].forEach((id) => {
+    //         const iframe = document.getElementById(id);
+    //         if (iframe?.contentWindow) {
+    //             if (prefix) {
+    //                 if (currentData.selectedColor) iframe.contentWindow.postMessage(`${prefix}${currentData.selectedColor.toLowerCase()}`, "*");
+    //                 if (currentData.selectedSize) iframe.contentWindow.postMessage(`${prefix}size:${currentData.selectedSize}`, "*");
+    //             }
+    //         }
+    //     });
+
+    //     window.dispatchEvent(new Event("resendBackDesign"));
+    // }, [isAppReady, activeMenu, allSelections]);
+    // Safety-net: first load pe (default T-SHIRT tab) bhi flags/logos postMessage
+    // ek dafa force-resync ho jaye, jaisa tab-switch pe hota hai.
+    // PlayCanvas ka asset/texture load app:ready ke baad bhi thodi der le sakta hai,
+    // isliye ek single timer ki bajaye multiple retries karte hain taake reliably catch ho jaye.
+    // useEffect(() => {
+    //     if (!isAppReady || !allSelectionsRef.current?.[activeMenu]) return;
+
+    //     const currentData = allSelectionsRef.current[activeMenu];
+    //     const prefixMap = {
+    //         'T-SHIRT': 'T-Shirt: ',
+    //         'SWEATSHIRT': 'SweatShirt: ',
+    //         'HOODIE': 'Hoodie: ',
+    //         'ZIPPERHOODIE': 'ZipperHoodie: ',
+    //         'SWEATPANTS': 'SweatPant: ',
+    //         'SHORTS': 'Short: '
+    //     };
+    //     const prefix = prefixMap[activeMenu];
+
+    //     ['preview-iframe', 'preview-iframe2'].forEach((id) => {
+    //         const iframe = document.getElementById(id);
+    //         if (iframe?.contentWindow) {
+    //             if (prefix) {
+    //                 if (currentData.selectedColor) iframe.contentWindow.postMessage(`${prefix}${currentData.selectedColor.toLowerCase()}`, "*");
+    //                 if (currentData.selectedSize) iframe.contentWindow.postMessage(`${prefix}size:${currentData.selectedSize}`, "*");
+    //             }
+    //         }
+    //     });
+
+    //     window.dispatchEvent(new Event("resendBackDesign"));
+    // }, [isAppReady, activeMenu]);
+    useEffect(() => {
+        if (!isAppReady || !allSelectionsRef.current?.[activeMenu]) return;
+
+        const currentData = allSelectionsRef.current[activeMenu];
+
+        // Dedupe: agar same garment + same color + same size pehle hi bheja ja chuka hai,
+        // to Effect #1 (Page-switch effect) ke sath duplicate mat bhejo
+        const key = `${activeMenu}:${currentData.selectedColor}:${currentData.selectedSize}`;
+        if (lastSentKeyRef.current === key) return;
+        lastSentKeyRef.current = key;
+
         const prefixMap = {
             'T-SHIRT': 'T-Shirt: ',
             'SWEATSHIRT': 'SweatShirt: ',
@@ -1080,30 +1148,15 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         });
 
         window.dispatchEvent(new Event("resendBackDesign"));
-    }, [isAppReady, activeMenu, allSelections]);
-    // Safety-net: first load pe (default T-SHIRT tab) bhi flags/logos postMessage
-    // ek dafa force-resync ho jaye, jaisa tab-switch pe hota hai.
-    // PlayCanvas ka asset/texture load app:ready ke baad bhi thodi der le sakta hai,
-    // isliye ek single timer ki bajaye multiple retries karte hain taake reliably catch ho jaye.
+    }, [isAppReady, activeMenu]);
     const didInitialForceSync = useRef(false);
     useEffect(() => {
         if (!isAppReady || didInitialForceSync.current) return;
         didInitialForceSync.current = true;
 
         const doSync = () => {
-            const menuIndex = menuItems.findIndex(item => item.name === activeMenu);
-            if (menuIndex !== -1) {
-                ['preview-iframe', 'preview-iframe2'].forEach((id) => {
-                    const iframe = document.getElementById(id);
-                    if (iframe?.contentWindow) {
-                        const pageNum = menuIndex + 1;
-                        iframe.contentWindow.postMessage(`Page : ${pageNum}`, "*");
-                        iframe.contentWindow.postMessage('Tilvælg:no', "*");
-                    }
-                });
-            }
-            // Yeh hi line asal mein flags/logos/text components ko re-trigger karti hai
-            setAllSelections(prev => JSON.parse(JSON.stringify(prev)));
+            // "Page : X" message ko yaha retries se hata diya gaya hai.
+            // Ab Page message deduplicate hokar sirf main useEffect se hi jayega (jahan lastSentPageRef laga hai).
             window.dispatchEvent(new Event("resendBackDesign"));
         };
 
@@ -1141,7 +1194,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     const allSelectionsRef = React.useRef(allSelections);
     useEffect(() => { allSelectionsRef.current = allSelections; }, [allSelections]);
 
-// Removed redundant isAppReady effect that was causing unnecessary state updates and re‑renders.
+    // Removed redundant isAppReady effect that was causing unnecessary state updates and re‑renders.
 
     useEffect(() => {
         if (!selectedStudent) return;
@@ -1680,8 +1733,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                         key={index}
                                         onClick={() => setActiveMenu(item.name)}
                                         className={`flex-shrink-0 flex flex-col items-center p-2 rounded-xl transition-all duration-200 min-w-[52px] ${activeMenu === item.name
-                                                ? 'bg-green-50 border border-green-200 shadow-sm'
-                                                : 'hover:bg-slate-50'
+                                            ? 'bg-green-50 border border-green-200 shadow-sm'
+                                            : 'hover:bg-slate-50'
                                             }`}
                                     >
                                         <img src={item.icon} alt={item.name} className="w-7 h-7 object-contain" />
@@ -1749,10 +1802,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 (isLocked && !isAdmin)
                             }
                             className={`w-full py-3 rounded-xl font-semibold transition-all duration-200 shadow-md ${processStatus === 'pending_payment' || (processStatus === 'paid' && !editWindowOpen) || (isLocked && !isAdmin)
-                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    : processStatus === 'partial_paid'
-                                        ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white'
-                                        : 'bg-gradient-to-r from-green-600 to-green-700 text-white'
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : processStatus === 'partial_paid'
+                                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white'
+                                    : 'bg-gradient-to-r from-green-600 to-green-700 text-white'
                                 }`}
                         >
                             {isPayingBalance ? 'Opening payment…'

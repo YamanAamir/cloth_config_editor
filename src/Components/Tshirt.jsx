@@ -37,7 +37,11 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   const designColorRef = React.useRef(initialDesignColor);
   const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" }); // cache last canvas data
   const lastSentBackRef = React.useRef({ diffuse: "", opacity: "", color: "" }); // dedupe: last actually SENT data
-
+  React.useEffect(() => {
+    if (isAppReady) {
+      lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
+    }
+  }, [isAppReady]);
   const handleDesignColorChange = (newDesignColor) => {
     setDesignColor(newDesignColor);
     designColorRef.current = newDesignColor;
@@ -708,8 +712,6 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
           const iframe = document.getElementById(id);
           if (!iframe?.contentWindow) return;
           if (color === "light") {
-            console.count("SEND back_black_diffuse");
-            console.count("SEND back_black_opacity");
             if (formattedDiffuse) iframe.contentWindow.postMessage("T-Shirt:back_black_diffuse: " + formattedDiffuse, "*");
             if (formattedOpacity) iframe.contentWindow.postMessage("T-Shirt:back_black_opacity: " + formattedOpacity, "*");
           } else {
@@ -720,8 +722,6 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
             wctx.fillStyle = "#ffffff";
             wctx.fillRect(0, 0, 4096, 4096);
             const whiteDiffuse = whiteCanvas.toDataURL("image/png", 1.0);
-            console.count("SEND back_white_diffuse");
-            console.log(">>> BEFORE back_white_opacity", new Error().stack);
             iframe.contentWindow.postMessage("T-Shirt:back_white_diffuse: " + whiteDiffuse, "*");
             if (formattedOpacity) iframe.contentWindow.postMessage("T-Shirt:back_white_opacity: " + formattedOpacity, "*");
           }
