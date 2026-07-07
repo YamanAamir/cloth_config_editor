@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatDate } from '../utils/dateUtils';
 import { message } from 'antd';
 import { X, Printer, Download, Mail, CheckCircle, Package, Star, User, CreditCard, ArrowLeft, ArrowRight, Loader2, ShoppingCart, Settings, History, Shirt, Check, ChevronDown } from 'lucide-react';
 // import { loadStripe } from "@stripe/stripe-js";
@@ -239,7 +240,7 @@ const QuoteModal = ({
     return () => document.removeEventListener("click", handleClick);
   }, [currentStep]); // Re-run when step changes
 
-  const [orderDate, setOrderDate] = useState(`ORD-${Date.now().toString()}`);
+  const [orderDate, setOrderDate] = useState(`ORD-${formatDate(new Date())}`);
   const [expandedImageKey, setExpandedImageKey] = useState(null);
   const [expandedAreaKey, setExpandedAreaKey] = useState(null); // accordion for area items
 
@@ -778,7 +779,7 @@ const QuoteModal = ({
       });
 
       if (po.backDesign) {
-        filtered['Back Design'] = po.backDesign.name || 'Custom';
+        filtered['Design på bagsiden'] = po.backDesign.name || 'Custom';
       }
 
       // Remove the raw object so it doesn't show up as [Object object]
@@ -1011,10 +1012,9 @@ const QuoteModal = ({
         <div className="flex items-start gap-3">
           <Package className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
           <div>
-            <h4 className="font-bold text-blue-900 text-sm mb-1">Select Items to Purchase</h4>
+            <h4 className="font-bold text-blue-900 text-sm mb-1">Vælg de varer, du vil købe</h4>
             <p className="text-blue-700 text-xs">
-              Click the checkbox on each garment card to select/deselect items for your order.
-              Price will update automatically based on your selection.
+              Klik på afkrydsningsfeltet på hvert produktkort for at vælge eller fravælge varer til din ordre. Prisen opdateres automatisk ud fra dit valg.
             </p>
           </div>
         </div>
@@ -1213,7 +1213,7 @@ const QuoteModal = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* First Name */}
               <div>
-                <label className={labelClasses}>First Name *</label>
+                <label className={labelClasses}>Fornavn *</label>
                 <input
                   ref={refs.firstName}
                   name="firstName"
@@ -1222,13 +1222,13 @@ const QuoteModal = ({
                   onChange={(e) => handleInputChange("firstName", e.target.value)}
                   onKeyPress={(e) => handleKeyPress(e, "firstName")}
                   className={inputClasses}
-                  placeholder="Enter your first name"
+                  placeholder="Indtast dit fornavn"
                 />
               </div>
 
               {/* Last Name */}
               <div>
-                <label className={labelClasses}>Last Name *</label>
+                <label className={labelClasses}>Efternavn *</label>
                 <input
                   ref={refs.lastName}
                   name="lastName"
@@ -1237,13 +1237,13 @@ const QuoteModal = ({
                   onChange={(e) => handleInputChange("lastName", e.target.value)}
                   onKeyPress={(e) => handleKeyPress(e, "lastName")}
                   className={inputClasses}
-                  placeholder="Enter your last name"
+                  placeholder="Indtast dit efternavn"
                 />
               </div>
 
               {/* Email Address */}
               <div>
-                <label className={labelClasses}>Email Address *</label>
+                <label className={labelClasses}>E-mail-adresse *</label>
                 <input
                   ref={refs.email}
                   name="email"
@@ -1258,7 +1258,7 @@ const QuoteModal = ({
 
               {/* Phone Number */}
               <div>
-                <label className={labelClasses}>Phone Number *</label>
+                <label className={labelClasses}>Telefonnummer *</label>
                 <input
                   ref={refs.phone}
                   name="phone"
@@ -1273,7 +1273,7 @@ const QuoteModal = ({
 
               {/* School Name */}
               <div>
-                <label className={labelClasses}>School Name *</label>
+                <label className={labelClasses}>Skolens navn *</label>
                 <input
                   ref={refs.Skolenavn}
                   name="Skolenavn"
@@ -1282,12 +1282,12 @@ const QuoteModal = ({
                   onChange={(e) => handleInputChange("Skolenavn", e.target.value)}
                   onKeyPress={(e) => handleKeyPress(e, "Skolenavn")}
                   className={inputClasses}
-                  placeholder="e.g. Copenhagen High"
+                  placeholder="f.eks. Copenhagen High"
                 />
               </div>
 
               <div className="flex flex-col justify-end">
-                <label className={labelClasses}>Delivery Location</label>
+                <label className={labelClasses}>Leveringssted</label>
                 <div
                   onClick={() => handleInputChange("deliverToSchool", !customerDetails.deliverToSchool)}
                   className={`flex items-center justify-between px-5 py-3 rounded-full border-2 cursor-pointer transition-all duration-300 ${customerDetails.deliverToSchool
@@ -1300,8 +1300,8 @@ const QuoteModal = ({
                       <Package className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-slate-700">Deliver to school campus</p>
-                      <p className="text-[10px] text-slate-400 font-medium">Saves shipping & delivery fees</p>
+                      <p className="text-xs font-bold text-slate-700">Levering til skoleområdet</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Sparer fragt- og leveringsomkostninger</p>
                     </div>
                   </div>
                   <div className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${customerDetails.deliverToSchool ? 'bg-green-600' : 'bg-slate-200'}`}>
@@ -1312,7 +1312,7 @@ const QuoteModal = ({
 
               {/* Street Address */}
               <div className="md:col-span-2">
-                <label className={labelClasses}>Street Address *</label>
+                <label className={labelClasses}>Gadeadresse *</label>
                 <input
                   ref={refs.address}
                   name="address"
@@ -1321,13 +1321,13 @@ const QuoteModal = ({
                   onChange={(e) => handleInputChange("address", e.target.value)}
                   onKeyPress={(e) => handleKeyPress(e, "address")}
                   className={inputClasses}
-                  placeholder="Enter street and number"
+                  placeholder=""
                 />
               </div>
 
               {/* City */}
               <div>
-                <label className={labelClasses}>City *</label>
+                <label className={labelClasses}>By *</label>
                 <input
                   ref={refs.city}
                   name="city"
@@ -1336,14 +1336,14 @@ const QuoteModal = ({
                   onChange={(e) => handleInputChange("city", e.target.value)}
                   onKeyPress={(e) => handleKeyPress(e, "city")}
                   className={inputClasses}
-                  placeholder="e.g. Copenhagen"
+                  placeholder="f.eks. København"
                 />
               </div>
 
               {/* Postal Code & Country */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelClasses}>Postal Code *</label>
+                  <label className={labelClasses}>Postnummer *</label>
                   <input
                     ref={refs.postalCode}
                     name="postalCode"
@@ -1356,7 +1356,7 @@ const QuoteModal = ({
                   />
                 </div>
                 <div>
-                  <label className={labelClasses}>Country</label>
+                  <label className={labelClasses}>Land</label>
                   <select
                     ref={refs.country}
                     name="country"
@@ -1387,7 +1387,7 @@ const QuoteModal = ({
 
             {/* Delivery Preference */}
             <div className="pt-6 border-t border-slate-100">
-              <label className={labelClasses}>Delivery Preference</label>
+              <label className={labelClasses}>Leveringspræference</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                 <button
                   onClick={() => handleInputChange("deliveryType", "regular")}
@@ -1397,7 +1397,7 @@ const QuoteModal = ({
                     {customerDetails.deliveryType === "regular" && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-800">Regular Delivery</p>
+                    <p className="text-xs font-bold text-slate-800">Regelmæssig levering</p>
                     <p className="text-[10px] text-slate-500 font-medium">
                       {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (customerDetails.country || '').toLowerCase()); return r ? `${r.regular_delivery_rate} DKK — Est. 6 weeks` : 'Est. 6 weeks'; })()}
                     </p>
@@ -1411,7 +1411,7 @@ const QuoteModal = ({
                     {customerDetails.deliveryType === "express" && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-800">Express Priority</p>
+                    <p className="text-xs font-bold text-slate-800">Ekspresprioritet</p>
                     <p className="text-[10px] text-slate-500 font-medium">
                       {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (customerDetails.country || '').toLowerCase()); return r ? `${r.express_delivery_rate} DKK — Est. 3 weeks` : 'Est. 3 weeks'; })()}
                     </p>
@@ -1422,7 +1422,7 @@ const QuoteModal = ({
 
             {/* Notes */}
             <div className="pt-6 border-t border-slate-100">
-              <label className={labelClasses}>Order Notes (Optional)</label>
+              <label className={labelClasses}>Bemærkninger til ordren (valgfrit)</label>
               <textarea
                 ref={refs.notes}
                 name="notes"
@@ -1431,7 +1431,7 @@ const QuoteModal = ({
                 onKeyPress={(e) => handleKeyPress(e, "notes")}
                 rows={3}
                 className={`${inputClasses} resize-none min-h-[100px]`}
-                placeholder="Any special requests or comments for your order..."
+                placeholder="Er der nogen særlige ønsker eller bemærkninger til din bestilling..."
               />
             </div>
           </div>
@@ -1454,30 +1454,30 @@ const QuoteModal = ({
                 <User className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-800 tracking-tight">Delivery Details</h3>
-                <p className="text-xs text-slate-500 font-medium">Verify your information</p>
+                <h3 className="text-base font-bold text-slate-800 tracking-tight">Leveringsoplysninger</h3>
+                <p className="text-xs text-slate-500 font-medium">Bekræft dine oplysninger</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
               <div className="space-y-3">
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Customer Name</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Kundens navn</span>
                   <span className="text-xs font-bold text-slate-700">{customerDetails.firstName} {customerDetails.lastName}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Email Contact</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">E-mail-kontakt</span>
                   <span className="text-xs font-bold text-slate-700">{customerDetails.email}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Phone Number</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Telefonnummer</span>
                   <span className="text-xs font-bold text-slate-700">{customerDetails.phone}</span>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Shipping Address</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Leveringsadresse</span>
                   <span className="text-xs font-bold text-slate-700 leading-relaxed">
                     {customerDetails.address}<br />
                     {customerDetails.postalCode}, {customerDetails.city}<br />
@@ -1486,7 +1486,7 @@ const QuoteModal = ({
                 </div>
                 {customerDetails.Skolenavn && (
                   <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Educational Institution</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Uddannelsesinstitution</span>
                     <span className="text-xs font-bold text-slate-700">{customerDetails.Skolenavn}</span>
                   </div>
                 )}
@@ -1495,7 +1495,7 @@ const QuoteModal = ({
 
             {customerDetails.notes && (
               <div className="mt-6 pt-5 border-t border-slate-100">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Special Instructions</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Særlige anvisninger</span>
                 <p className="text-xs font-medium text-slate-600 bg-slate-50 p-3 rounded-xl italic">"{customerDetails.notes}"</p>
               </div>
             )}
@@ -1512,8 +1512,8 @@ const QuoteModal = ({
                 <Package className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-800 tracking-tight">Configuration Summary</h3>
-                <p className="text-xs text-slate-500 font-medium">Garments in your order</p>
+                <h3 className="text-base font-bold text-slate-800 tracking-tight">Konfigurationsoversigt</h3>
+                <p className="text-xs text-slate-500 font-medium">Tøjvarer i din ordre</p>
               </div>
             </div>
 
@@ -1558,26 +1558,26 @@ const QuoteModal = ({
                 <CreditCard className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-800 tracking-tight">Order Total</h3>
-                <p className="text-xs text-slate-500 font-medium">Final pricing breakdown</p>
+                <h3 className="text-base font-bold text-slate-800 tracking-tight">Samlet beløb for ordren</h3>
+                <p className="text-xs text-slate-500 font-medium">Endelig prisoversigt</p>
               </div>
             </div>
 
             <div className="bg-slate-50/50 rounded-[1.5rem] p-5 border border-slate-100 space-y-3.5">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-semibold text-slate-600">Subtotal</span>
+                <span className="text-xs font-semibold text-slate-600">Mellemotal</span>
                 <span className="text-sm font-bold text-slate-800">{subtotal} DKK</span>
               </div>
               {vatPct > 0 && (
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-semibold text-slate-600">VAT ({vatPct}% included)</span>
+                  <span className="text-xs font-semibold text-slate-600">VAT ({vatPct}% inkluderet)</span>
                   <span className="text-sm font-bold text-slate-800">{vatAmount} DKK</span>
                 </div>
               )}
               {shippingRate > 0 && (
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-semibold text-slate-600">
-                    Shipping ({customerDetails.deliveryType === 'express' ? 'Express' : 'Regular'} — {customerDetails.country})
+                    Forsendelse ({customerDetails.deliveryType === 'express' ? 'Express' : 'Regular'} — {customerDetails.country})
                   </span>
                   <span className="text-sm font-bold text-slate-800">{shippingRate} DKK</span>
                 </div>
@@ -1585,7 +1585,7 @@ const QuoteModal = ({
               {handlingFeePerStudent > 0 && (
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-semibold text-slate-600">
-                    Handling Fee (1/{classStudentCount} of class)
+                    Ekspeditionsgebyr (1/{classStudentCount} of class)
                   </span>
                   <span className="text-sm font-bold text-slate-800">{handlingFeePerStudent} DKK</span>
                 </div>
@@ -1599,12 +1599,12 @@ const QuoteModal = ({
               {amountPaid > 0 && (
                 <>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-semibold text-green-600">Amount Already Paid</span>
+                    <span className="text-xs font-semibold text-green-600">Allerede betalt beløb</span>
                     <span className="text-sm font-bold text-green-600">-{amountPaid} DKK</span>
                   </div>
                   <div className="border-t border-slate-200 pt-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-bold text-slate-800">Balance Due</span>
+                      <span className="text-sm font-bold text-slate-800">Restbeløb</span>
                       <span className="text-lg font-bold text-orange-600">{computedBalanceDue} DKK</span>
                     </div>
                   </div>
@@ -1625,7 +1625,8 @@ const QuoteModal = ({
             paidProducts={paymentBreakdown.paid_products}
             unpaidProducts={paymentBreakdown.unpaid_products}
             editWindowOpen={paymentBreakdown.edit_window_open}
-            editDeadline={paymentBreakdown.edit_deadline}
+            editDeadline={editDeadline}
+            editInfo={`Edit: ${formatDate(editDeadline)} ${new Date() > new Date(editDeadline) ? '· Expired' : ''}`}
             onPayNow={onPayNow}
             loading={isPayingBalance}
           />
@@ -1643,12 +1644,11 @@ const QuoteModal = ({
             {computedBalanceDue > 0 ? (
               <>
                 <p className="text-sm font-bold text-green-800">
-                  Clicking "Approve &amp; Pay" will redirect you to secure payment
+                  Hvis du klikker på »Godkend og betal«, bliver du omdirigeret til en sikker betalingsside
                 </p>
                 <p className="text-xs text-green-700 mt-1">
-                  You will pay <span className="font-bold">{computedBalanceDue} DKK</span> now via Stripe.
-                  After payment, your edit window opens until the class deadline — you can add more products anytime.
-                  Each additional product will require its own separate payment.
+                  Du skal betale <span className="font-bold">{computedBalanceDue} DKK</span> nu via Stripe.
+                  Efter betaling åbnes dit redigeringsvindue, indtil {formatDate(editDeadline)} — Du kan til enhver tid tilføje flere produkter. Hvert yderligere produkt kræver en separat betaling.
                 </p>
               </>
             ) : (
@@ -1672,9 +1672,9 @@ const QuoteModal = ({
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-4xl font-black text-slate-800 tracking-tight">Order Confirmed!</h2>
+          <h2 className="text-4xl font-black text-slate-800 tracking-tight">Bestillingen er bekræftet!</h2>
           <p className="text-slate-500 font-medium text-lg leading-relaxed">
-            Your order has been received and payment is complete.
+            Din ordre er modtaget, og betalingen er gennemført.
           </p>
         </div>
 
@@ -1685,10 +1685,10 @@ const QuoteModal = ({
               <div className="w-7 h-7 bg-green-100 rounded-xl flex items-center justify-center">
                 <Check className="w-4 h-4 text-green-600" />
               </div>
-              <span className="text-xs font-bold text-green-700 uppercase tracking-wide">Payment Done</span>
+              <span className="text-xs font-bold text-green-700 uppercase tracking-wide">Betaling gennemført</span>
             </div>
             <p className="text-sm font-semibold text-slate-700">
-              Your payment has been processed successfully.
+              Din betaling er blevet gennemført.
             </p>
           </div>
           <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
@@ -1696,20 +1696,20 @@ const QuoteModal = ({
               <div className="w-7 h-7 bg-blue-100 rounded-xl flex items-center justify-center">
                 <History className="w-4 h-4 text-blue-600" />
               </div>
-              <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">Edit Window</span>
+              <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">Redigeringsvindue</span>
             </div>
             <p className="text-sm font-semibold text-slate-700">
-              You can still add products until the <span className="text-blue-600 font-bold">class deadline</span>. Each new product requires its own payment.
+              Du kan stadig tilføje produkter indtil den <span className="text-blue-600 font-bold">frist for aflevering af opgaven</span>. Hvert nyt produkt kræver en separat betaling.
             </p>
           </div>
         </div>
 
         <div className="bg-slate-50 rounded-[2rem] p-8 border border-white shadow-inner">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Confirmation Number</span>
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Bekræftelsesnummer</span>
           <p className="text-2xl font-black text-slate-800 tracking-tight font-mono">{orderDate}</p>
           <div className="mt-4 pt-4 border-t border-slate-200 flex items-center justify-center space-x-2">
             <Mail className="w-4 h-4 text-green-600" />
-            <span className="text-xs font-bold text-slate-500">Confirmation sent to {customerDetails.email}</span>
+            <span className="text-xs font-bold text-slate-500">Bekræftelse sendt til {customerDetails.email}</span>
           </div>
         </div>
 
@@ -1736,7 +1736,7 @@ const QuoteModal = ({
             className="flex-1 flex items-center justify-center px-8 py-5 bg-gradient-to-br from-slate-800 to-slate-900 text-white rounded-2xl font-bold hover:from-black hover:to-slate-800 transition-all duration-300 shadow-xl shadow-slate-200 transform active:scale-95"
           >
             <Settings className="w-5 h-5 mr-3" />
-            Change Design
+            Skift design
           </button>
         </div>
       </div>
@@ -1804,7 +1804,7 @@ const QuoteModal = ({
                   </h2>
                   {!orderComplete && (
                     <p className="text-slate-400 text-[11px] mt-0.5 font-medium">
-                      Configure details, verify shipping and checkout securely
+                      Indstil detaljer, bekræft leveringsoplysninger og gennemfør købet sikkert
                     </p>
                   )}
                 </div>
@@ -1889,7 +1889,7 @@ const QuoteModal = ({
               {(editDeadline || isLocked) && (
                 <div className={`hidden lg:flex items-center text-[11px] font-bold px-3 py-1.5 rounded-xl border ${isLocked ? 'text-red-700 bg-red-50 border-red-100' : 'text-amber-700 bg-amber-50 border-amber-100'}`}>
                   <History className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
-                  {isLocked ? 'Order locked' : `Edit window: ${editDeadline.toLocaleDateString()}`}
+                  {isLocked ? 'Order locked' : `Edit window: ${formatDate(editDeadline)}`}
                 </div>
               )}
             </div>
@@ -1909,7 +1909,7 @@ const QuoteModal = ({
                   onClick={onClose}
                   className="px-5 py-3 border border-slate-200 bg-white rounded-xl text-slate-600 font-bold text-sm hover:border-slate-300 hover:bg-slate-50 transition-all duration-200"
                 >
-                  Continue Designing
+                  Fortsæt med at designe
                 </button>
               )}
 
@@ -1928,7 +1928,7 @@ const QuoteModal = ({
                   }}
                   className="flex-1 sm:flex-none flex items-center justify-center bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-6 rounded-xl font-bold text-sm hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-md hover:shadow-lg"
                 >
-                  Continue
+                  Fortsæt
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </button>
               ) : (
@@ -1943,12 +1943,12 @@ const QuoteModal = ({
                   ) : isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Redirecting to payment...
+                      Omdirigerer til betaling...
                     </>
                   ) : (
                     <>
                       <CreditCard className="w-4 h-4 mr-2" />
-                      Approve &amp; Pay
+                      Godkend og betal
                     </>
                   )}
                 </button>

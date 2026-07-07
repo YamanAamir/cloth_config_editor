@@ -1367,8 +1367,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                             Copy Design?
                         </h3>
                         <p className="text-sm text-slate-500 mb-6">
-                            You configured <span className="font-bold text-green-700">{copyDesignPrompt.from}</span>.
-                            Copy this design to <span className="font-bold text-green-700">{copyDesignPrompt.to}</span> as well?
+                            Du har konfigureret en <span className="font-bold text-green-700">{copyDesignPrompt.from}</span>.
+                            Vil du også kopiere dette design til <span className="font-bold text-green-700">{copyDesignPrompt.to}</span>
                         </p>
                         <div className="flex gap-3">
                             <button
@@ -1453,9 +1453,9 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                 </div>
             )}
 
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+            <div className="min-h-screen lg:bg-gradient-to-br from-slate-50 to-slate-100">
                 {/* Global Header */}
-                <header id="global-header" className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-40">
+                <header id="global-header" className="lg:bg-white/80 backdrop-blur-md lg:border-b lg:border-slate-200 lg:px-6 px-3 lg:py-4 py-2 flex justify-between items-center sticky top-0 z-40">
                     <div className="flex items-center gap-4">
                         <div className="w-24 flex items-center justify-center">
                             <img src="clothLogo.png" alt="" />
@@ -1603,7 +1603,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
 
                 {/* Status Bar for Locked / Deadline / Progress */}
-                <div className="bg-white border-b border-slate-200 lg:px-6 px-3 py-2 flex items-center justify-between shadow-sm">
+                <div className="hidden lg:flex bg-white border-b border-slate-200 lg:px-6 px-3 py-2 flex items-center justify-between shadow-sm">
                     <div className="flex items-center lg:gap-4 gap-1.5 flex-wrap">
                         {/* Items configured */}
                         <div className="flex items-center gap-1.5">
@@ -1730,13 +1730,11 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                             </>
                         )}
                     </div>
-
-
                 </div>
 
 
 
-                <div className="hidden md:flex h-[calc(96vh-80px)] w-full relative">
+                <div className="hidden lg:flex h-[calc(96vh-80px)] w-full relative">
                     {/* Sidebar */}
                     <div className="flex flex-col h-full border-r border-slate-200 bg-white shadow-xl z-10 lg:w-[600px] w-[450px]">
                         <div className='flex flex-1 min-h-0'>
@@ -1873,12 +1871,12 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                         : isLocked && !isAdmin
                                             ? 'Order Locked'
                                             : processStatus === 'partial_paid' && (paymentBreakdown?.balance_due || 0) > 0
-                                                ? `Pay Balance – ${(paymentBreakdown?.balance_due || 0).toFixed(2)} DKK`
+                                                ? `Betal restbeløbet – ${(paymentBreakdown?.balance_due || 0).toFixed(2)} DKK`
                                                 : processStatus === 'paid' && editWindowOpen
-                                                    ? 'Add More Products & Pay'
+                                                    ? 'Tilføj flere produkter og betal'
                                                     : processStatus === 'paid' && !editWindowOpen
-                                                        ? 'Edit Window Closed'
-                                                        : 'Approve and Pay'
+                                                        ? 'Redigeringsvinduet er lukket'
+                                                        : 'Godkend og betal'
                                 }
                             </button>
                         </div>
@@ -1909,7 +1907,18 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                         </div>
                     </div>
                 </div>
-                <div id="main-content-mobile" className="md:hidden flex flex-col flex-1 overflow-y-auto bg-gradient-to-br from-slate-50 to-slate-100 relative">
+                <div id="main-content-mobile" className="lg:hidden flex flex-col flex-1 overflow-y-auto relative">
+                    <div className="overflow-hiddenshrink-0" style={{ height: '300px' }}>
+                        <iframe
+                            id="preview-iframe2"
+                            src={'https://playcanv.as/e/p/1b1eadeb/'}
+                            className="w-full h-full"
+                            frameBorder="0"
+                            title="3D Preview"
+                            onLoad={() => setIsIframeLoaded(true)}
+                            onError={() => setIsIframeLoaded(true)}
+                        />
+                    </div>
 
                     {/* ── Product strip (garment selector) ── */}
                     <div id="garment-menu-mobile" className="bg-white border-b border-slate-200 sticky top-0 z-10">
@@ -1933,7 +1942,134 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                             </div>
                         </div>
                     </div>
+                    <div className="md:hidden  bg-white border-b border-slate-200 lg:px-6 px-3 py-2 flex items-center justify-between shadow-sm">
+                        <div className="flex items-center lg:gap-4 gap-1.5 flex-wrap">
+                            {/* Items configured */}
+                            <div className="flex items-center gap-1.5">
+                                <Package className="w-3.5 h-3.5 text-green-600" />
+                                <span className="text-xs font-semibold text-slate-600">
+                                    {Object.entries(allSelections).filter(([type, options]) => isGarmentConfigured(type, options)).length} configured
+                                </span>
+                            </div>
 
+                            <div className="hidden md:block w-px h-4 bg-slate-200" />
+
+                            {/* Price */}
+                            <div className="hidden md:flex items-center gap-1.5">
+                                <span className="text-xs text-slate-400 font-medium">Price</span>
+                                <span className="text-xs font-bold text-slate-700">{GARMENT_PRICES[activeMenu]} DKK</span>
+                            </div>
+
+                            {/* Paid */}
+                            {amountPaid > 0 && (
+                                <>
+                                    <div className="w-px h-4 bg-slate-200" />
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-xs text-slate-400 font-medium">Paid</span>
+                                        <span className="text-xs font-bold text-green-600">{amountPaid} DKK</span>
+                                    </div>
+                                </>
+                            )}
+
+                            {processStatus ? (() => {
+                                const psMap = {
+                                    on_hold: { label: 'On Hold – Editing open', dot: 'bg-amber-400', text: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
+                                    pending_payment: { label: 'Payment Processing…', dot: 'bg-yellow-400 animate-pulse', text: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200' },
+                                    locked_awaiting_payment: { label: 'Awaiting Payment', dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50 border-red-200' },
+                                    partial_paid: { label: 'Partial Paid – Balance Due', dot: 'bg-orange-500', text: 'text-orange-700', bg: 'bg-orange-50 border-orange-200' },
+                                    paid: { label: isLocked ? 'Paid  – Order locked' : editWindowOpen ? 'Paid   – Edit window open' : 'Paid  ', dot: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+                                    in_production: { label: 'In Production', dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
+                                    production: { label: 'In Production', dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
+                                    dispatched: { label: 'Dispatched', dot: 'bg-purple-500', text: 'text-purple-700', bg: 'bg-purple-50 border-purple-200' },
+                                };
+                                const ps = psMap[processStatus];
+                                if (!ps) return null;
+                                const balanceDueVal = paymentBreakdown?.balance_due || 0;
+                                return (
+                                    <div key="process-badge" className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-bold tracking-wider ${ps.bg} ${ps.text}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${ps.dot}`} />
+                                        <span>{ps.label}</span>
+                                        {processStatus === 'pending_payment' && isPolling && (
+                                            <span className="ml-1 flex items-center gap-1 text-yellow-700 font-bold">
+                                                <span className="w-2.5 h-2.5 border border-yellow-600 border-t-transparent rounded-full animate-spin inline-block" />
+                                                Checking…
+                                            </span>
+                                        )}
+                                        {(processStatus === 'locked_awaiting_payment' || processStatus === 'partial_paid') && !isAdmin && (
+                                            <button
+                                                key="pay-now-btn"
+                                                onClick={handlePayNow}
+                                                disabled={isPayingBalance}
+                                                className={`ml-1 underline font-bold transition-colors ${processStatus === 'partial_paid' ? 'text-orange-700 hover:text-orange-900' : 'text-red-700 hover:text-red-900'}`}
+                                            >
+                                                {isPayingBalance ? 'Opening...' : processStatus === 'partial_paid' ? `Pay ${balanceDueVal.toFixed(2)} DKK` : 'Pay Now'}
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })() : null}
+                            {/* (
+                            <span key="payment-fallback" className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${paymentStatus === 'paid' ? 'bg-green-100 text-green-700' :
+                                paymentStatus === 'partial' ? 'bg-orange-100 text-orange-700' :
+                                    'bg-slate-100 text-slate-500'
+                                }`}>
+                                {paymentStatus}
+                            </span>
+                        ) */}
+                            {/* Class tracking status */}
+                            {classStatus && (() => {
+                                const statusMap = {
+                                    // active: { label: 'Order in progress', color: 'bg-blue-100 text-blue-700' },
+                                    orders_locked: { label: 'Order locked – going to production', color: 'bg-orange-100 text-orange-700' },
+                                    production_ready: { label: 'Being produced', color: 'bg-purple-100 text-purple-700' },
+                                    shipped: { label: 'Shipped – check email for tracking', color: 'bg-indigo-100 text-indigo-700' },
+                                    completed: { label: 'Delivered', color: 'bg-green-100 text-green-700' },
+                                };
+                                const s = statusMap[classStatus];
+                                if (!s) return null;
+                                return (
+                                    <>
+                                        <div className="w-px h-4 bg-slate-200" />
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wider ${s.color}`}>
+                                            {s.label}
+                                        </span>
+                                    </>
+                                );
+                            })()}
+
+                            {/* Back Design Approval Status */}
+                            {backDesignStatus && (() => {
+                                const statusMap = {
+                                    pending: { label: 'Back Design: Pending Review', color: 'bg-yellow-100 text-yellow-700' },
+                                    approved: { label: 'Back Design: Approved  ', color: 'bg-green-100 text-green-700' },
+                                    rejected: { label: 'Back Design: Rejected', color: 'bg-red-100 text-red-700' },
+                                };
+                                const s = statusMap[backDesignStatus];
+                                if (!s) return null;
+                                return (
+                                    <>
+                                        <div className="w-px h-4 bg-slate-200" />
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wider ${s.color}`}>
+                                            {s.label}
+                                        </span>
+                                    </>
+                                );
+                            })()}
+
+                            {/* Edit deadline */}
+                            {editDeadline && !isLocked && (
+                                <>
+                                    <div className="w-px h-4 bg-slate-200" />
+                                    <div className="flex items-center gap-1.5">
+                                        <History className="w-3.5 h-3.5 text-yellow-500" />
+                                        <span className={`text-xs font-semibold ${new Date() > editDeadline ? 'text-red-500' : 'text-slate-500'}`}>
+                                            Edit: {editDeadline.toLocaleDateString()} {new Date() > editDeadline && '· Expired'}
+                                        </span>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
                     {/* ── Tab navigation (Color & Size / Design) ── */}
                     <div className="bg-white border-b border-slate-200 px-4 py-2 sticky top-[52px] z-10">
                         <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
@@ -1956,7 +2092,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
 
                     {/* ── Mobile Controls ── */}
-                    <div className="px-4 pt-4 pb-2 space-y-4 shrink-0">
+                    <div className="lg:px-4 px-2 lg:pt-4 pt-2 pb-2 lg:space-y-4 space-y-2 shrink-0">
                         {activeMenu === 'T-SHIRT' && <Tshirt key="tshirt-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
                         {activeMenu === "SWEATSHIRT" && <SweatShirt key="sweatshirt-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
                         {activeMenu === "HOODIE" && <Hoodie key="hoodie-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
@@ -1966,17 +2102,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                     </div>
 
                     {/* ── 3D Preview ── */}
-                    <div className="mx-4 mb-6 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white shrink-0" style={{ height: '300px' }}>
-                        <iframe
-                            id="preview-iframe2"
-                            src={'https://playcanv.as/e/p/1b1eadeb/'}
-                            className="w-full h-full"
-                            frameBorder="0"
-                            title="3D Preview"
-                            onLoad={() => setIsIframeLoaded(true)}
-                            onError={() => setIsIframeLoaded(true)}
-                        />
-                    </div>
+
 
                     {/* ── Footer (price + CTA) ── */}
                     <div id="price-summary-mobile" className="border-t border-slate-200 p-4 bg-white sticky bottom-0">

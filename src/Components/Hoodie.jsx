@@ -625,8 +625,8 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   const sizes = ["S", "M", "L", "XL", "2XL", "3XL"];
 
   const renderChestArea = (area) => (
-    <div key={area} className="bg-white rounded-lg p-4 mb-4">
-      <h3 className="font-semibold text-gray-900 mb-3">
+    <div key={area} className="bg-white rounded-lg lg:p-4 p-2 lg:mb-4 mb-2">
+      <h3 className=" lg:font-semibold text-gray-900 lg:mb-3 mb-1">
         {area === "rightChest" ? "Right Chest:" : area === "leftChest" ? "Left Chest:" : "Bottom Chest:"}
       </h3>
       <div className="space-y-3">
@@ -729,8 +729,8 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   );
 
   const renderSleeveArea = (area) => (
-    <div key={area} className="bg-white rounded-lg p-4 mb-4">
-      <h3 className="font-semibold text-gray-900 mb-3">
+    <div key={area} className="bg-white rounded-lg lg:p-4 p-2 lg:mb-4 mb-2">
+      <h3 className=" lg:font-semibold text-gray-900 lg:mb-3 mb-1">
         {area === "rightSleeve" ? "Right Sleeve:" : "Left Sleeve:"}
       </h3>
       <div className="space-y-3">
@@ -950,9 +950,9 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
     <div className="max-w-md mx-auto">
       {activeTab === "size" ? (
         <>
-          <h1 className="text-lg font-bold mb-3 text-gray-900">Hoodie</h1>
+          <h1 className="lg:text-lg text-md lg:font-bold font-semibold lg:mb-3 mb-1 text-gray-900">Hoodie</h1>
           {backDesigns && (
-            <div className="mb-5">
+            <div className="lg:mb-5 mb-2">
               <p className="text-xs font-semibold text-gray-700 mb-2">Garment Color</p>
               <div className="flex gap-3">
                 <button type="button" onClick={() => handleDesignColorChange("light")}
@@ -973,15 +973,15 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
             <div className="grid grid-flow-col grid-rows-1 gap-2 w-fit">
               {visibleColors.map(c => (
                 <button key={c.name} title={c.name} onClick={() => onUpdate({ selectedColor: c.name })}
-                  className="relative w-8 h-8 rounded-md transition-all focus:outline-none"
+                  className="relative lg:w-8 lg:h-8 w-6 h-6 lg:rounded-md rounded-full transition-all focus:outline-none"
                   style={{ backgroundColor: c.value, border: selectedColor === c.name ? `2px solid ${c.border}` : `1px solid ${c.border}`, boxShadow: selectedColor === c.name ? `0 0 0 2px white, 0 0 0 3px ${c.border}` : "none" }}>
-                  {selectedColor === c.name && <div className="absolute inset-0 rounded-md border border-white pointer-events-none" />}
+                  {selectedColor === c.name && <div className="absolute inset-0 lg:rounded-md rounded-full border border-white pointer-events-none" />}
                 </button>
               ))}
             </div>
             {selectedColor && <p className="text-xs text-gray-500 mt-1.5">{selectedColor}</p>}
           </div>
-          <div className="mb-5">
+          <div className="lg:mb-5 mb-2">
             <h2 className="text-xs font-semibold mb-2 text-gray-500 uppercase tracking-wide">Size</h2>
             <div className="flex flex-wrap gap-2">
               {sizes.map(s => <button key={s} onClick={() => onUpdate({ selectedSize: s })} className={`py-1.5 px-3 rounded-lg border-2 transition-all font-medium text-sm ${selectedSize === s ? "border-gray-900 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"}`}>{s}</button>)}
@@ -991,12 +991,12 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         </>
       ) : (
         <>
-          <h1 className="text-lg font-bold mb-3 text-gray-900">Pressure Options</h1>
-          <div className="mb-6"><h2 className="text-xl font-semibold text-gray-900 mb-4">Chest Area</h2>{["rightChest", "leftChest", "bottomChest"].map(renderChestArea)}</div>
-          <div className="mb-6"><h2 className="text-xl font-semibold text-gray-900 mb-4">Sleeves</h2>{["rightSleeve", "leftSleeve"].map(renderSleeveArea)}</div>
+          <h1 className="lg:text-lg text-md lg:font-bold font-semibold lg:mb-3 mb-1 text-gray-900">Pressure Options</h1>
+          <div className="lg:mb-6"><h2 className="lg:text-xl text-base font-semibold text-gray-900 lg:mb-4 mb-2">Chest Area</h2>{["rightChest", "leftChest", "bottomChest"].map(renderChestArea)}</div>
+          <div className="lg:mb-6"><h2 className="lg:text-xl text-base font-semibold text-gray-900 lg:mb-4 mb-2">Sleeves</h2>{["rightSleeve", "leftSleeve"].map(renderSleeveArea)}</div>
         </>
       )}
-      <div className={activeTab === "pressure" ? "mt-10" : ""} style={activeTab !== "pressure" ? { visibility: "hidden", position: "absolute", pointerEvents: "none", height: 0, overflow: "hidden" } : {}}>
+      <div className={activeTab === "pressure" ? "lg:mt-10" : ""} style={activeTab !== "pressure" ? { visibility: "hidden", position: "absolute", pointerEvents: "none", height: 0, overflow: "hidden" } : {}}>
         <Test postEx="Hoodie:" pressureOptions={pressureOptions} isAppReady={isAppReady} backDesigns={backDesigns} designColor={designColor} onUpdate={u => {
           if (u.canvasBase64) {
             const raw = u.canvasBase64.rawData;
