@@ -1879,7 +1879,7 @@ const QuoteModal = ({
                   </span>
                   <span className="text-lg font-extrabold text-slate-800 leading-none">
                     {computedBalanceDue <= 0
-                      ? (paymentStatus === 'paid' ? '✓ PAID' : 'FREE')
+                      ? (paymentStatus === 'paid' ? '  PAID' : 'FREE')
                       : `${computedBalanceDue} DKK`
                     }
                   </span>

@@ -45,22 +45,20 @@ export default function PaymentBreakdown({
         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
 
             {/* Header */}
-            <div className={`px-4 py-3 flex items-center justify-between ${
-                isPartial
+            <div className={`px-4 py-3 flex items-center justify-between ${isPartial
                     ? 'bg-orange-50 border-b border-orange-100'
                     : 'bg-green-50 border-b border-green-100'
-            }`}>
+                }`}>
                 <div className="flex items-center gap-2">
                     <span className="font-semibold text-sm text-gray-800">
                         {isPartial ? 'Additional Payment Required' : 'Payment Summary'}
                     </span>
                 </div>
 
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    isPartial
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isPartial
                         ? 'bg-orange-100 text-orange-700'
                         : 'bg-green-100 text-green-700'
-                }`}>
+                    }`}>
                     {isPartial ? 'Partial Paid' : 'Paid'}
                 </span>
             </div>
@@ -151,7 +149,7 @@ export default function PaymentBreakdown({
             {/* Fully paid */}
             {!hasBalance && isPaid && (
                 <div className="px-4 pb-4 text-center text-green-600 text-sm">
-                    ✓ Fully paid
+                    Fully paid
                 </div>
             )}
         </div>

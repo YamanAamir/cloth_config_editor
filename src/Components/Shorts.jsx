@@ -665,7 +665,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
                     }`}
                 >
                   {tab === "flag" ? "Flag" : "Logo"}
-                  {(tab === "flag" && pressureOptions[`${area}Flag`]) || (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? " ✓" : ""}
+                  {(tab === "flag" && pressureOptions[`${area}Flag`]) || (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? "  " : ""}
                 </button>
               ))}
             </div>

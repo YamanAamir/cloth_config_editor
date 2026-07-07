@@ -1,6 +1,6 @@
 // StudentDashboard.jsx (full fixed code with iframe src fixed to use null instead of empty string)
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { message, Tag, Dropdown, Drawer, Avatar, Divider, Form, Input, Switch } from 'antd';
+import { message, Tag, Dropdown, Drawer, Avatar, Divider, Form, Input, Switch, Tour, Button, Modal, Popover } from 'antd';
 import img1 from '../assets/menuimages/1.png';
 import img2 from '../assets/menuimages/2.png';
 import img3 from '../assets/menuimages/3.png';
@@ -17,7 +17,7 @@ import SweatShirt from '../Components/SweatShirt';
 import QuoteModal from '../Components/Modal';
 import HistoryModal from '../Components/HistoryModal';
 import { useParams, useSearchParams, useLocation } from 'react-router-dom';
-import { GraduationCap, ChevronUp, ChevronDown, LogOut, Settings, LayoutGrid, Lock, History, Package, User, CreditCard, Clock } from 'lucide-react';
+import { GraduationCap, ChevronUp, ChevronDown, LogOut, Settings, LayoutGrid, Lock, History, Package, User, CreditCard, Clock, HelpCircle, RefreshCw, Undo } from 'lucide-react';
 import StudentPopup from '../Components/Popup';
 import useLogoStore from '../store/logoStore';
 import useSettingsStore from '../store/settingsStore';
@@ -108,6 +108,33 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     // Source garment ke pressureOptions ko target garment ke field-naming (Chest<->Leg) mein translate karta hai
     // aur sirf wahi keys rakhta hai jo target garment ke schema mein actually exist karti hain (e.g. Sleeve/bottomChest
     // fields ka koi equivalent SHORTS/SWEATPANTS pe nahi hota, isliye woh drop ho jati hain)
+    // const mapPressureOptionsForGarment = (sourceOptions, sourceGarment, targetGarment) => {
+    //     const targetDefaults = DEFAULT_SELECTIONS[targetGarment]?.pressureOptions || {};
+    //     const sameFamily = GARMENT_FAMILY[sourceGarment] === GARMENT_FAMILY[targetGarment];
+    //     const mapped = {};
+
+    //     Object.entries(sourceOptions || {}).forEach(([key, value]) => {
+    //         if (key === 'backDesign') {
+    //             mapped.backDesign = value;
+    //             return;
+    //         }
+
+    //         let targetKey = key;
+    //         if (!sameFamily) {
+    //             if (key.startsWith('rightChest')) targetKey = 'rightLeg' + key.slice('rightChest'.length);
+    //             else if (key.startsWith('leftChest')) targetKey = 'leftLeg' + key.slice('leftChest'.length);
+    //             else if (key.startsWith('rightLeg')) targetKey = 'rightChest' + key.slice('rightLeg'.length);
+    //             else if (key.startsWith('leftLeg')) targetKey = 'leftChest' + key.slice('leftLeg'.length);
+    //             else return; // Sleeve*/bottomChest* — dusri family mein koi equivalent field nahi
+    //         }
+
+    //         if (targetDefaults.hasOwnProperty(targetKey)) {
+    //             mapped[targetKey] = value;
+    //         }
+    //     });
+
+    //     return mapped;
+    // };
     const mapPressureOptionsForGarment = (sourceOptions, sourceGarment, targetGarment) => {
         const targetDefaults = DEFAULT_SELECTIONS[targetGarment]?.pressureOptions || {};
         const sameFamily = GARMENT_FAMILY[sourceGarment] === GARMENT_FAMILY[targetGarment];
@@ -125,7 +152,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                 else if (key.startsWith('leftChest')) targetKey = 'leftLeg' + key.slice('leftChest'.length);
                 else if (key.startsWith('rightLeg')) targetKey = 'rightChest' + key.slice('rightLeg'.length);
                 else if (key.startsWith('leftLeg')) targetKey = 'leftChest' + key.slice('leftLeg'.length);
-                else return; // Sleeve*/bottomChest* — dusri family mein koi equivalent field nahi
+                else return;
             }
 
             if (targetDefaults.hasOwnProperty(targetKey)) {
@@ -133,9 +160,19 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             }
         });
 
+        // 👇 NAYA: agar area ka Type khali nahi hai (flag/logo select hai), to us area ki Text field
+        // force empty rakho — warna target garment (jo ek waqt me sirf ek asset support karta hai)
+        // me purani text hidden bake ho jati hai texture ke andar.
+        ['rightLeg', 'leftLeg', 'rightChest', 'leftChest'].forEach(area => {
+            const typeKey = `${area}Type`;
+            const textKey = `${area}Text`;
+            if (mapped.hasOwnProperty(typeKey) && mapped[typeKey] && mapped.hasOwnProperty(textKey)) {
+                mapped[textKey] = '';
+            }
+        });
+
         return mapped;
     };
-
     const { fetchSettings, getGarmentPrice, getVat, getMaxCharsClothText } = useSettingsStore();
 
     // Fetch settings on mount
@@ -250,6 +287,100 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
     // Garment switch copy popup state
     const [copyDesignPrompt, setCopyDesignPrompt] = useState(null); // { from, to }
+
+    // --- User Initialization ---
+    const userStr = localStorage.getItem("user");
+    const user = userStr ? JSON.parse(userStr) : null;
+
+    // --- Tour Guide State & Config ---
+    const [tourOpen, setTourOpen] = useState(false);
+    const [activeTourSteps, setActiveTourSteps] = useState([]);
+    const [showTourPrompt, setShowTourPrompt] = useState(false);
+
+    const tourFeatures = [
+        {
+            id: 'basics',
+            title: 'Basics',
+            isForClassRep: false,
+            steps: [
+                // {
+                //     title: 'Welcome to your Dashboard',
+                //     description: 'Here you can customize your clothing items, manage your sizes, and finalize your order.',
+                //     target: null, // Shows in the center of the screen
+                // },
+                {
+                    title: 'Select Garment',
+                    description: 'Switch between T-Shirts, Hoodies, Sweatshirts, and more by clicking these items.',
+                    target: () => window.innerWidth < 768 ? document.getElementById('garment-menu-mobile') : document.getElementById('garment-menu'),
+                },
+                {
+                    title: 'Color & Size',
+                    description: 'Click here to choose your garment\'s base color (light/dark), the specific shade, and your preferred size.',
+                    target: () => window.innerWidth < 768 ? document.getElementById('color-size-tab-btn-mobile') : document.getElementById('color-size-tab-btn'),
+                },
+                {
+                    title: 'Design Options',
+                    description: 'Switch to this tab to add custom Text, Flags, or Logos to your chest and sleeves.',
+                    target: () => window.innerWidth < 768 ? document.getElementById('design-tab-btn-mobile') : document.getElementById('design-tab-btn'),
+                },
+                {
+                    title: 'Price & Status',
+                    description: 'Keep track of your total price, order status, and deadlines here.',
+                    target: () => window.innerWidth < 768 ? document.getElementById('price-summary-mobile') : document.getElementById('price-summary'),
+                },
+                {
+                    title: 'Header Bar',
+                    description: 'This is the top navigation bar where you can access the tour, profile, and other controls.',
+                    target: () => document.getElementById('global-header'),
+                },
+                {
+                    title: 'Main Content Area',
+                    description: 'The main area where you configure garments and view options.',
+                    target: () => window.innerWidth < 768 ? document.getElementById('main-content-mobile') : document.getElementById('main-content'),
+                }
+            ]
+        }
+    ];
+
+    const handleStartTour = (steps) => {
+        setActiveTourSteps(steps);
+        setTourOpen(true);
+    };
+
+    const tourMenuItems = tourFeatures
+        .filter(tour => (user?.role === 'class_representative' || user?.role === 'admin') || !tour.isForClassRep)
+        .map(tour => ({
+            key: tour.id,
+            label: tour.title,
+            onClick: () => handleStartTour(tour.steps)
+        }));
+
+    // Auto-prompt Tour Guide logic
+    useEffect(() => {
+        if (isAppReady) {
+            const promptState = localStorage.getItem('tourPromptShown');
+            const savedDate = localStorage.getItem('tourPromptDate');
+            const currentDate = new Date().toDateString();
+
+            if (savedDate !== currentDate) {
+                // If the date has changed, remove the state so it prompts again
+                localStorage.removeItem('tourPromptShown');
+                localStorage.setItem('tourPromptDate', currentDate);
+
+                const timer = setTimeout(() => {
+                    setShowTourPrompt(true);
+                }, 1000);
+                return () => clearTimeout(timer);
+            } else if (!promptState) {
+                // Same date, but no state yet
+                const timer = setTimeout(() => {
+                    setShowTourPrompt(true);
+                }, 1000);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [isAppReady]);
+
     // Track which garments user has explicitly added to order
     const [orderedGarments, setOrderedGarments] = useState({});
     const [sizeFlag, setSizeFlag] = useState(true)
@@ -261,8 +392,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     const [dbHistory, setDbHistory] = useState([]);
     const [isAdmin, setIsAdmin] = useState(false);
     // selectedStudent — user login hote hi EMAIL se initialize karo (unique key)
-    const userStr = localStorage.getItem("user");
-    const user = userStr ? JSON.parse(userStr) : null;
     const [selectedStudent, setSelectedStudent] = useState(() => {
         try {
             const rawUser = localStorage.getItem('user');
@@ -1223,6 +1352,13 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     }, [selectedStudent]);
     return (
         <>
+            <Tour
+                open={tourOpen}
+                onClose={() => setTourOpen(false)}
+                steps={activeTourSteps}
+                okButtonProps={{ style: { backgroundColor: '#008235', color: '#fff' } }}
+                cancelButtonProps={{ style: { color: '#008235' } }} />
+
             {/* ── Copy Design Prompt Modal ── */}
             {copyDesignPrompt && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
@@ -1319,27 +1455,22 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
                 {/* Global Header */}
-                <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-40">
+                <header id="global-header" className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-40">
                     <div className="flex items-center gap-4">
                         <div className="w-24 flex items-center justify-center">
                             <img src="clothLogo.png" alt="" />
                         </div>
-                        {isLocked && (
-                            <div className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-700 shadow-sm">
-                                <Lock className="w-3.5 h-3.5" />
-                                <span className="text-[11px] font-bold uppercase tracking-wide">Locked</span>
-                            </div>
-                        )}
                     </div>
 
                     <div className="flex items-center space-x-2 sm:space-x-4">
                         {undoAvailable && (
                             <button
                                 onClick={handleUndo}
-                                className="flex items-center space-x-2 px-3 py-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all font-medium text-sm border border-slate-200"
+                                // flex items-center sm:space-x-2 p-2 sm:px-3 sm:py-2 bg-[#008235] text-white rounded-full sm:rounded-2xl hover:bg-[#00652a] transition-all font-medium text-sm border border-[#008235] cursor-pointer
+                                className="flex items-center sm:space-x-2 p-2 sm:px-3 sm:py-2 bg-slate-100 text-slate-600 rounded-full sm:rounded-2xl hover:bg-slate-200 transition-all font-medium text-sm border border-slate-200"
                                 title="Undo last change"
                             >
-                                <span className="rotate-180">↺</span>
+                                <Undo className="w-4 h-4 sm:w-4 sm:h-4" />
                                 <span className="hidden sm:inline">Undo</span>
                             </button>
                         )}
@@ -1378,6 +1509,60 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                             <span className="hidden sm:inline">Back Text</span>
                             <span className="sm:hidden text-[10px]">Text</span>
                         </button> */}
+
+                        {/* Tour Guide Button */}
+                        <Popover
+                            content={
+                                <div className="flex flex-col p-1 max-w-[240px]">
+                                    <div className="flex items-start gap-3 mb-4">
+
+                                        <span className="text-[14px] font-semibold text-slate-700 leading-snug">
+                                            Would you like a guide? Click here.
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-end gap-2">
+                                        <button
+                                            className="px-3 py-1.5 text-[11px] text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md transition-all"
+                                            onClick={() => {
+                                                setShowTourPrompt(false);
+                                                localStorage.setItem('tourPromptShown', 'false');
+                                            }}
+                                        >
+                                            Skip
+                                        </button>
+                                        <button
+                                            className="px-3 py-1.5 text-[11px] text-white bg-[#008235] hover:bg-[#00652a] rounded-md shadow-sm transition-all"
+                                            onClick={() => {
+                                                setShowTourPrompt(false);
+                                                localStorage.setItem('tourPromptShown', 'true');
+                                                handleStartTour(tourFeatures[0].steps);
+                                            }}
+                                        >
+                                            Start
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                            open={showTourPrompt}
+                            onOpenChange={(v) => {
+                                if (!v) {
+                                    setShowTourPrompt(false);
+                                    localStorage.setItem('tourPromptShown', 'false');
+                                }
+                            }}
+                            placement="bottom"
+                            trigger="click"
+                            overlayInnerStyle={{ borderRadius: '12px', padding: '16px' }}
+                        >
+                            <button
+                                className="flex items-center sm:space-x-2 p-2 sm:px-3 sm:py-2 bg-[#008235] text-white rounded-full sm:rounded-2xl hover:bg-[#00652a] transition-all font-medium text-sm border border-[#008235] cursor-pointer"
+                                title="Guide"
+                                onClick={() => handleStartTour(tourFeatures[0].steps)}
+                            >
+                                <HelpCircle className="w-4 h-4 sm:w-4 sm:h-4" />
+                                <span className="hidden sm:inline">Guide</span>
+                            </button>
+                        </Popover>
 
                         <Dropdown
                             menu={{
@@ -1419,7 +1604,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
                 {/* Status Bar for Locked / Deadline / Progress */}
                 <div className="bg-white border-b border-slate-200 lg:px-6 px-3 py-2 flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center lg:gap-4 gap-1.5 flex-wrap">
                         {/* Items configured */}
                         <div className="flex items-center gap-1.5">
                             <Package className="w-3.5 h-3.5 text-green-600" />
@@ -1428,10 +1613,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                             </span>
                         </div>
 
-                        <div className="w-px h-4 bg-slate-200" />
+                        <div className="hidden md:block w-px h-4 bg-slate-200" />
 
                         {/* Price */}
-                        <div className="flex items-center gap-1.5">
+                        <div className="hidden md:flex items-center gap-1.5">
                             <span className="text-xs text-slate-400 font-medium">Price</span>
                             <span className="text-xs font-bold text-slate-700">{GARMENT_PRICES[activeMenu]} DKK</span>
                         </div>
@@ -1453,7 +1638,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 pending_payment: { label: 'Payment Processing…', dot: 'bg-yellow-400 animate-pulse', text: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200' },
                                 locked_awaiting_payment: { label: 'Awaiting Payment', dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50 border-red-200' },
                                 partial_paid: { label: 'Partial Paid – Balance Due', dot: 'bg-orange-500', text: 'text-orange-700', bg: 'bg-orange-50 border-orange-200' },
-                                paid: { label: isLocked ? 'Paid ✓ – Order locked' : editWindowOpen ? 'Paid ✓ – Edit window open' : 'Paid ✓', dot: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+                                paid: { label: isLocked ? 'Paid  – Order locked' : editWindowOpen ? 'Paid   – Edit window open' : 'Paid  ', dot: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50 border-green-200' },
                                 in_production: { label: 'In Production', dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
                                 production: { label: 'In Production', dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
                                 dispatched: { label: 'Dispatched', dot: 'bg-purple-500', text: 'text-purple-700', bg: 'bg-purple-50 border-purple-200' },
@@ -1517,7 +1702,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                         {backDesignStatus && (() => {
                             const statusMap = {
                                 pending: { label: 'Back Design: Pending Review', color: 'bg-yellow-100 text-yellow-700' },
-                                approved: { label: 'Back Design: Approved ✓', color: 'bg-green-100 text-green-700' },
+                                approved: { label: 'Back Design: Approved  ', color: 'bg-green-100 text-green-700' },
                                 rejected: { label: 'Back Design: Rejected', color: 'bg-red-100 text-red-700' },
                             };
                             const s = statusMap[backDesignStatus];
@@ -1555,7 +1740,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                     {/* Sidebar */}
                     <div className="flex flex-col h-full border-r border-slate-200 bg-white shadow-xl z-10 lg:w-[600px] w-[450px]">
                         <div className='flex flex-1 min-h-0'>
-                            <div className="bg-white/70 border-r border-slate-200 overflow-y-auto firstdiv custom-scrollbar-premium min-w-[100px]">
+                            <div id="garment-menu" className="bg-white/70 border-r border-slate-200 overflow-y-auto firstdiv custom-scrollbar-premium min-w-[100px]">
                                 <div className="lg:p-6 p-3">
                                     <h2 className="text-sm font-semibold text-center text-slate-600 uppercase tracking-wider mb-4">
                                         Clothing
@@ -1600,14 +1785,16 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                             <div className="flex-1 bg-white/50 secondDiv overflow-y-auto custom-scrollbar-premium">
                                 {/* Tab Navigation — top */}
                                 <div className="px-6 pt-4 pb-2">
-                                    <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
+                                    <div id="color-size-tabs" className="flex gap-1 p-1 bg-gray-100 rounded-xl">
                                         <button
+                                            id="color-size-tab-btn"
                                             onClick={() => setGarmentTab('size')}
                                             className={`flex-1 py-2.5 text-sm font-semibold transition-all rounded-xl ${garmentTab === 'size' ? 'bg-green-700 text-white' : 'text-gray-500 bg-white hover:bg-gray-50'}`}
                                         >
                                             Color & Size
                                         </button>
                                         <button
+                                            id="design-tab-btn"
                                             onClick={() => setGarmentTab('pressure')}
                                             className={`flex-1 py-2.5 text-sm font-semibold transition-all rounded-xl ${garmentTab === 'pressure' ? 'bg-green-700 text-white' : 'text-gray-500 bg-white hover:bg-gray-50'}`}
                                         >
@@ -1615,7 +1802,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                         </button>
                                     </div>
                                 </div>
-                                <div className="lg:p-6 p-3 lg:space-y-8 space-y-4">
+                                <div id="main-content" className="lg:p-6 p-3 lg:space-y-8 space-y-4">
 
                                     {activeMenu === 'T-SHIRT' && <Tshirt key="tshirt" isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
                                     {activeMenu === "SWEATSHIRT" && <SweatShirt key="sweatshirt" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
@@ -1626,7 +1813,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 </div>
                             </div>
                         </div>
-                        <div className=" border-slate-200 p-6 bg-white/50 backdrop-blur-sm">
+                        <div id="price-summary" className=" border-slate-200 p-6 bg-white/50 backdrop-blur-sm">
                             <div className="mb-4 space-y-1.5">
                                 <div className="flex justify-between items-center pt-1.5">
                                     <span className="text-sm font-semibold text-slate-700">Price</span>
@@ -1722,10 +1909,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                         </div>
                     </div>
                 </div>
-                <div className="md:hidden flex flex-col h-screen overflow-y-auto bg-gradient-to-br from-slate-50 to-slate-100">
+                <div id="main-content-mobile" className="md:hidden flex flex-col flex-1 overflow-y-auto bg-gradient-to-br from-slate-50 to-slate-100 relative">
 
                     {/* ── Product strip (garment selector) ── */}
-                    <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+                    <div id="garment-menu-mobile" className="bg-white border-b border-slate-200 sticky top-0 z-10">
                         <div className="px-3 py-2">
                             <div className="flex overflow-x-auto gap-1 scrollbar-none" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                 {menuItems.map((item, index) => (
@@ -1751,12 +1938,14 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                     <div className="bg-white border-b border-slate-200 px-4 py-2 sticky top-[52px] z-10">
                         <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
                             <button
+                                id="color-size-tab-btn-mobile"
                                 onClick={() => setGarmentTab('size')}
                                 className={`flex-1 py-2 text-sm font-semibold rounded-xl transition-all ${garmentTab === 'size' ? 'bg-green-700 text-white' : 'text-gray-500 bg-white'}`}
                             >
                                 Color & Size
                             </button>
                             <button
+                                id="design-tab-btn-mobile"
                                 onClick={() => setGarmentTab('pressure')}
                                 className={`flex-1 py-2 text-sm font-semibold rounded-xl transition-all ${garmentTab === 'pressure' ? 'bg-green-700 text-white' : 'text-gray-500 bg-white'}`}
                             >
@@ -1766,8 +1955,18 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                     </div>
 
 
+                    {/* ── Mobile Controls ── */}
+                    <div className="px-4 pt-4 pb-2 space-y-4 shrink-0">
+                        {activeMenu === 'T-SHIRT' && <Tshirt key="tshirt-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === "SWEATSHIRT" && <SweatShirt key="sweatshirt-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === "HOODIE" && <Hoodie key="hoodie-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === "ZIPPERHOODIE" && <ZippedHoodie key="zipper-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === "SWEATPANTS" && <SweatPants key="sweatpants-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {activeMenu === "SHORTS" && <Shorts key="shorts-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                    </div>
+
                     {/* ── 3D Preview ── */}
-                    <div className="mx-4 my-3 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white" style={{ height: '300px' }}>
+                    <div className="mx-4 mb-6 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white shrink-0" style={{ height: '300px' }}>
                         <iframe
                             id="preview-iframe2"
                             src={'https://playcanv.as/e/p/1b1eadeb/'}
@@ -1780,7 +1979,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                     </div>
 
                     {/* ── Footer (price + CTA) ── */}
-                    <div className="border-t border-slate-200 p-4 bg-white sticky bottom-0">
+                    <div id="price-summary-mobile" className="border-t border-slate-200 p-4 bg-white sticky bottom-0">
                         <div className="flex justify-between items-center mb-3">
                             <span className="text-sm font-semibold text-slate-700">Price</span>
                             <span className="text-xl font-bold text-slate-900">{GARMENT_PRICES[activeMenu]} DKK</span>

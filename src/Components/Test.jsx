@@ -506,7 +506,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       {backDesigns && objects.length > 0 && (
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
           <p className="text-sm text-green-800 font-medium">
-            ✓ Back design "{backDesigns.name}" has been automatically applied to all students.
+            Back design "{backDesigns.name}" has been automatically applied to all students.
           </p>
         </div>
       )}

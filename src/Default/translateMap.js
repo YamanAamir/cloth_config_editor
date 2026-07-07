@@ -337,7 +337,7 @@ export const TRANSLATE_MAP = {
     "Locked": "Låst",
     "Unlocked": "Åben",
     "Back Design: Pending Review": "Rygdesign: Afventer",
-    "Back Design: Approved ✓": "Rygdesign: Godkendt",
+    "Back Design: Approved  ": "Rygdesign: Godkendt",
     "Back Design: Rejected": "Rygdesign: Afvist",
 
     // ----------------------------------------

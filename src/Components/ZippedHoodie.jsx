@@ -674,7 +674,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
               {tab === "text" ? "Text" : tab === "flag" ? "Flag" : "Logo"}
               {(tab === "text" && pressureOptions[`${area}Text`]) ||
                 (tab === "flag" && pressureOptions[`${area}Flag`]) ||
-                (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? " ✓" : ""}
+                (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? "  " : ""}
             </button>
           ))}
         </div>
@@ -783,7 +783,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
               {tab === "text" ? "Text" : tab === "flag" ? "Flag" : "Logo"}
               {(tab === "text" && pressureOptions[`${area}Text`]) ||
                 (tab === "flag" && pressureOptions[`${area}Flag`]) ||
-                (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? " ✓" : ""}
+                (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? "  " : ""}
             </button>
           ))}
         </div>

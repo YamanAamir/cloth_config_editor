@@ -1,0 +1,21 @@
+/* Next button */
+.ant-tour .ant-tour-buttons .ant-btn-primary {
+  background: #008235 !important;
+  border-color: #008235 !important;
+}
+
+.ant-tour .ant-tour-buttons .ant-btn-primary:hover {
+  background: #006b2b !important;
+  border-color: #006b2b !important;
+}
+
+/* Previous button */
+.ant-tour .ant-tour-buttons .ant-btn-default {
+  color: #008235 !important;
+  border-color: #008235 !important;
+}
+
+.ant-tour .ant-tour-buttons .ant-btn-default:hover {
+  color: #006b2b !important;
+  border-color: #006b2b !important;
+}

@@ -424,7 +424,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
     callback(canvas.toDataURL("image/png"));
   };
 
-const sendBackDesign = (diffuseB64, opacityB64, color) => {
+  const sendBackDesign = (diffuseB64, opacityB64, color) => {
     if (!diffuseB64 && !opacityB64) return;
 
     // Dedupe: agar same data + same color pehle hi bheja ja chuka hai, to skip
@@ -646,7 +646,7 @@ const sendBackDesign = (diffuseB64, opacityB64, color) => {
               {tab === "text" ? "Text" : tab === "flag" ? "Flag" : "Logo"}
               {(tab === "text" && pressureOptions[`${area}Text`]) ||
                 (tab === "flag" && pressureOptions[`${area}Flag`]) ||
-                (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? " ✓" : ""}
+                (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? "  " : ""}
             </button>
           ))}
         </div>
@@ -755,7 +755,7 @@ const sendBackDesign = (diffuseB64, opacityB64, color) => {
               {tab === "text" ? "Text" : tab === "flag" ? "Flag" : "Logo"}
               {(tab === "text" && pressureOptions[`${area}Text`]) ||
                 (tab === "flag" && pressureOptions[`${area}Flag`]) ||
-                (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? " ✓" : ""}
+                (tab === "logo" && pressureOptions[`${area}LogoPredefined`]) ? "  " : ""}
             </button>
           ))}
         </div>
