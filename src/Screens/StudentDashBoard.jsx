@@ -303,39 +303,34 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             title: 'Basics',
             isForClassRep: false,
             steps: [
-                // {
-                //     title: 'Welcome to your Dashboard',
-                //     description: 'Here you can customize your clothing items, manage your sizes, and finalize your order.',
-                //     target: null, // Shows in the center of the screen
-                // },
                 {
-                    title: 'Select Garment',
-                    description: 'Switch between T-Shirts, Hoodies, Sweatshirts, and more by clicking these items.',
+                    title: 'Vælg produkt',
+                    description: 'Skift mellem T-shirts, hoodies, sweatshirts og andre produkter ved at klikke her.',
                     target: () => window.innerWidth < 768 ? document.getElementById('garment-menu-mobile') : document.getElementById('garment-menu'),
                 },
                 {
-                    title: 'Color & Size',
-                    description: 'Click here to choose your garment\'s base color (light/dark), the specific shade, and your preferred size.',
+                    title: 'Farve og størrelse',
+                    description: 'Vælg produktets grundfarve (lys eller mørk), den ønskede farve samt din størrelse.',
                     target: () => window.innerWidth < 768 ? document.getElementById('color-size-tab-btn-mobile') : document.getElementById('color-size-tab-btn'),
                 },
                 {
-                    title: 'Design Options',
-                    description: 'Switch to this tab to add custom Text, Flags, or Logos to your chest and sleeves.',
+                    title: 'Design',
+                    description: 'Gå til denne fane for at tilføje tekst, flag eller logo på bryst og ærmer.',
                     target: () => window.innerWidth < 768 ? document.getElementById('design-tab-btn-mobile') : document.getElementById('design-tab-btn'),
                 },
                 {
-                    title: 'Price & Status',
-                    description: 'Keep track of your total price, order status, and deadlines here.',
+                    title: 'Pris og status',
+                    description: 'Her kan du følge den samlede pris, status på din bestilling samt vigtige deadlines.',
                     target: () => window.innerWidth < 768 ? document.getElementById('price-summary-mobile') : document.getElementById('price-summary'),
                 },
                 {
-                    title: 'Header Bar',
-                    description: 'This is the top navigation bar where you can access the tour, profile, and other controls.',
+                    title: 'Topmenu',
+                    description: 'Øverst finder du navigationen, hvor du blandt andet kan starte rundvisningen, åbne din profil og få adgang til øvrige funktioner.',
                     target: () => document.getElementById('global-header'),
                 },
                 {
-                    title: 'Main Content Area',
-                    description: 'The main area where you configure garments and view options.',
+                    title: 'Farve og Størrelse',
+                    description: 'Vælge farve og den ønskede størrelse',
                     target: () => window.innerWidth < 768 ? document.getElementById('main-content-mobile') : document.getElementById('main-content'),
                 }
             ]
@@ -1516,7 +1511,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                     <div className="flex items-start gap-3 mb-4">
 
                                         <span className="text-[14px] font-semibold text-slate-700 leading-snug">
-                                            Would you like a guide? Click here.
+                                            Vil du have en hurtig rundvisning? Klik her for at komme i gang.
                                         </span>
                                     </div>
                                     <div className="flex justify-end gap-2">

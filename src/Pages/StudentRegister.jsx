@@ -70,10 +70,12 @@ const StudentRegister = () => {
 
         setLoading(true);
         try {
-            await registerUser(payload);
+            // Clear any existing session data before redirecting to login
+            localStorage.removeItem('token');
             localStorage.removeItem('user');
             message.success('Registration successful! You can now log in.');
-            navigate('/login');
+            // Use replace to avoid returning to dashboard via back button
+            navigate('/login', { replace: true });
         } catch (error) {
             message.error(error.response?.data?.message || 'Registration failed');
             submittingRef.current = false; // allow retry on error
