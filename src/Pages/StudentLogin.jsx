@@ -26,7 +26,6 @@ const StudentLogin = () => {
                 const userObj = data.data.user || { name: 'Admin', email: values.username };
                 login(userObj, data.token);
                 message.success('Welcome back!');
-                // Both student and class_representative use the editor (same experience)
                 navigate('/');
             } else {
                 message.error('Invalid credentials');

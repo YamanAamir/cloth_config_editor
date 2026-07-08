@@ -672,7 +672,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     // Listen for back design approval updates
     useSocket(
         user?.class_id ? `back_design_update_${user.class_id}` : null,
-        `back_design_update_${user.class_id}`,
         (data) => {
             fetchBackDesignStatus();
             if (data.approval_status === 'approved') {

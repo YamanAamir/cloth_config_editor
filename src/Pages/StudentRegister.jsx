@@ -71,6 +71,7 @@ const StudentRegister = () => {
         setLoading(true);
         try {
             await registerUser(payload);
+            localStorage.removeItem('user');
             message.success('Registration successful! You can now log in.');
             navigate('/login');
         } catch (error) {
