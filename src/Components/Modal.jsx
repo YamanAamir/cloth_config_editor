@@ -11,6 +11,7 @@ import { getFlagUrl } from '../utils/flags';
 import useLogoStore from '../store/logoStore';
 import { BASE_URL } from '../utils/const';
 import PaymentBreakdown from './PaymentBreakdown';
+import { useNavigate } from 'react-router-dom';
 // const stripePromise = loadStripe("pk_test_51S0HgS2ZnQzLDaK40M9tlj1n72wtQNsUNhG986xbE6bfHxWmFfOMJfWGAbg4QrAlFtnhVCtOajoIqUbRgSBnRnkb00iMo1bD1o");
 
 const getGarmentIcon = (category) => {
@@ -46,6 +47,7 @@ const QuoteModal = ({
   isLocked = false,
 }) => {
   // Is this an "add more products during edit window" flow?
+  const navigate = useNavigate()
   const effectiveEditWindowOpen = editWindowOpen && !isLocked;
   const isEditWindowFlow = processStatus === 'paid' && effectiveEditWindowOpen;
   // Helper: Check if a garment has been actually configured (differs from defaults)

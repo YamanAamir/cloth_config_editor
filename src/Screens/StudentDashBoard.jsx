@@ -677,9 +677,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         }
     );
 
-    // ── Auto-poll when payment is pending (webhook not yet fired) ──────────────
-    // Polls every 4 seconds until status changes from pending_payment
-    // Also triggers on mount if initial fetchOrderData returns pending_payment
     const [isPolling, setIsPolling] = useState(false);
 
     useEffect(() => {
