@@ -70,6 +70,7 @@ const StudentRegister = () => {
 
         setLoading(true);
         try {
+            await registerUser(payload);
             // Clear any existing session data before redirecting to login
             localStorage.removeItem('token');
             localStorage.removeItem('user');
