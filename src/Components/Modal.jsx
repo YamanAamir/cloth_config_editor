@@ -5,7 +5,7 @@ import { X, Printer, Download, Mail, CheckCircle, Package, Star, User, CreditCar
 // import { loadStripe } from "@stripe/stripe-js";
 import { useRef } from 'react';
 import { useEffect } from 'react';
-import { placeOrder, createCheckoutSession, getShippingRates, getMyClassInfo } from '../api/api';
+import { placeOrder, createCheckoutSession, getMyClassInfo, getStudentClassDelivery } from '../api/api';
 import useSettingsStore from '../store/settingsStore';
 import { getFlagUrl } from '../utils/flags';
 import useLogoStore from '../store/logoStore';
@@ -46,63 +46,11 @@ const QuoteModal = ({
   existingProductTypes = [],
   isLocked = false,
 }) => {
-  // Is this an "add more products during edit window" flow?
   const navigate = useNavigate()
-  const effectiveEditWindowOpen = editWindowOpen && !isLocked;
-  const isEditWindowFlow = processStatus === 'paid' && effectiveEditWindowOpen;
-  // Helper: Check if a garment has been actually configured (differs from defaults)
-  const isGarmentConfigured = (garmentType, garmentData) => {
-    const defaults = defaultSelections[garmentType];
-    if (!defaults) return true;
-
-    // Color aur Size global sync hain — inhe configured nahi maante
-    // Sirf pressureOptions mein actual design changes hone par configured maano
-
-    const currentPO = garmentData.pressureOptions || {};
-    const defaultPO = defaults.pressureOptions || {};
-
-    for (const key of Object.keys(currentPO)) {
-      const currentVal = currentPO[key];
-      const defaultVal = defaultPO[key];
-
-      if (Array.isArray(currentVal)) {
-        if (currentVal.length > 0) return true;
-        continue;
-      }
-      if (currentVal !== null && typeof currentVal === 'object') {
-        if (JSON.stringify(currentVal) !== JSON.stringify(defaultVal)) return true;
-        continue;
-      }
-      if (currentVal !== '' && currentVal !== null && currentVal !== undefined && currentVal !== defaultVal) {
-        return true;
-      }
-    }
-
-    return false;
-  };
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
-
-  // Shipping rates from API
-  const [shippingRates, setShippingRates] = useState([]);
-  const [shippingLoading, setShippingLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchRates = async () => {
-      setShippingLoading(true);
-      try {
-        const { data } = await getShippingRates();
-        if (data?.success) setShippingRates(data.data.filter(i => i.status === 0));
-      } catch {
-        // silently fail — delivery section will still work
-      } finally {
-        setShippingLoading(false);
-      }
-    };
-    fetchRates();
-  }, []);
 
   // Class student count — for handling fee per-student split
   const [classStudentCount, setClassStudentCount] = useState(0);
@@ -120,6 +68,28 @@ const QuoteModal = ({
       }
     };
     fetchClassInfo();
+  }, []);
+
+  // Class-level delivery details (set by class rep) — shipping cost split across all students
+  const [classDeliveryDetails, setClassDeliveryDetails] = useState(null);
+
+  useEffect(() => {
+    const fetchClassDelivery = async () => {
+      try {
+        const userStr = localStorage.getItem("user");
+        const user = userStr ? JSON.parse(userStr) : null;
+        const classId = user?.class_id;
+        if (!classId) return;
+
+        const { data } = await getStudentClassDelivery(classId);
+        if (data?.success && data.data) {
+          setClassDeliveryDetails(data.data); // { country, shippingOption, shippingPrice, address, city, zip, ... }
+        }
+      } catch {
+        // silently fail — shipping section will just show 0
+      }
+    };
+    fetchClassDelivery();
   }, []);
 
   // Track which garments are selected for purchase — start empty, user explicitly selects
@@ -155,7 +125,7 @@ const QuoteModal = ({
     country: initialDeliveryDetails?.country || 'Denmark',
     notes: initialDeliveryDetails?.notes || '',
     deliveryType: initialDeliveryDetails?.deliveryType || "regular",
-    deliverToSchool: initialDeliveryDetails?.deliverToSchool || false
+    deliverToSchool: initialDeliveryDetails?.deliverToSchool !== undefined ? initialDeliveryDetails.deliverToSchool : true
   });
 
   // Sync state if initialDeliveryDetails changes while modal is open (e.g. slow fetch)
@@ -295,18 +265,15 @@ const QuoteModal = ({
 
   if (!isOpen) return null;
 
-  // Edit-window flow: only 2 steps (select products → confirm & pay), no delivery re-entry
   const steps = orderComplete
     ? ['Thank You']
-    : isEditWindowFlow
-      ? ['Select Products', 'Confirm & Pay']
-      : ['Order Overview', 'Delivery Information', 'Order Confirmation'];
+    : ['Order Overview', 'Delivery Information', 'Order Confirmation'];
 
   // ✨ NEW: Calculate dynamic total price
   const calculateTotalPrice = () => {
     let total = 0;
     Object.entries(selectedGarments).forEach(([garmentType, isSelected]) => {
-      if (isSelected && isGarmentConfigured(garmentType, selectedOptions[garmentType])) {
+      if (isSelected) {
         total += GARMENT_PRICES[garmentType] || 0;
       }
     });
@@ -315,18 +282,13 @@ const QuoteModal = ({
 
   const dynamicPrice = calculateTotalPrice();
 
-  // Shipping rate — matched by country_name (case-insensitive)
-  const getSelectedShippingRate = () => {
-    if (!shippingRates.length) return 0;
-    const match = shippingRates.find(
-      r => r.country_name.toLowerCase() === (customerDetails.country || '').toLowerCase()
-    );
-    if (!match) return 0;
-    return customerDetails.deliveryType === 'express'
-      ? parseFloat(match.express_delivery_rate || 0)
-      : parseFloat(match.regular_delivery_rate || 0);
+  // Shipping fee per student — total class shipping cost (set by class rep) ÷ expected students
+  const getShippingFeePerStudent = () => {
+    if (!classDeliveryDetails?.shippingPrice) return 0;
+    if (!classStudentCount || classStudentCount <= 0) return 0;
+    return Math.round((parseFloat(classDeliveryDetails.shippingPrice) / classStudentCount) * 100) / 100;
   };
-  const shippingRate = getSelectedShippingRate();
+  const shippingRate = getShippingFeePerStudent();
 
   // Handling fee per-student calculation
   // Logic:
@@ -829,8 +791,10 @@ const QuoteModal = ({
 
   // Validate customer details
   const validateCustomerDetails = () => {
-    const required = ['firstName', 'lastName', 'email', 'phone', 'address', 'city', 'postalCode'];
-    return required.every(field => customerDetails[field].trim() !== '');
+    const required = customerDetails.deliverToSchool
+      ? ['firstName', 'lastName', 'email', 'phone']
+      : ['firstName', 'lastName', 'email', 'phone', 'address', 'city', 'postalCode'];
+    return required.every(field => (customerDetails[field] || '').trim() !== '');
   };
   const buildFilteredOptions = (selectedOptions) => {
     return Object.fromEntries(
@@ -855,7 +819,7 @@ const QuoteModal = ({
 
       // Prepare order data
       const configuredEntries = Object.entries(selectedOptions).filter(
-        ([type, options]) => isGarmentConfigured(type, options) && selectedGarments[type]
+        ([type]) => selectedGarments[type]
       );
 
       if (configuredEntries.length === 0) {
@@ -1274,7 +1238,7 @@ const QuoteModal = ({
               </div>
 
               {/* School Name */}
-              <div>
+              {/* <div>
                 <label className={labelClasses}>Skolens navn *</label>
                 <input
                   ref={refs.Skolenavn}
@@ -1286,9 +1250,9 @@ const QuoteModal = ({
                   className={inputClasses}
                   placeholder="f.eks. Copenhagen High"
                 />
-              </div>
+              </div> */}
 
-              <div className="flex flex-col justify-end">
+              {/* <div className="flex flex-col justify-end">
                 <label className={labelClasses}>Leveringssted</label>
                 <div
                   onClick={() => handleInputChange("deliverToSchool", !customerDetails.deliverToSchool)}
@@ -1310,117 +1274,129 @@ const QuoteModal = ({
                     <div className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform duration-300 transform ${customerDetails.deliverToSchool ? 'translate-x-4' : 'translate-x-0'}`}></div>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
-              {/* Street Address */}
-              <div className="md:col-span-2">
-                <label className={labelClasses}>Gadeadresse *</label>
-                <input
-                  ref={refs.address}
-                  name="address"
-                  type="text"
-                  value={customerDetails.address || ""}
-                  onChange={(e) => handleInputChange("address", e.target.value)}
-                  onKeyPress={(e) => handleKeyPress(e, "address")}
-                  className={inputClasses}
-                  placeholder=""
-                />
-              </div>
-
-              {/* City */}
-              <div>
-                <label className={labelClasses}>By *</label>
-                <input
-                  ref={refs.city}
-                  name="city"
-                  type="text"
-                  value={customerDetails.city || ""}
-                  onChange={(e) => handleInputChange("city", e.target.value)}
-                  onKeyPress={(e) => handleKeyPress(e, "city")}
-                  className={inputClasses}
-                  placeholder="f.eks. København"
-                />
-              </div>
-
-              {/* Postal Code & Country */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClasses}>Postnummer *</label>
+            {/* {!customerDetails.deliverToSchool ? (
+              <>
+                <div className="md:col-span-2">
+                  <label className={labelClasses}>Gadeadresse *</label>
                   <input
-                    ref={refs.postalCode}
-                    name="postalCode"
+                    ref={refs.address}
+                    name="address"
                     type="text"
-                    value={customerDetails.postalCode || ""}
-                    onChange={(e) => handleInputChange("postalCode", e.target.value)}
-                    onKeyPress={(e) => handleKeyPress(e, "postalCode")}
+                    value={customerDetails.address || ""}
+                    onChange={(e) => handleInputChange("address", e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, "address")}
                     className={inputClasses}
-                    placeholder="0000"
+                    placeholder=""
                   />
                 </div>
+
                 <div>
-                  <label className={labelClasses}>Land</label>
-                  <select
-                    ref={refs.country}
-                    name="country"
-                    value={customerDetails.country || "Denmark"}
-                    onChange={(e) => handleInputChange("country", e.target.value)}
-                    onKeyPress={(e) => handleKeyPress(e, "country")}
-                    className={`${inputClasses} appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%20stroke%3D%22currentColor%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.75rem_center] bg-no-repeat`}
-                  >
-                    {shippingLoading ? (
-                      <option>Loading...</option>
-                    ) : shippingRates.length > 0 ? (
-                      shippingRates.map(r => (
-                        <option key={r.id} value={r.country_name}>{r.country_name}</option>
-                      ))
-                    ) : (
-                      <>
-                        <option value="Denmark">Denmark</option>
-                        <option value="Sweden">Sweden</option>
-                        <option value="Norway">Norway</option>
-                        <option value="Germany">Germany</option>
-                        <option value="Other">Other</option>
-                      </>
-                    )}
-                  </select>
+                  <label className={labelClasses}>By *</label>
+                  <input
+                    ref={refs.city}
+                    name="city"
+                    type="text"
+                    value={customerDetails.city || ""}
+                    onChange={(e) => handleInputChange("city", e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, "city")}
+                    className={inputClasses}
+                    placeholder="f.eks. København"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClasses}>Postnummer *</label>
+                    <input
+                      ref={refs.postalCode}
+                      name="postalCode"
+                      type="text"
+                      value={customerDetails.postalCode || ""}
+                      onChange={(e) => handleInputChange("postalCode", e.target.value)}
+                      onKeyPress={(e) => handleKeyPress(e, "postalCode")}
+                      className={inputClasses}
+                      placeholder="0000"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClasses}>Land</label>
+                    <select
+                      ref={refs.country}
+                      name="country"
+                      value={customerDetails.country || "Denmark"}
+                      onChange={(e) => handleInputChange("country", e.target.value)}
+                      onKeyPress={(e) => handleKeyPress(e, "country")}
+                      className={`${inputClasses} appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%20stroke%3D%22currentColor%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.75rem_center] bg-no-repeat`}
+                    >
+                      {shippingLoading ? (
+                        <option>Loading...</option>
+                      ) : shippingRates.length > 0 ? (
+                        shippingRates.map(r => (
+                          <option key={r.id} value={r.country_name}>{r.country_name}</option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="Denmark">Denmark</option>
+                          <option value="Sweden">Sweden</option>
+                          <option value="Norway">Norway</option>
+                          <option value="Germany">Germany</option>
+                          <option value="Other">Other</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="md:col-span-2 bg-green-50 border border-green-200 rounded-2xl p-4 flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-bold text-green-950 text-xs mb-0.5">Samlet klasselevering er valgt</h4>
+                  <p className="text-green-700 text-[11px] leading-relaxed">
+                    Dine varer vil blive leveret samlet i én pakke til klassens leveringsadresse, som sættes af din klasserepræsentant. Du skal ikke betale individuel fragt.
+                  </p>
                 </div>
               </div>
+            )} */}
             </div>
 
-            {/* Delivery Preference */}
-            <div className="pt-6 border-t border-slate-100">
-              <label className={labelClasses}>Leveringspræference</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                <button
-                  onClick={() => handleInputChange("deliveryType", "regular")}
-                  className={`flex items-center px-6 py-3 rounded-full border-2 transition-all duration-300 text-left ${customerDetails.deliveryType === "regular" ? 'border-green-600 bg-green-50/50 shadow-md' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
-                >
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 flex-shrink-0 transition-colors ${customerDetails.deliveryType === "regular" ? 'border-green-600 bg-green-600' : 'border-slate-300 bg-white'}`}>
-                    {customerDetails.deliveryType === "regular" && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">Regelmæssig levering</p>
-                    <p className="text-[10px] text-slate-500 font-medium">
-                      {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (customerDetails.country || '').toLowerCase()); return r ? `${r.regular_delivery_rate} DKK — Est. 6 weeks` : 'Est. 6 weeks'; })()}
-                    </p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => handleInputChange("deliveryType", "express")}
-                  className={`flex items-center px-6 py-3 rounded-full border-2 transition-all duration-300 text-left ${customerDetails.deliveryType === "express" ? 'border-green-600 bg-green-50/50 shadow-md' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
-                >
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 flex-shrink-0 transition-colors ${customerDetails.deliveryType === "express" ? 'border-green-600 bg-green-600' : 'border-slate-300 bg-white'}`}>
-                    {customerDetails.deliveryType === "express" && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">Ekspresprioritet</p>
-                    <p className="text-[10px] text-slate-500 font-medium">
-                      {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (customerDetails.country || '').toLowerCase()); return r ? `${r.express_delivery_rate} DKK — Est. 3 weeks` : 'Est. 3 weeks'; })()}
-                    </p>
-                  </div>
-                </button>
+            {/* {!customerDetails.deliverToSchool && (
+              <div className="pt-6 border-t border-slate-100">
+                <label className={labelClasses}>Leveringspræference</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  <button
+                    onClick={() => handleInputChange("deliveryType", "regular")}
+                    className={`flex items-center px-6 py-3 rounded-full border-2 transition-all duration-300 text-left ${customerDetails.deliveryType === "regular" ? 'border-green-600 bg-green-50/50 shadow-md' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                  >
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 flex-shrink-0 transition-colors ${customerDetails.deliveryType === "regular" ? 'border-green-600 bg-green-600' : 'border-slate-300 bg-white'}`}>
+                      {customerDetails.deliveryType === "regular" && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Regelmæssig levering</p>
+                      <p className="text-[10px] text-slate-500 font-medium">
+                        {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (customerDetails.country || '').toLowerCase()); return r ? `${r.regular_delivery_rate} DKK — Est. 6 weeks` : 'Est. 6 weeks'; })()}
+                      </p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleInputChange("deliveryType", "express")}
+                    className={`flex items-center px-6 py-3 rounded-full border-2 transition-all duration-300 text-left ${customerDetails.deliveryType === "express" ? 'border-green-600 bg-green-50/50 shadow-md' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                  >
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 flex-shrink-0 transition-colors ${customerDetails.deliveryType === "express" ? 'border-green-600 bg-green-600' : 'border-slate-300 bg-white'}`}>
+                      {customerDetails.deliveryType === "express" && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Ekspresprioritet</p>
+                      <p className="text-[10px] text-slate-500 font-medium">
+                        {(() => { const r = shippingRates.find(x => x.country_name.toLowerCase() === (customerDetails.country || '').toLowerCase()); return r ? `${r.express_delivery_rate} DKK — Est. 3 weeks` : 'Est. 3 weeks'; })()}
+                      </p>
+                    </div>
+                  </button>
+                </div>
               </div>
-            </div>
+            )} */}
 
             {/* Notes */}
             <div className="pt-6 border-t border-slate-100">
@@ -1479,12 +1455,16 @@ const QuoteModal = ({
 
               <div className="space-y-3">
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Leveringsadresse</span>
-                  <span className="text-xs font-bold text-slate-700 leading-relaxed">
-                    {customerDetails.address}<br />
-                    {customerDetails.postalCode}, {customerDetails.city}<br />
-                    {customerDetails.country}
-                  </span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Leveringsadresse (klasse)</span>
+                  {classDeliveryDetails?.address ? (
+                    <span className="text-xs font-bold text-slate-700 leading-relaxed">
+                      {classDeliveryDetails.address}<br />
+                      {classDeliveryDetails.zip} {classDeliveryDetails.city}<br />
+                      {classDeliveryDetails.country}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-medium text-slate-400 italic">Ikke angivet af klasserepræsentant endnu</span>
+                  )}
                 </div>
                 {customerDetails.Skolenavn && (
                   <div className="flex flex-col">
@@ -1579,7 +1559,7 @@ const QuoteModal = ({
               {shippingRate > 0 && (
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-semibold text-slate-600">
-                    Forsendelse ({customerDetails.deliveryType === 'express' ? 'Express' : 'Regular'} — {customerDetails.country})
+                    Forsendelse ({classDeliveryDetails?.shippingOption === 'express' ? 'Express' : 'Regular'} — 1/{classStudentCount} of class, {classDeliveryDetails?.country})
                   </span>
                   <span className="text-sm font-bold text-slate-800">{shippingRate} DKK</span>
                 </div>
@@ -1745,22 +1725,11 @@ const QuoteModal = ({
     </div>
   );
   // Get step content
-  // Get step content
   const getStepContent = () => {
     if (orderComplete) {
       return renderThankYouPage();
     }
 
-    if (isEditWindowFlow) {
-      // 2-step flow: step 0 = product selection, step 1 = confirmation
-      switch (currentStep) {
-        case 0: return renderQuoteReview();
-        case 1: return renderOrderConfirmation();
-        default: return renderQuoteReview();
-      }
-    }
-
-    // Normal 3-step flow
     switch (currentStep) {
       case 0:
         return renderQuoteReview();

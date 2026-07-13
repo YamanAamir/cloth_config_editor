@@ -102,6 +102,7 @@ export const getOrderPricing = (data) => api.post('/payment/calculate-pricing', 
 export const getPublicSettings   = ()          => api.get('/student/settings');
 export const getShippingRates    = ()          => api.get('/student/shipping-rates');
 export const getMyClassInfo      = ()          => api.get('/student/my-class/student-count');
+export const getStudentClassDelivery = (classId) => api.get(`/student/class/${classId}/delivery`);
 
 // ── Student: Profile ──────────────────────────────────────────────────────────
 export const getStudentProfile      = ()     => api.get('/student/profile');
