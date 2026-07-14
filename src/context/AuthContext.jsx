@@ -6,7 +6,7 @@ const AuthContext = createContext(null);
 const USER_STORAGE_KEYS = [
     'user',
     'token',
-    // 'studentCustomizations',
+    'studentCustomizations',
     'orderHoldDeadline',
 ];
 

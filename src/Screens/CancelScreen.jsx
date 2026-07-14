@@ -41,7 +41,7 @@ const CancelScreen = ({ handleResetModal, onClose }) => {
           <button
             onClick={() => {
               handleResetModal?.();
-              window.location.href = "/checkout"; // adjust to your checkout route
+              window.location.href = "/"; // adjust to your checkout route
             }}
             className="flex items-center justify-center px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-medium hover:from-red-700 hover:to-red-800 transition-all duration-200"
           >

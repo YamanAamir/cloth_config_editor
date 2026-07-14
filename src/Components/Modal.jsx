@@ -312,7 +312,7 @@ const QuoteModal = ({
   const totalWithVat = subtotal + shippingRate + handlingFeePerStudent;
 
   // Balance due = total with VAT + shipping - already paid amount
-  const computedBalanceDue = Math.max(0, totalWithVat - amountPaid);
+  const computedBalanceDue = Math.max(0, totalWithVat - amountPaid).toFixed(2);
 
   // ✨ NEW: Toggle garment selection
   const toggleGarmentSelection = (garmentType) => {
@@ -1276,7 +1276,7 @@ const QuoteModal = ({
                 </div>
               </div> */}
 
-            {/* {!customerDetails.deliverToSchool ? (
+              {/* {!customerDetails.deliverToSchool ? (
               <>
                 <div className="md:col-span-2">
                   <label className={labelClasses}>Gadeadresse *</label>
@@ -1575,7 +1575,7 @@ const QuoteModal = ({
               <div className="border-t border-slate-200 pt-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-bold text-slate-800">Total</span>
-                  <span className="text-lg font-bold text-green-600">{totalWithVat} DKK</span>
+                  <span className="text-lg font-bold text-green-600">{totalWithVat.toFixed(2)} DKK</span>
                 </div>
               </div>
               {amountPaid > 0 && (
