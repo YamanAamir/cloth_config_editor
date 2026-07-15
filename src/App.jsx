@@ -13,14 +13,35 @@ import StudentLogin from './Pages/StudentLogin.jsx';
 import { useAuth } from './context/AuthContext';
 import useBackDesignStore from './store/backDesignStore';
 import { getMyOrder, getMyOrderHistory, getMyClassBackDesigns } from './api/api';
+import { DEFAULT_SELECTIONS } from './utils/const';
 
 function App() {
   const { user, loading } = useAuth();
   // State is simplified. Students array and Mode states removed.
   const [customizations, setCustomizations] = useState(() => {
-    const saved = localStorage.getItem('studentCustomizations');
-    return saved ? JSON.parse(saved) : {};
-  }); // student-specific customizations
+    try {
+      const saved = localStorage.getItem('studentCustomizations');
+      let parsed = saved ? JSON.parse(saved) : null;
+      if (parsed) {
+        const rawUser = localStorage.getItem('user');
+        const userObj = rawUser ? JSON.parse(rawUser) : null;
+        const email = userObj?.email;
+        const name = userObj?.name;
+        const keys = Object.keys(parsed);
+        const isOldFormat = keys.length > 0 && !keys.includes('T-SHIRT') && !keys.includes('HOODIE') && !keys.includes('SWEATSHIRT');
+        if (isOldFormat) {
+          if (email && parsed[email]) {
+            return parsed[email];
+          } else if (name && parsed[name]) {
+            return parsed[name];
+          }
+          return DEFAULT_SELECTIONS;
+        }
+        return parsed;
+      }
+    } catch { }
+    return DEFAULT_SELECTIONS;
+  });
   const [showBackPopup, setShowBackPopup] = useState(false);
   const [students, setStudents] = useState([]);
   // const [showBackTextPopup, setShowBackTextPopup] = useState(false); // COMMENTED: Back text feature disabled

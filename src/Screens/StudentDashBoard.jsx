@@ -25,79 +25,13 @@ import { useAuth } from '../context/AuthContext';
 import { getMyOrder, getMyOrderHistory, placeOrder, getStudentProfile, updateStudentProfile, changePasswordAuth, getMyClassBackDesigns, createCheckoutSession, getOrderPaymentBreakdown } from '../api/api';
 import useBackDesignStore from '../store/backDesignStore';
 import { getFlagUrl } from '../utils/flags';
-import { BASE_URL } from '../utils/const';
-
+import { BASE_URL, DEFAULT_SELECTIONS } from '../utils/const';
 import useSocket from '../hooks/useSocket';
 
 const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup, initialOrderData, initialHistoryData, initialBackDesignData /*, setShowBackTextPopup */ }) => { // COMMENTED: Back text feature disabled
     const { logout } = useAuth();
     const { backDesigns } = useBackDesignStore();
     const { fetchBackDesigns } = useBackDesignStore();
-
-    // 1. Move Constants & Logic to top
-    const DEFAULT_SELECTIONS = {
-        'T-SHIRT': {
-            selectedColor: 'Red',
-            selectedSize: 'S',
-            pressureOptions: {
-                rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
-                leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
-                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
-                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
-                backDesign: null,
-            }
-        },
-        'SWEATSHIRT': {
-            selectedColor: 'Red',
-            selectedSize: 'S',
-            pressureOptions: {
-                rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
-                leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
-                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
-                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
-                backDesign: null,
-            }
-        },
-        'HOODIE': {
-            selectedColor: 'Red',
-            selectedSize: 'S',
-            pressureOptions: {
-                rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
-                leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
-                bottomChestText: '', bottomChestFlag: '', bottomChestLogoPredefined: '', bottomChestLogoCustom: '', bottomChestType: '', bottomChestTextColor: '#ffffff',
-                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
-                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
-                backDesign: null,
-            }
-        },
-        'ZIPPERHOODIE': {
-            selectedColor: 'Red',
-            selectedSize: 'S',
-            pressureOptions: {
-                rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
-                leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
-                rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
-                leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
-                backDesign: null,
-            }
-        },
-        'SWEATPANTS': {
-            selectedColor: 'Red',
-            selectedSize: 'S',
-            pressureOptions: {
-                rightLegText: '', rightLegFlag: '', rightLegLogoPredefined: '', rightLegLogoCustom: '', rightLegType: '', rightLegTextColor: '#ffffff',
-                leftLegText: '', leftLegFlag: '', leftLegLogoPredefined: '', leftLegLogoCustom: '', leftLegType: '', leftLegTextColor: '#ffffff',
-            }
-        },
-        'SHORTS': {
-            selectedColor: 'Red',
-            selectedSize: 'S',
-            pressureOptions: {
-                rightLegText: '', rightLegFlag: '', rightLegLogoPredefined: '', rightLegLogoCustom: '', rightLegType: '', rightLegTextColor: '#ffffff',
-                leftLegText: '', leftLegFlag: '', leftLegLogoPredefined: '', leftLegLogoCustom: '', leftLegType: '', leftLegTextColor: '#ffffff',
-            }
-        }
-    };
 
     // Tops chest/sleeve fields use rakhte hain, bottoms sirf leg fields — copy ke waqt inhe mix nahi karna
     const GARMENT_FAMILY = {
@@ -248,14 +182,25 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
     // 2. State
     const [allSelections, setAllSelectionsState] = useState(() => {
-        // Refresh pe localStorage se data load karo — email ko key ki tarah use karo
         try {
-            const rawUser = localStorage.getItem('user');
-            const sKey = rawUser ? (JSON.parse(rawUser)?.email || "") : "";
-            if (sKey) {
-                const saved = localStorage.getItem('studentCustomizations');
-                const parsed = saved ? JSON.parse(saved) : null;
-                if (parsed && parsed[sKey]) return parsed[sKey];
+            const saved = localStorage.getItem('studentCustomizations');
+            let parsed = saved ? JSON.parse(saved) : null;
+            if (parsed) {
+                const rawUser = localStorage.getItem('user');
+                const userObj = rawUser ? JSON.parse(rawUser) : null;
+                const email = userObj?.email;
+                const name = userObj?.name;
+                const keys = Object.keys(parsed);
+                const isOldFormat = keys.length > 0 && !keys.includes('T-SHIRT') && !keys.includes('HOODIE') && !keys.includes('SWEATSHIRT');
+                if (isOldFormat) {
+                    if (email && parsed[email]) {
+                        return parsed[email];
+                    } else if (name && parsed[name]) {
+                        return parsed[name];
+                    }
+                    return DEFAULT_SELECTIONS;
+                }
+                return parsed;
             }
         } catch { /* ignore */ }
         return DEFAULT_SELECTIONS;
@@ -349,28 +294,16 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             label: tour.title,
             onClick: () => handleStartTour(tour.steps)
         }));
-
     // Auto-prompt Tour Guide logic
     useEffect(() => {
         if (isAppReady) {
             const promptState = localStorage.getItem('tourPromptShown');
-            const savedDate = localStorage.getItem('tourPromptDate');
-            const currentDate = new Date().toDateString();
 
-            if (savedDate !== currentDate) {
-                // If the date has changed, remove the state so it prompts again
-                localStorage.removeItem('tourPromptShown');
-                localStorage.setItem('tourPromptDate', currentDate);
-
+            if (!promptState) {
                 const timer = setTimeout(() => {
                     setShowTourPrompt(true);
                 }, 1000);
-                return () => clearTimeout(timer);
-            } else if (!promptState) {
-                // Same date, but no state yet
-                const timer = setTimeout(() => {
-                    setShowTourPrompt(true);
-                }, 1000);
+
                 return () => clearTimeout(timer);
             }
         }
@@ -386,13 +319,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     const [historyIndex, setHistoryIndex] = useState(-1);
     const [dbHistory, setDbHistory] = useState([]);
     const [isAdmin, setIsAdmin] = useState(false);
-    // selectedStudent — user login hote hi EMAIL se initialize karo (unique key)
-    const [selectedStudent, setSelectedStudent] = useState(() => {
-        try {
-            const rawUser = localStorage.getItem('user');
-            return rawUser ? (JSON.parse(rawUser)?.email || "") : "";
-        } catch { return ""; }
-    });
+
     const [existingDeliveryDetails, setExistingDeliveryDetails] = useState(null);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -463,17 +390,13 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                 : null;
             if (!latestSrc) return;
 
-            const sName = user?.name;
-            if (!sName) return;
-
             try {
                 const stored = localStorage.getItem('studentCustomizations');
                 if (!stored) return;
                 const parsed = JSON.parse(stored);
-                if (!parsed[sName]) return;
 
                 let updated = false;
-                const studentData = JSON.parse(JSON.stringify(parsed[sName]));
+                const studentData = JSON.parse(JSON.stringify(parsed));
 
                 // Update backDesign.src in ALL garment types where it is set
                 Object.keys(studentData).forEach(garmentType => {
@@ -486,11 +409,9 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                 });
 
                 if (updated) {
-                    parsed[sName] = studentData;
-                    localStorage.setItem('studentCustomizations', JSON.stringify(parsed));
-                    // Update React state so UI immediately shows latest image
+                    localStorage.setItem('studentCustomizations', JSON.stringify(studentData));
                     setAllSelections(studentData);
-                    setCustomizations(prev => ({ ...prev, [sName]: studentData }));
+                    setCustomizations(studentData);
                 }
             } catch (err) {
                 console.error('Failed to update backDesign src in localStorage:', err);
@@ -543,21 +464,14 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         setExistingProductTypes((order.order_items || []).map(item => item.product_type));
 
         if (order.order_items?.length > 0) {
-            const sName = user?.name || "Student";
             let localData = null;
             try {
                 const s = localStorage.getItem('studentCustomizations');
-                const parsed = s ? JSON.parse(s) : null;
-                if (parsed && parsed[sName]) localData = parsed[sName];
+                localData = s ? JSON.parse(s) : null;
             } catch { /* ignore */ }
             if (localData) {
                 setAllSelections(localData);
-                // Update customizations only if different
-                setCustomizations(prev => {
-                    const existing = prev[sName];
-                    if (JSON.stringify(existing) === JSON.stringify(localData)) return prev;
-                    return { ...prev, [sName]: localData };
-                });
+                setCustomizations(localData);
             } else {
                 const newSelections = JSON.parse(JSON.stringify(DEFAULT_SELECTIONS));
                 order.order_items.forEach(item => {
@@ -569,18 +483,11 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                     }
                 });
                 setAllSelections(newSelections);
-                setCustomizations(prev => {
-                    const existing = prev[sName];
-                    if (JSON.stringify(existing) === JSON.stringify(newSelections)) return prev;
-                    return { ...prev, [sName]: newSelections };
-                });
+                setCustomizations(newSelections);
                 try {
-                    const existing = localStorage.getItem('studentCustomizations');
-                    const existingParsed = existing ? JSON.parse(existing) : {};
-                    localStorage.setItem('studentCustomizations', JSON.stringify({ ...existingParsed, [sName]: newSelections }));
+                    localStorage.setItem('studentCustomizations', JSON.stringify(newSelections));
                 } catch { /* ignore */ }
             }
-            setSelectedStudent(sName);
         }
     };
 
@@ -830,22 +737,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     };
 
     // Jab selected student change ho → uske customizations load karo
-    useEffect(() => {
-        if (!selectedStudent) return;
-
-        const studentData = customizations[selectedStudent] || DEFAULT_SELECTIONS;
-        // Update only if the data reference actually changed to avoid redundant state updates
-        if (allSelections !== studentData) {
-            setAllSelections(studentData);
-        }
-    }, [selectedStudent, customizations]);
-
     const handleUpdateSelection = (category, updates) => {
-
-        // selectedStudent empty ho toh user name se fallback — data "" key pe na jaye
-        const activeStudent = selectedStudent || user?.name || "Student";
-        if (!selectedStudent && activeStudent) setSelectedStudent(activeStudent);
-
         if (isLocked && !isAdmin) {
             message.warning("Editing is locked after the deadline.");
             return;
@@ -906,20 +798,14 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             });
 
             // 2. Schedule parent state update
-            setCustomizations(prevCustom => {
-                const updated = { ...prevCustom, [activeStudent]: next };
+            setCustomizations(next);
 
-                // (BackDesign batch sync removed as multi-student mode is disabled)
-
-                // Save to history for Change Control
-                setHistory(h => {
-                    const newH = [...h.slice(0, historyIndex + 1), JSON.parse(JSON.stringify(updated))].slice(-10);
-                    setHistoryIndex(newH.length - 1);
-                    setUndoAvailable(newH.length > 1);
-                    return newH;
-                });
-
-                return updated;
+            // Save to history for Change Control
+            setHistory(h => {
+                const newH = [...h.slice(0, historyIndex + 1), JSON.parse(JSON.stringify(next))].slice(-10);
+                setHistoryIndex(newH.length - 1);
+                setUndoAvailable(newH.length > 1);
+                return newH;
             });
 
             return next;
@@ -931,7 +817,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             const prevIndex = historyIndex - 1;
             const prevState = history[prevIndex];
             setCustomizations(prevState);
-            setAllSelections(prevState[selectedStudent] || DEFAULT_SELECTIONS);
+            setAllSelections(prevState);
             setHistoryIndex(prevIndex);
             setUndoAvailable(prevIndex > 0);
             message.info("Changes reverted.");
@@ -960,15 +846,11 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
                 // Update state
                 setAllSelections(newSelections);
-                setCustomizations(prev => ({
-                    ...prev,
-                    [selectedStudent]: newSelections
-                }));
+                setCustomizations(newSelections);
 
                 // Push to local UNDO history so user can revert this restoration
                 setHistory(h => {
-                    const updated = { ...customizations, [selectedStudent]: newSelections };
-                    const newH = [...h.slice(0, historyIndex + 1), JSON.parse(JSON.stringify(updated))].slice(-10);
+                    const newH = [...h.slice(0, historyIndex + 1), JSON.parse(JSON.stringify(newSelections))].slice(-10);
                     setHistoryIndex(newH.length - 1);
                     setUndoAvailable(true);
                     return newH;
@@ -1317,30 +1199,12 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     // Removed redundant isAppReady effect that was causing unnecessary state updates and re‑renders.
 
     useEffect(() => {
-        if (!selectedStudent) return;
-
-        // Ensure customizations has an entry for this student
-        if (!customizations[selectedStudent]) {
-            // LocalStorage se direct check karo — React state sync delay ho sakta hai
-            try {
-                const saved = localStorage.getItem('studentCustomizations');
-                const parsed = saved ? JSON.parse(saved) : null;
-                if (parsed && parsed[selectedStudent]) {
-                    setCustomizations(prev => ({ ...prev, [selectedStudent]: parsed[selectedStudent] }));
-                    setAllSelections(parsed[selectedStudent]);
-                    return;
-                }
-            } catch { /* ignore */ }
-
-            setCustomizations(prev => ({
-                ...prev,
-                [selectedStudent]: DEFAULT_SELECTIONS
-            }));
-            setAllSelections(DEFAULT_SELECTIONS);
+        if (customizations && Object.keys(customizations).length > 0) {
+            setAllSelections(customizations);
         } else {
-            setAllSelections(customizations[selectedStudent]);
+            setAllSelections(DEFAULT_SELECTIONS);
         }
-    }, [selectedStudent]);
+    }, [customizations]);
     return (
         <>
             <Tour

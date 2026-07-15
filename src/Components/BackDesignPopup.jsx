@@ -41,24 +41,17 @@ const BackDesignPopup = ({ onFinish, customizations, setCustomizations, students
                 };
 
                 setCustomizations(prev => {
-                    const nextCustom = { ...prev };
+                    const nextCustom = JSON.parse(JSON.stringify(prev || {}));
                     const shirtCategories = ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'];
-                    students.forEach(student => {
-                        const studentName = typeof student === 'object' ? (student.name || student.id) : student;
-                        const studentData = nextCustom[studentName] || {};
-
-                        shirtCategories.forEach(cat => {
-                            const categoryData = studentData[cat] || {};
-                            studentData[cat] = {
-                                ...categoryData,
-                                pressureOptions: {
-                                    ...(categoryData.pressureOptions || {}),
-                                    backDesign: backDesignObj
-                                }
-                            };
-                        });
-
-                        nextCustom[studentName] = { ...studentData };
+                    shirtCategories.forEach(cat => {
+                        const categoryData = nextCustom[cat] || {};
+                        nextCustom[cat] = {
+                            ...categoryData,
+                            pressureOptions: {
+                                ...(categoryData.pressureOptions || {}),
+                                backDesign: backDesignObj
+                            }
+                        };
                     });
                     return nextCustom;
                 });
@@ -68,9 +61,8 @@ const BackDesignPopup = ({ onFinish, customizations, setCustomizations, students
     }, [backDesigns, students, setCustomizations]);
     const currentTab = productTabs.find((t) => t.name === activeTab);
 
-    // Use first student's data for UI preview
-    const firstStudentName = students.length > 0 ? (typeof students[0] === 'object' ? (students[0].name || students[0].id) : students[0]) : "";
-    const firstStudentData = customizations[firstStudentName] || {};
+    // Use customizations directly
+    const firstStudentData = customizations || {};
     const currentCategoryData = firstStudentData[activeTab] || {};
     const currentBackDesign = currentCategoryData.pressureOptions?.backDesign;
 
@@ -118,19 +110,14 @@ const BackDesignPopup = ({ onFinish, customizations, setCustomizations, students
 
         if (update.backDesign !== undefined) {
             setCustomizations(prev => {
-                const nextCustom = { ...prev };
-                students.forEach(student => {
-                    const studentName = typeof student === 'object' ? (student.name || student.id) : student;
-                    const studentData = nextCustom[studentName] || {};
-                    const shirtCategories = ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'];
-                    shirtCategories.forEach(cat => {
-                        const categoryData = studentData[cat] || {};
-                        studentData[cat] = {
-                            ...categoryData,
-                            pressureOptions: { ...(categoryData.pressureOptions || {}), backDesign: update.backDesign }
-                        };
-                    });
-                    nextCustom[studentName] = { ...studentData };
+                const nextCustom = JSON.parse(JSON.stringify(prev || {}));
+                const shirtCategories = ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'];
+                shirtCategories.forEach(cat => {
+                    const categoryData = nextCustom[cat] || {};
+                    nextCustom[cat] = {
+                        ...categoryData,
+                        pressureOptions: { ...(categoryData.pressureOptions || {}), backDesign: update.backDesign }
+                    };
                 });
                 return nextCustom;
             });

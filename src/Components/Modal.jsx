@@ -253,7 +253,7 @@ const QuoteModal = ({
   };
 
   // Garment prices from backend settings (with fallback) — must be before any early return
-  const { getGarmentPrice, getVat, getHandlingFeeEnabled, getBaseHandlingFee, getThreshold, getExtraFeeAboveThreshold } = useSettingsStore();
+  const { getGarmentPrice, getVat, getHandlingFeeEnabled, getBaseHandlingFee, getThreshold, getExtraFeeAboveThreshold, getDeliveryFeeThreshold } = useSettingsStore();
   const GARMENT_PRICES = {
     'T-SHIRT': getGarmentPrice('T-SHIRT') || 1200,
     'SWEATSHIRT': getGarmentPrice('SWEATSHIRT') || 1500,
@@ -283,10 +283,14 @@ const QuoteModal = ({
   const dynamicPrice = calculateTotalPrice();
 
   // Shipping fee per student — total class shipping cost (set by class rep) ÷ expected students
+  // If expected students exceeds threshold, the shipping price doubles.
   const getShippingFeePerStudent = () => {
     if (!classDeliveryDetails?.shippingPrice) return 0;
     if (!classStudentCount || classStudentCount <= 0) return 0;
-    return Math.round((parseFloat(classDeliveryDetails.shippingPrice) / classStudentCount) * 100) / 100;
+    const shippingPrice = parseFloat(classDeliveryDetails.shippingPrice);
+    const threshold = getDeliveryFeeThreshold();
+    const totalFee = classStudentCount > threshold ? shippingPrice * 2 : shippingPrice;
+    return Math.round((totalFee / classStudentCount) * 100) / 100;
   };
   const shippingRate = getShippingFeePerStudent();
 

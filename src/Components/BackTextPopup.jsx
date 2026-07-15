@@ -51,11 +51,7 @@ const BackTextPopup = ({ onFinish, customizations, setCustomizations, students, 
     ];
 
     // Get current back text items from the first student's data
-    const firstStudentName = students.length > 0
-        ? (typeof students[0] === 'object' ? (students[0].name || students[0].id) : students[0])
-        : "";
-    const firstStudentData = customizations[firstStudentName] || {};
-    const currentCategoryData = firstStudentData[activeTab] || {};
+    const currentCategoryData = customizations[activeTab] || {};
     const currentBackTexts = currentCategoryData.pressureOptions?.backTexts || [];
 
     // Local state for editing
@@ -214,32 +210,32 @@ const BackTextPopup = ({ onFinish, customizations, setCustomizations, students, 
             const nextCustom = { ...prev };
             const shirtCategories = ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'];
 
-            students.forEach(student => {
-                const studentName = typeof student === 'object' ? (student.name || student.id) : student;
-                const studentData = nextCustom[studentName] || {};
+            const targetCategories = shirtCategories.includes(activeTab)
+                ? shirtCategories
+                : [activeTab];
 
-                // Sync to all shirt types
-                let targetCategories = shirtCategories.includes(activeTab) ? shirtCategories : [activeTab];
+            targetCategories.forEach(cat => {
+                const categoryData = nextCustom[cat] || {};
 
-                targetCategories.forEach(cat => {
-                    const categoryData = studentData[cat] || {};
-                    studentData[cat] = {
-                        ...categoryData,
-                        pressureOptions: {
-                            ...(categoryData.pressureOptions || {}),
-                            backTexts: updatedItems.map(({ text, fontSize, color, fontFamily, bold, italic, align }) => ({
-                                text, fontSize, color, fontFamily, bold, italic, align
-                            })),
-                        }
-                    };
-                });
-
-                nextCustom[studentName] = { ...studentData };
+                nextCustom[cat] = {
+                    ...categoryData,
+                    pressureOptions: {
+                        ...(categoryData.pressureOptions || {}),
+                        backTexts: updatedItems.map(({ text, fontSize, color, fontFamily, bold, italic, align }) => ({
+                            text,
+                            fontSize,
+                            color,
+                            fontFamily,
+                            bold,
+                            italic,
+                            align
+                        })),
+                    }
+                };
             });
             return nextCustom;
         });
-    }, [activeTab, students, setCustomizations]);
-
+    }, [activeTab, setCustomizations]);
     // ── Handlers ──
     const addTextItem = () => {
         const updated = [...textItems, { ...DEFAULT_TEXT_ITEM }];

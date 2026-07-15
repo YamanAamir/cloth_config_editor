@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Form, Input, Button, Card, Typography, message, Layout, Alert } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
-import { Package } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { registerUser, setUserPassword } from '../api/api';
+import { registerUser, decodeRegistrationToken, setUserPassword } from '../api/api';
 
 const { Title, Text } = Typography;
 
@@ -13,7 +12,7 @@ const StudentRegister = () => {
     const [loading, setLoading] = useState(false);
     const [decodedData, setDecodedData] = useState(null);
     const [tokenError, setTokenError] = useState(false);
-    const [useManualCode, setUseManualCode] = useState(false);
+    const [checkingToken, setCheckingToken] = useState(true);
     const [showForgotPassword, setShowForgotPassword] = useState(false);
     const [fpLoading, setFpLoading] = useState(false);
     const submittingRef = useRef(false); // prevent duplicate submissions
@@ -22,35 +21,29 @@ const StudentRegister = () => {
 
     useEffect(() => {
         const queryParams = new URLSearchParams(location.search);
-        const rawQuery = location.search.replace(/^\?/, '');
-        const token = queryParams.get('token') || rawQuery;
+        const token = queryParams.get('token');
 
-        if (!token || token.length < 5) {
-            setTokenError(true); // Keep tokenError for the "invalid link" message
+        if (!token) {
+            setTokenError(true);
             setDecodedData(null);
-            setUseManualCode(true);
+            setCheckingToken(false);
             return;
         }
 
-        try {
-            const jsonString = atob(token);
-            const data = JSON.parse(jsonString);
-
-            if (data.school_id != null && data.class_id != null) {
-                setDecodedData({ ...data, token });
+        // The link is single-use and short-lived, so it must be verified
+        // against the server on every load — it can no longer be decoded
+        // client-side (it's an opaque, server-tracked token now).
+        decodeRegistrationToken(token)
+            .then(({ data }) => {
+                setDecodedData({ ...data.data, token });
                 setTokenError(false);
-                setUseManualCode(false);
-            } else {
+            })
+            .catch((error) => {
+                console.error('Registration token invalid or expired', error);
                 setTokenError(true);
                 setDecodedData(null);
-                setUseManualCode(true); // If token is invalid, allow manual code
-            }
-        } catch (error) {
-            console.error('Failed to decode token', error);
-            setTokenError(true);
-            setDecodedData(null);
-            setUseManualCode(true);
-        }
+            })
+            .finally(() => setCheckingToken(false));
     }, [location.search]);
 
     const onFinish = async (values) => {
@@ -62,9 +55,7 @@ const StudentRegister = () => {
             name: values.name,
             email: values.email,
             password: values.password,
-            school_id: decodedData?.school_id,
-            class_id: decodedData?.class_id || values.classCode,
-            token: decodedData?.token || 'manual',
+            token: decodedData?.token,
             consent_marketing: values.consent_marketing === true,
         };
 
@@ -99,10 +90,10 @@ const StudentRegister = () => {
         }
     };
 
-    // If tokenError is true AND we are not using manual code (meaning it was a bad token link)
-    // OR if there's no decodedData and we're not using manual code (meaning still processing or no token at all)
-    // This block handles cases where a token was provided but was invalid, or no token was provided and we're not yet in manual code mode.
-    if (tokenError && !useManualCode) {
+    // This block handles cases where a token was provided but was invalid/expired/already
+    // used, or no token was provided at all. There's no manual fallback anymore — every
+    // registration link is single-use and tied to one student, issued by the class rep.
+    if (tokenError) {
         return (
             <Layout style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <div className="fade-in" style={{ width: '100%', maxWidth: 440, padding: '0 20px' }}>
@@ -111,17 +102,14 @@ const StudentRegister = () => {
                         <Alert
                             type="warning"
                             showIcon
-                            message={!location.search ? 'No registration token' : 'Invalid registration link'}
+                            message={!location.search ? 'No registration token' : 'Invalid or expired registration link'}
                             description={
                                 !location.search
                                     ? 'Get a registration link from your class representative to join your class.'
-                                    : 'This link is invalid or expired. Ask your class rep for a new link, or enter your class code below.'
+                                    : 'This link is invalid, expired, or has already been used. Ask your class rep for a new link.'
                             }
                             style={{ marginBottom: 24, textAlign: 'left' }}
                         />
-                        <Button type="primary" block onClick={() => setUseManualCode(true)}>
-                            Enter Class Code Manually
-                        </Button>
                         <Button type="link" block onClick={() => navigate('/login')} style={{ marginTop: 8 }}>
                             Go to Login
                         </Button>
@@ -131,8 +119,8 @@ const StudentRegister = () => {
         );
     }
 
-    // Still resolving token (initial load with token) and not yet decided to use manual code
-    if (location.search && decodedData === null && !tokenError && !useManualCode) {
+    // Still resolving token with the server
+    if (checkingToken) {
         return (
             <Layout style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <Card className="glass-card" style={{ border: 'none' }}>
@@ -142,14 +130,14 @@ const StudentRegister = () => {
         );
     }
 
-    // Valid token or using manual code: show registration form
+    // Valid token: show registration form
     return (
         <Layout style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <div className="fade-in" style={{ width: '100%', maxWidth: 400, padding: '0 20px' }}>
                 <Card className="glass-card" style={{ border: 'none', textAlign: 'center' }}>
                     <Title level={2} style={{ marginBottom: 8, color: '#006d75' }}>Join Your Class</Title>
                     <Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>
-                        {useManualCode ? 'Enter your class code to register' : 'Register as a student for your class'}
+                        Register as a student for your class
                     </Text>
 
                     <Form
@@ -159,15 +147,6 @@ const StudentRegister = () => {
                         onFinish={onFinish}
                         size="large"
                     >
-                        {useManualCode && (
-                            <Form.Item
-                                name="classCode"
-                                rules={[{ required: true, message: 'Please enter your class code' }]}
-                            >
-                                <Input prefix={<Package className="w-4 h-4" />} placeholder="Class Code" />
-                            </Form.Item>
-                        )}
-
                         <Form.Item
                             name="name"
                             rules={[{ required: true, message: 'Please enter your full name' }]}

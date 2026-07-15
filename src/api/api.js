@@ -3,6 +3,7 @@ import { api, apiFormdata } from './index';
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const loginUser          = (data) => api.post('/auth/student-login', data);
 export const registerUser       = (data) => api.post('/auth/register', data);
+export const decodeRegistrationToken = (token) => api.get('/auth/decode-registration-token', { params: { token } });
 export const sidebarMenus       = (data) => api.get('/auth/sidebar-menus', data);
 export const setUserPassword    = (data) => api.post('/auth/set-password', data);
 export const forgotPassword     = (data) => api.post('/auth/forgot-password', data);

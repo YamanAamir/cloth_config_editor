@@ -45,6 +45,11 @@ const useSettingsStore = create((set, get) => ({
         return parseFloat(s?.handling_fee_extra || 0);    // key: handling_fee_extra
     },
 
+    getDeliveryFeeThreshold: () => {
+        const s = get().settings;
+        return parseInt(s?.delivery_fee_threshold || 10); // key: delivery_fee_threshold
+    },
+
     getVat: () => {
         const s = get().settings;
         return parseFloat(s?.vat_percentage || 0);
