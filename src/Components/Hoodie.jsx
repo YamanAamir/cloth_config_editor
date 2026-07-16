@@ -197,7 +197,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       const BOX_H = Math.round(FLAG_HEIGHT * 0.4);
       const BOX_Y = TEXT_HEIGHT + (FLAG_HEIGHT - BOX_H) / 2;
       const drawFlagInBox = (img, x, y, w, h) => {
-        const scale = Math.max(w / img.width, h / img.height); // contain — never crop the flag
+        const scale = Math.max(w / img.width, h / img.height);
         const dw = img.width * scale; const dh = img.height * scale;
         const dx = x + (w - dw) / 2; const dy = y + (h - dh) / 2;
         ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
@@ -332,8 +332,6 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
           wctx.drawImage(img, xTT, yTT, wTT, hTT); // 👈 TT dimensions
           const wd = wctx.getImageData(0, 0, W, H);
 
-          const shapeWhite = !bgIsWhite;
-          const sc = shapeWhite ? 255 : 0;
 
           const opacityCanvas = document.createElement("canvas");
           opacityCanvas.width = W; opacityCanvas.height = H;
@@ -349,7 +347,6 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
               fg = bgIsWhite ? (lum < 128) : (lum > 128);
             }
             if (fg) {
-              wd.data[i] = wd.data[i + 1] = wd.data[i + 2] = sc;
               wd.data[i + 3] = 255;
               od.data[i] = od.data[i + 1] = od.data[i + 2] = 255;
             } else {

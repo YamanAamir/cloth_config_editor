@@ -336,8 +336,6 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
           wctx.drawImage(img, xTT, yTT, wTT, hTT); // 👈 TT dimensions
           const wd = wctx.getImageData(0, 0, W, H);
 
-          const shapeWhite = !bgIsWhite;
-          const sc = shapeWhite ? 255 : 0;
 
           const opacityCanvas = document.createElement("canvas");
           opacityCanvas.width = W; opacityCanvas.height = H;
@@ -353,7 +351,6 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
               fg = bgIsWhite ? (lum < 128) : (lum > 128);
             }
             if (fg) {
-              wd.data[i] = wd.data[i + 1] = wd.data[i + 2] = sc;
               wd.data[i + 3] = 255;
               od.data[i] = od.data[i + 1] = od.data[i + 2] = 255;
             } else {

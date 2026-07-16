@@ -358,8 +358,6 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
             wctx.drawImage(img, xTT, yTT, wTT, hTT); // 👈 TT dimensions
             const wd = wctx.getImageData(0, 0, W, H);
 
-            const shapeWhite = !bgIsWhite;      // bg black -> shape white
-            const sc = shapeWhite ? 255 : 0;    // print color (solid)
 
             const opacityCanvas = document.createElement("canvas");
             opacityCanvas.width = W; opacityCanvas.height = H;
@@ -375,7 +373,6 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
                 fg = bgIsWhite ? (lum < 128) : (lum > 128); // crisp boundary = no outline
               }
               if (fg) {
-                wd.data[i] = wd.data[i + 1] = wd.data[i + 2] = sc;
                 wd.data[i + 3] = 255;
                 od.data[i] = od.data[i + 1] = od.data[i + 2] = 255;
               } else {
