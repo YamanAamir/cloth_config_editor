@@ -94,17 +94,24 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   // ── Shared layout constants for 2-flag split ──────────────────────────
   const DIVIDER_W = 1;
   const BOX_W = (CANVAS_WIDTH - DIVIDER_W) / 2;
-  const BOX_H = Math.round(FLAG_HEIGHT * 0.4);
+  const BOX_H = Math.round(BOX_W / Math.sqrt(3)); // ≈1.732:1 — balanced crop for 3:2 and 2:1 flags
   const BOX_Y = TEXT_HEIGHT - (FLAG_HEIGHT - BOX_H) / 2; // vertically centered in flag area
 
-  const drawCover = (ctx, img, x, y, w, h) => {
-    // contain: scale to fit entirely inside the box — no cropping, even when the flag's
-    // aspect ratio doesn't match the box (e.g. Brazil's 20:14 vs a wider box)
-    const scale = Math.max(w / img.width, h / img.height);
+  const drawCover = (ctx, img, x, y, w, h, maxCropPercent = 0.15) => {
+    const coverScale = Math.max(w / img.width, h / img.height);
+    const containScale = Math.min(w / img.width, h / img.height);
+
+    // Kitna % crop hoga agar cover use karein
+    const cropRatio = 1 - (containScale / coverScale);
+
+    // Agar crop threshold se zyada hai, to us flag ke liye contain use karein (no cut)
+    const scale = cropRatio > maxCropPercent ? containScale : coverScale;
+
     const dw = img.width * scale;
     const dh = img.height * scale;
     const dx = x + (w - dw) / 2;
     const dy = y + (h - dh) / 2;
+
     ctx.save();
     ctx.beginPath();
     ctx.rect(x, y, w, h);

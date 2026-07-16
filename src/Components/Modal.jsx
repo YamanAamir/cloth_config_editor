@@ -283,11 +283,17 @@ const QuoteModal = ({
   const dynamicPrice = calculateTotalPrice();
 
   // Shipping fee per student — total class shipping cost (set by class rep) ÷ expected students
-  // If expected students exceeds threshold, the shipping price doubles.
+  // Takes shippingOption (express/regular) into account and applies threshold doubling.
   const getShippingFeePerStudent = () => {
-    if (!classDeliveryDetails?.shippingPrice) return 0;
+    if (!classDeliveryDetails) return 0;
     if (!classStudentCount || classStudentCount <= 0) return 0;
-    const shippingPrice = parseFloat(classDeliveryDetails.shippingPrice);
+    const shippingOption = classDeliveryDetails.shippingOption === 'express' ? 'express' : 'regular';
+    const selectedRate = classDeliveryDetails.selectedShippingRate;
+    const priceKey = `${shippingOption}_delivery_rate`;
+    const shippingPrice = selectedRate && selectedRate[priceKey] != null
+      ? parseFloat(selectedRate[priceKey])
+      : 0;
+    if (!shippingPrice) return 0;
     const threshold = getDeliveryFeeThreshold();
     const totalFee = classStudentCount > threshold ? shippingPrice * 2 : shippingPrice;
     return Math.round((totalFee / classStudentCount) * 100) / 100;

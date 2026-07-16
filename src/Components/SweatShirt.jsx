@@ -142,7 +142,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
     if (hasFlag && hasSecondAsset) {
       const DIVIDER_W = 2;
       const BOX_W = (CANVAS_WIDTH - DIVIDER_W) / 2;
-      const BOX_H = Math.round(FLAG_HEIGHT * 0.4);
+      const BOX_H = Math.round(BOX_W / Math.sqrt(3));
       const BOX_Y = TEXT_HEIGHT + (FLAG_HEIGHT - BOX_H) / 2;
 
       ctx.fillStyle = "#ffffff";
@@ -361,7 +361,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
       const BOX_Y = TEXT_HEIGHT + (FLAG_HEIGHT - BOX_H) / 2;
 
       const drawFlagInBox = (img, x, y, w, h) => {
-        const scale = Math.max(w / img.width, h / img.height);
+        const scale = Math.max(w / img.width, h / img.height)*0.98;
         const dw = img.width * scale;
         const dh = img.height * scale;
         const dx = x + (w - dw) / 2;
