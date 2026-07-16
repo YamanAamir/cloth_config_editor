@@ -496,77 +496,85 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
       const textColor = pressureOptions[`${area}TextColor`] || "#ffffff";
 
       const prev = prevRef.current[area] || {};
-      if (
-        prev.text === text && prev.flag === flag && prev.flag2 === flag2 &&
-        prev.flagCount === flagCount && prev.logoPre === logoPre &&
-        prev.logoCustom === logoCustom && prev.type === type && prev.textColor === textColor
-      ) return;
-      prevRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor };
+      // Text and flag/logo are independent textures — only re-render the one
+      // whose own fields actually changed, so typing text doesn't also
+      // re-trigger the (async, network-fetched) flag/logo texture.
+      const textChanged = prev.text !== text || prev.textColor !== textColor;
+      const flagLogoChanged =
+        prev.flag !== flag || prev.flag2 !== flag2 || prev.flagCount !== flagCount ||
+        prev.logoPre !== logoPre || prev.logoCustom !== logoCustom || prev.type !== type;
 
-      const currentRender = (renderCounterRef.current[area] || 0) + 1;
-      renderCounterRef.current[area] = currentRender;
+      if (!textChanged && !flagLogoChanged) return;
+      prevRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor };
 
       const hasFlag = !!flag && type === "flag";
       const hasLogo = !!(logoPre || logoCustom) && type === "logo";
 
-      // ── 1. Text texture — always send separately ──────────────────────────
-      if (text) {
-        const textCanvas = document.createElement("canvas");
-        textCanvas.width = 320;
-        textCanvas.height = 120;
-        const tctx = textCanvas.getContext("2d");
+      // ── 1. Text texture — only re-render when text/textColor changed ──────
+      if (textChanged) {
+        if (text) {
+          const textCanvas = document.createElement("canvas");
+          textCanvas.width = 320;
+          textCanvas.height = 120;
+          const tctx = textCanvas.getContext("2d");
 
-        let fontSize = 48;
-        tctx.font = `bold ${fontSize}px Arial`;
-        tctx.fillStyle = textColor;
-        tctx.textAlign = "center";
-        tctx.textBaseline = "middle";
-        while (tctx.measureText(text).width > 240 && fontSize > 28) {
-          fontSize -= 2;
+          let fontSize = 48;
           tctx.font = `bold ${fontSize}px Arial`;
-        }
-        tctx.fillText(text, 160, 60);
-
-        const textDiffuse = textCanvas.toDataURL("image/png");
-
-        // Opacity (black/white mask)
-        const imgData = tctx.getImageData(0, 0, 320, 120);
-        const d = imgData.data;
-
-        for (let i = 0; i < d.length; i += 4) {
-          const alpha = d[i + 3];
-
-          // sirf alpha use karo (text visibility yahin hoti hai)
-          const bw = alpha > 10 ? 255 : 0;
-
-          d[i] = d[i + 1] = d[i + 2] = bw;
-          d[i + 3] = 255;
-        }
-        tctx.putImageData(imgData, 0, 0);
-        const textOpacity = textCanvas.toDataURL("image/png");
-
-        ["preview-iframe", "preview-iframe2"].forEach(id => {
-          const f = document.getElementById(id);
-          if (f?.contentWindow) {
-            f.contentWindow.postMessage(`Short:${area}_Text_diffuse: ${textDiffuse}`, "*");
-            f.contentWindow.postMessage(`Short:${area}_Text_opacity: ${textOpacity}`, "*");
+          tctx.fillStyle = textColor;
+          tctx.textAlign = "center";
+          tctx.textBaseline = "middle";
+          while (tctx.measureText(text).width > 240 && fontSize > 28) {
+            fontSize -= 2;
+            tctx.font = `bold ${fontSize}px Arial`;
           }
-        });
-      } else {
-        // Text cleared — send blank texture
-        const blankCanvas = document.createElement("canvas");
-        blankCanvas.width = 320; blankCanvas.height = 120;
-        const blank = blankCanvas.toDataURL("image/png");
-        ["preview-iframe", "preview-iframe2"].forEach(id => {
-          const f = document.getElementById(id);
-          if (f?.contentWindow) {
-            f.contentWindow.postMessage(`Short:${area}_Text_diffuse: ${blank}`, "*");
-            f.contentWindow.postMessage(`Short:${area}_Text_opacity: ${blank}`, "*");
+          tctx.fillText(text, 160, 60);
+
+          const textDiffuse = textCanvas.toDataURL("image/png");
+
+          // Opacity (black/white mask)
+          const imgData = tctx.getImageData(0, 0, 320, 120);
+          const d = imgData.data;
+
+          for (let i = 0; i < d.length; i += 4) {
+            const alpha = d[i + 3];
+
+            // sirf alpha use karo (text visibility yahin hoti hai)
+            const bw = alpha > 10 ? 255 : 0;
+
+            d[i] = d[i + 1] = d[i + 2] = bw;
+            d[i + 3] = 255;
           }
-        });
+          tctx.putImageData(imgData, 0, 0);
+          const textOpacity = textCanvas.toDataURL("image/png");
+
+          ["preview-iframe", "preview-iframe2"].forEach(id => {
+            const f = document.getElementById(id);
+            if (f?.contentWindow) {
+              f.contentWindow.postMessage(`Short:${area}_Text_diffuse: ${textDiffuse}`, "*");
+              f.contentWindow.postMessage(`Short:${area}_Text_opacity: ${textOpacity}`, "*");
+            }
+          });
+        } else {
+          // Text cleared — send blank texture
+          const blankCanvas = document.createElement("canvas");
+          blankCanvas.width = 320; blankCanvas.height = 120;
+          const blank = blankCanvas.toDataURL("image/png");
+          ["preview-iframe", "preview-iframe2"].forEach(id => {
+            const f = document.getElementById(id);
+            if (f?.contentWindow) {
+              f.contentWindow.postMessage(`Short:${area}_Text_diffuse: ${blank}`, "*");
+              f.contentWindow.postMessage(`Short:${area}_Text_opacity: ${blank}`, "*");
+            }
+          });
+        }
       }
 
-      // ── 2. Flag / Logo texture — send separately ──────────────────────────
+      // ── 2. Flag / Logo texture — only re-render when flag/logo fields changed ──
+      if (!flagLogoChanged) return;
+
+      const currentRender = (renderCounterRef.current[area] || 0) + 1;
+      renderCounterRef.current[area] = currentRender;
+
       const opacity = getEmissiveBase64(hasFlag, hasLogo, flagCount);
       ["preview-iframe", "preview-iframe2"].forEach(id => {
         const f = document.getElementById(id);
