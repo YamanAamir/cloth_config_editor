@@ -116,7 +116,15 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
     }
 
-    if (hasFlag || hasLogo) {
+    if (hasFlag && hasSecondAsset) {
+      // Two-flag split — thin border, especially left/right, so neither flag gets clipped
+      const BORDER_TB = 10, BORDER_LR = 3;
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, canvas.width, BORDER_TB);
+      ctx.fillRect(0, canvas.height - BORDER_TB, canvas.width, BORDER_TB);
+      ctx.fillRect(0, 0, BORDER_LR, canvas.height);
+      ctx.fillRect(canvas.width - BORDER_LR, 0, BORDER_LR, canvas.height);
+    } else if (hasFlag || hasLogo) {
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 40;
       ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
@@ -189,7 +197,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       const BOX_H = Math.round(FLAG_HEIGHT * 0.4);
       const BOX_Y = TEXT_HEIGHT + (FLAG_HEIGHT - BOX_H) / 2;
       const drawFlagInBox = (img, x, y, w, h) => {
-        const scale = Math.max(w / img.width, h / img.height);
+        const scale = Math.max(w / img.width, h / img.height); // contain — never crop the flag
         const dw = img.width * scale; const dh = img.height * scale;
         const dx = x + (w - dw) / 2; const dy = y + (h - dh) / 2;
         ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();

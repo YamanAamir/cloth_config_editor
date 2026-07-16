@@ -98,7 +98,8 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   const BOX_Y = TEXT_HEIGHT - (FLAG_HEIGHT - BOX_H) / 2; // vertically centered in flag area
 
   const drawCover = (ctx, img, x, y, w, h) => {
-    // cover: scale to fill box completely, clip overflow — equal sizing for all flags
+    // contain: scale to fit entirely inside the box — no cropping, even when the flag's
+    // aspect ratio doesn't match the box (e.g. Brazil's 20:14 vs a wider box)
     const scale = Math.max(w / img.width, h / img.height);
     const dw = img.width * scale;
     const dh = img.height * scale;
@@ -151,9 +152,19 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
     }
 
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = (hasFlag && flagCount === 2 && flag && flag2) ? 10 : 40;
-    ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+    if (hasFlag && flagCount === 2 && flag && flag2) {
+      // Two-flag split — thin border, especially left/right, so neither flag gets clipped
+      const BORDER_TB = 10, BORDER_LR = 3;
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, canvas.width, BORDER_TB);
+      ctx.fillRect(0, canvas.height - BORDER_TB, canvas.width, BORDER_TB);
+      ctx.fillRect(0, 0, BORDER_LR, canvas.height);
+      ctx.fillRect(canvas.width - BORDER_LR, 0, BORDER_LR, canvas.height);
+    } else {
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 40;
+      ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+    }
 
     return canvas.toDataURL("image/png");
   };

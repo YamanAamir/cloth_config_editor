@@ -160,7 +160,15 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
       ctx.fillRect(0, TEXT_HEIGHT, CANVAS_WIDTH, FLAG_HEIGHT);
     }
 
-    if (hasFlag || hasLogo) {
+    if (hasFlag && hasSecondAsset) {
+      // Two-flag split — thin border, especially left/right, so neither flag gets clipped
+      const BORDER_TB = 10, BORDER_LR = 0;
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, canvas.width, BORDER_TB);
+      ctx.fillRect(0, canvas.height - BORDER_TB, canvas.width, BORDER_TB);
+      ctx.fillRect(0, 0, BORDER_LR, canvas.height);
+      ctx.fillRect(canvas.width - BORDER_LR, 0, BORDER_LR, canvas.height);
+    } else if (hasFlag || hasLogo) {
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 40;
       ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
