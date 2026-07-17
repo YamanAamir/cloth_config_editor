@@ -99,7 +99,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
 
   const drawCover = (ctx, img, x, y, w, h, maxCropPercent = 0.15) => {
     const coverScale = Math.max(w / img.width, h / img.height);
-    const containScale = Math.min(w / img.width, h / img.height);
+    const containScale = Math.max(w / img.width, h / img.height);
 
     // Kitna % crop hoga agar cover use karein
     const cropRatio = 1 - (containScale / coverScale);
