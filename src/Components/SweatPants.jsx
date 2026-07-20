@@ -462,7 +462,7 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
     setShowFlagModal(true);
   };
   const selectFlag = (countryName) => { onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: countryName } }); setShowFlagModal(false); };
-  const selectLogo = (logoName, logoId) => { onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: logoName, selectedLogoId: logoId } }); setShowFlagModal(false); };
+  const selectLogo = (logoName, logoId) => { const area = currentField.replace("LogoPredefined", ""); onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: logoName, [`${area}LogoId`]: logoId, selectedLogoId: logoId } }); setShowFlagModal(false); };
   const clearField = (field) => { onUpdate({ pressureOptions: { ...pressureOptions, [field]: "" } }); };
   const getFlagDisplay = (n) => n || "";
   const getLogoDisplay = (n) => n || "";
@@ -473,9 +473,9 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
       pressureOptions: {
         ...pressureOptions,
         [`${area}Type`]: type, [`${area}Text`]: "",
-        ...(type === "flag" ? { [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" }
+        ...(type === "flag" ? { [`${area}LogoPredefined`]: "", [`${area}LogoId`]: null, [`${area}LogoCustom`]: "" }
           : type === "logo" ? { [`${area}Flag`]: "" }
-            : { [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoCustom`]: "" }),
+            : { [`${area}Flag`]: "", [`${area}LogoPredefined`]: "", [`${area}LogoId`]: null, [`${area}LogoCustom`]: "" }),
       },
     });
   };
@@ -484,7 +484,7 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
     if (logos && logos.length === 1) {
       const fields = ["rightLegLogoPredefined", "leftLegLogoPredefined"];
       if (!fields.some(f => pressureOptions[f])) {
-        onUpdate({ pressureOptions: { ...pressureOptions, rightLegLogoPredefined: logos[0].name, selectedLogoId: logos[0].id } });
+        onUpdate({ pressureOptions: { ...pressureOptions, rightLegLogoPredefined: logos[0].name, rightLegLogoId: logos[0].id, selectedLogoId: logos[0].id } });
       }
     }
   }, [logos]);

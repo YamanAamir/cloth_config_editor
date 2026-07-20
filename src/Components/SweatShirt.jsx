@@ -725,11 +725,13 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
   };
 
   const selectLogo = (logoName, logoId) => {
+    const area = currentField.replace("LogoPredefined", "");
     onUpdate({
       pressureOptions: {
         ...pressureOptions,
         [currentField]: logoName,
-        selectedLogoId: logoId, // save logo ID for order
+        [`${area}LogoId`]: logoId, // save logo ID for order, scoped to this placement
+        selectedLogoId: logoId,
       },
     });
     setShowFlagModal(false);
@@ -748,6 +750,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
           pressureOptions: {
             ...pressureOptions,
             rightChestLogoPredefined: logos[0].name,
+            rightChestLogoId: logos[0].id,
             selectedLogoId: logos[0].id,
           },
         });
@@ -789,6 +792,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
 
         // LOGO RESET
         [`${area}LogoPredefined`]: type === "logo" ? pressureOptions[`${area}LogoPredefined`] : "",
+        [`${area}LogoId`]: type === "logo" ? pressureOptions[`${area}LogoId`] : null,
         [`${area}LogoCustom`]: type === "logo" ? pressureOptions[`${area}LogoCustom`] : "",
       },
     });

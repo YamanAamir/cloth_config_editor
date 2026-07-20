@@ -542,7 +542,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
     setShowFlagModal(true);
   };
   const selectFlag = (name) => { onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: name } }); setShowFlagModal(false); };
-  const selectLogo = (name, id) => { onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: name, selectedLogoId: id } }); setShowFlagModal(false); };
+  const selectLogo = (name, id) => { const area = currentField.replace("LogoPredefined", ""); onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: name, [`${area}LogoId`]: id, selectedLogoId: id } }); setShowFlagModal(false); };
   const clearField = (field) => { onUpdate({ pressureOptions: { ...pressureOptions, [field]: "" } }); };
   const getFlagDisplay = (n) => n || "";
   const getLogoDisplay = (n) => n || "";
@@ -564,6 +564,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
 
         // LOGO RESET
         [`${area}LogoPredefined`]: type === "logo" ? pressureOptions[`${area}LogoPredefined`] : "",
+        [`${area}LogoId`]: type === "logo" ? pressureOptions[`${area}LogoId`] : null,
         [`${area}LogoCustom`]: type === "logo" ? pressureOptions[`${area}LogoCustom`] : "",
       },
     });
@@ -572,7 +573,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   useEffect(() => {
     if (logos && logos.length === 1) {
       const fs = ["rightChestLogoPredefined", "leftChestLogoPredefined", "bottomChestLogoPredefined", "rightSleeveLogoPredefined", "leftSleeveLogoPredefined"];
-      if (!fs.some(f => pressureOptions[f])) onUpdate({ pressureOptions: { ...pressureOptions, rightChestLogoPredefined: logos[0].name, selectedLogoId: logos[0].id } });
+      if (!fs.some(f => pressureOptions[f])) onUpdate({ pressureOptions: { ...pressureOptions, rightChestLogoPredefined: logos[0].name, rightChestLogoId: logos[0].id, selectedLogoId: logos[0].id } });
     }
   }, [logos]);
 

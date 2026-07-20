@@ -5,10 +5,10 @@ export const DEFAULT_SELECTIONS = {
         selectedColor: 'Red',
         selectedSize: 'S',
         pressureOptions: {
-            rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
-            leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
-            rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
-            leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
+            rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoId: null, rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
+            leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoId: null, leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
+            rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoId: null, rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
+            leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoId: null, leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
             backDesign: null,
         }
     },
@@ -16,10 +16,10 @@ export const DEFAULT_SELECTIONS = {
         selectedColor: 'Red',
         selectedSize: 'S',
         pressureOptions: {
-            rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
-            leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
-            rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
-            leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
+            rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoId: null, rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
+            leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoId: null, leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
+            rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoId: null, rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
+            leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoId: null, leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
             backDesign: null,
         }
     },
@@ -27,11 +27,11 @@ export const DEFAULT_SELECTIONS = {
         selectedColor: 'Red',
         selectedSize: 'S',
         pressureOptions: {
-            rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
-            leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
-            bottomChestText: '', bottomChestFlag: '', bottomChestLogoPredefined: '', bottomChestLogoCustom: '', bottomChestType: '', bottomChestTextColor: '#ffffff',
-            rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
-            leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
+            rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoId: null, rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
+            leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoId: null, leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
+            bottomChestText: '', bottomChestFlag: '', bottomChestLogoPredefined: '', bottomChestLogoId: null, bottomChestLogoCustom: '', bottomChestType: '', bottomChestTextColor: '#ffffff',
+            rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoId: null, rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
+            leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoId: null, leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
             backDesign: null,
         }
     },
@@ -39,10 +39,10 @@ export const DEFAULT_SELECTIONS = {
         selectedColor: 'Red',
         selectedSize: 'S',
         pressureOptions: {
-            rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
-            leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
-            rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
-            leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
+            rightChestText: '', rightChestFlag: '', rightChestLogoPredefined: '', rightChestLogoId: null, rightChestLogoCustom: '', rightChestType: '', rightChestTextColor: '#ffffff',
+            leftChestText: '', leftChestFlag: '', leftChestLogoPredefined: '', leftChestLogoId: null, leftChestLogoCustom: '', leftChestType: '', leftChestTextColor: '#ffffff',
+            rightSleeveText: '', rightSleeveFlag: '', rightSleeveFlag2: '', rightSleeveFlagCount: 1, rightSleeveLogoPredefined: '', rightSleeveLogoId: null, rightSleeveLogoCustom: '', rightSleeveType: '', rightSleeveTextColor: '#ffffff',
+            leftSleeveText: '', leftSleeveFlag: '', leftSleeveFlag2: '', leftSleeveFlagCount: 1, leftSleeveLogoPredefined: '', leftSleeveLogoId: null, leftSleeveLogoCustom: '', leftSleeveType: '', leftSleeveTextColor: '#ffffff',
             backDesign: null,
         }
     },
@@ -50,16 +50,16 @@ export const DEFAULT_SELECTIONS = {
         selectedColor: 'Red',
         selectedSize: 'S',
         pressureOptions: {
-            rightLegText: '', rightLegFlag: '', rightLegLogoPredefined: '', rightLegLogoCustom: '', rightLegType: '', rightLegTextColor: '#ffffff',
-            leftLegText: '', leftLegFlag: '', leftLegLogoPredefined: '', leftLegLogoCustom: '', leftLegType: '', leftLegTextColor: '#ffffff',
+            rightLegText: '', rightLegFlag: '', rightLegLogoPredefined: '', rightLegLogoId: null, rightLegLogoCustom: '', rightLegType: '', rightLegTextColor: '#ffffff',
+            leftLegText: '', leftLegFlag: '', leftLegLogoPredefined: '', leftLegLogoId: null, leftLegLogoCustom: '', leftLegType: '', leftLegTextColor: '#ffffff',
         }
     },
     'SHORTS': {
         selectedColor: 'Red',
         selectedSize: 'S',
         pressureOptions: {
-            rightLegText: '', rightLegFlag: '', rightLegLogoPredefined: '', rightLegLogoCustom: '', rightLegType: '', rightLegTextColor: '#ffffff',
-            leftLegText: '', leftLegFlag: '', leftLegLogoPredefined: '', leftLegLogoCustom: '', leftLegType: '', leftLegTextColor: '#ffffff',
+            rightLegText: '', rightLegFlag: '', rightLegLogoPredefined: '', rightLegLogoId: null, rightLegLogoCustom: '', rightLegType: '', rightLegTextColor: '#ffffff',
+            leftLegText: '', leftLegFlag: '', leftLegLogoPredefined: '', leftLegLogoId: null, leftLegLogoCustom: '', leftLegType: '', leftLegTextColor: '#ffffff',
         }
     }
 };

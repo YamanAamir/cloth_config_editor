@@ -7,6 +7,7 @@ const USER_STORAGE_KEYS = [
     'user',
     'token',
     'studentCustomizations',
+    'studentCustomizationsOrderId',
     'orderHoldDeadline',
 ];
 
@@ -24,6 +25,17 @@ export const AuthProvider = ({ children }) => {
             setUser(JSON.parse(savedUser));
         }
         setLoading(false);
+    }, []);
+
+    // api/index.js ka 401 interceptor token/user localStorage se hata deta hai,
+    // lekin uske paas React state tak access nahi — is event se yahan `user`
+    // state ko bhi null kar dete hain, taake route guard sync rahe aur
+    // full page reload (jo console clear kar deta hai, debug mushkil bana deta hai)
+    // ki zaroorat na pade.
+    useEffect(() => {
+        const handleUnauthorized = () => setUser(null);
+        window.addEventListener('auth:unauthorized', handleUnauthorized);
+        return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
     }, []);
 
     const login = (userData, token) => {

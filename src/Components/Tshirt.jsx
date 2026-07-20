@@ -494,10 +494,12 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   };
 
   const selectLogo = (logoName, logoId) => {
+    const area = currentField.replace("LogoPredefined", "");
     onUpdate({
       pressureOptions: {
         ...pressureOptions,
         [currentField]: logoName,
+        [`${area}LogoId`]: logoId,
         selectedLogoId: logoId,
       },
     });
@@ -516,6 +518,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
           pressureOptions: {
             ...pressureOptions,
             rightChestLogoPredefined: logos[0].name,
+            rightChestLogoId: logos[0].id,
             selectedLogoId: logos[0].id,
           },
         });
@@ -551,6 +554,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         [`${area}FlagCount`]: 1,
         [`${area}Text`]: type === "" ? pressureOptions[`${area}Text`] : "",
         [`${area}LogoPredefined`]: type === "logo" ? pressureOptions[`${area}LogoPredefined`] : "",
+        [`${area}LogoId`]: type === "logo" ? pressureOptions[`${area}LogoId`] : null,
         [`${area}LogoCustom`]: type === "logo" ? pressureOptions[`${area}LogoCustom`] : "",
       },
     });

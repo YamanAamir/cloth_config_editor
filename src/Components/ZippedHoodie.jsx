@@ -542,7 +542,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
     setShowFlagModal(true);
   };
   const selectFlag = (countryName) => { onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: countryName } }); setShowFlagModal(false); };
-  const selectLogo = (logoName, logoId) => { onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: logoName, selectedLogoId: logoId } }); setShowFlagModal(false); };
+  const selectLogo = (logoName, logoId) => { const area = currentField.replace("LogoPredefined", ""); onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: logoName, [`${area}LogoId`]: logoId, selectedLogoId: logoId } }); setShowFlagModal(false); };
   const clearField = (field) => { onUpdate({ pressureOptions: { ...pressureOptions, [field]: "" } }); };
   const getFlagDisplay = (countryName) => countryName || "";
   const getLogoDisplay = (logoName) => logoName || "";
@@ -560,6 +560,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
         [`${area}Text`]: type === "" ? pressureOptions[`${area}Text`] : "",
         // LOGO RESET
         [`${area}LogoPredefined`]: type === "logo" ? pressureOptions[`${area}LogoPredefined`] : "",
+        [`${area}LogoId`]: type === "logo" ? pressureOptions[`${area}LogoId`] : null,
         [`${area}LogoCustom`]: type === "logo" ? pressureOptions[`${area}LogoCustom`] : "",
       },
     });
@@ -569,7 +570,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
     if (logos && logos.length === 1) {
       const allLogoFields = ['rightChestLogoPredefined', 'leftChestLogoPredefined', 'rightSleeveLogoPredefined', 'leftSleeveLogoPredefined'];
       if (!allLogoFields.some(f => pressureOptions[f])) {
-        onUpdate({ pressureOptions: { ...pressureOptions, rightChestLogoPredefined: logos[0].name, selectedLogoId: logos[0].id } });
+        onUpdate({ pressureOptions: { ...pressureOptions, rightChestLogoPredefined: logos[0].name, rightChestLogoId: logos[0].id, selectedLogoId: logos[0].id } });
       }
     }
   }, [logos]);

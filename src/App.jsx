@@ -99,6 +99,7 @@ function App() {
           if (now > holdDeadline) {
             // Working days complete — saved data remove karo
             localStorage.removeItem('studentCustomizations');
+            localStorage.removeItem('studentCustomizationsOrderId');
             localStorage.removeItem('orderHoldDeadline');
             setCustomizations({});
             console.log('Order hold period expired — localStorage cleared');

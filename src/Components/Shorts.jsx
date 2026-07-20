@@ -440,7 +440,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
     setShowFlagModal(true);
   };
   const selectFlag = (countryName) => { onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: countryName } }); setShowFlagModal(false); };
-  const selectLogo = (logoName, logoId) => { onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: logoName, selectedLogoId: logoId } }); setShowFlagModal(false); };
+  const selectLogo = (logoName, logoId) => { const area = currentField.replace("LogoPredefined", ""); onUpdate({ pressureOptions: { ...pressureOptions, [currentField]: logoName, [`${area}LogoId`]: logoId, selectedLogoId: logoId } }); setShowFlagModal(false); };
   const clearField = (field) => { onUpdate({ pressureOptions: { ...pressureOptions, [field]: "" } }); };
   const getFlagDisplay = (n) => n || "";
   const getLogoDisplay = (n) => n || "";
@@ -455,6 +455,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
         [`${area}Flag2`]: "",
         [`${area}FlagCount`]: 1,
         [`${area}LogoPredefined`]: type === "logo" ? pressureOptions[`${area}LogoPredefined`] : "",
+        [`${area}LogoId`]: type === "logo" ? pressureOptions[`${area}LogoId`] : null,
         [`${area}LogoCustom`]: type === "logo" ? pressureOptions[`${area}LogoCustom`] : "",
       },
     });

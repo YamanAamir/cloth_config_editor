@@ -140,6 +140,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             'bottomChestLogoPredefined', 'rightSleeveLogoPredefined',
             'leftSleeveLogoPredefined',
             'rightLegLogoPredefined', 'leftLegLogoPredefined',
+            'rightChestLogoId', 'leftChestLogoId',
+            'bottomChestLogoId', 'rightSleeveLogoId',
+            'leftSleeveLogoId',
+            'rightLegLogoId', 'leftLegLogoId',
             'rightChestLogoCustom', 'leftChestLogoCustom',
             'bottomChestLogoCustom', 'rightSleeveLogoCustom',
             'leftSleeveLogoCustom', 'rightLegLogoCustom', 'leftLegLogoCustom',
@@ -469,7 +473,14 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                 const s = localStorage.getItem('studentCustomizations');
                 localData = s ? JSON.parse(s) : null;
             } catch { /* ignore */ }
-            if (localData) {
+
+            // localStorage sirf tab trust karo jab wo isi order ka ho — warna
+            // (order delete + recreate ke baad) purana stale data naye order
+            // ke fresh order_items ko overwrite kar deta hai.
+            const storedOrderId = localStorage.getItem('studentCustomizationsOrderId');
+            const isSameOrder = storedOrderId !== null && Number(storedOrderId) === order.id;
+
+            if (localData && isSameOrder) {
                 setAllSelections(localData);
                 setCustomizations(localData);
             } else {
@@ -486,6 +497,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                 setCustomizations(newSelections);
                 try {
                     localStorage.setItem('studentCustomizations', JSON.stringify(newSelections));
+                    localStorage.setItem('studentCustomizationsOrderId', String(order.id));
                 } catch { /* ignore */ }
             }
         }

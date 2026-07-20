@@ -32,12 +32,23 @@ apiFormdata.interceptors.request.use(addAuthToken, (error) =>
 
 const handleUnauthorized = (error) => {
     if (error?.response?.status === 401) {
+        // TEMP DEBUG: pinpoint which request/backend message is triggering the logout
+        console.error(
+            "[401 logout]",
+            error.config?.method?.toUpperCase(),
+            error.config?.url,
+            error.response?.data
+        );
+
         // Clear storage
         localStorage.removeItem("token");
         localStorage.removeItem("user");
 
-        // Redirect to login
-        window.location.href = "/login";
+        // Let AuthContext + React Router handle navigation to /login via SPA
+        // routing instead of a hard reload — a hard reload wipes the console
+        // (killing the log above) and causes a jarring full white-screen flash
+        // that looks like the page silently refreshed and lost its data.
+        window.dispatchEvent(new Event("auth:unauthorized"));
     }
 
     return Promise.reject(error);
