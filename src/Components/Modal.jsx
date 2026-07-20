@@ -982,7 +982,7 @@ const QuoteModal = ({
 
   // Step 1: Quote Review (Original content)
   const renderQuoteReview = () => (
-    <div className="overflow-y-auto px-6 py-6 space-y-8 custom-scrollbar-premium">
+    <div className="overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6 sm:space-y-8 custom-scrollbar-premium">
       {/* ✨ NEW: Selection Instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6">
         <div className="flex items-start gap-3">
@@ -1009,7 +1009,7 @@ const QuoteModal = ({
           return (
             <div
               key={category}
-              className={`bg-white rounded-3xl p-6 shadow-sm border-2 transition-all duration-500 group overflow-hidden relative ${isLockedItem ? 'cursor-not-allowed' : 'cursor-pointer'} ${isSelected
+              className={`bg-white rounded-3xl p-4 sm:p-6 shadow-sm border-2 transition-all duration-500 group overflow-hidden relative ${isLockedItem ? 'cursor-not-allowed' : 'cursor-pointer'} ${isSelected
                 ? 'border-green-500 shadow-xl shadow-green-200/50'
                 : 'border-slate-200 hover:border-slate-300 opacity-60'
                 }`}
@@ -1183,9 +1183,9 @@ const QuoteModal = ({
     const labelClasses = "block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest ml-1";
 
     return (
-      <div className="overflow-y-auto px-6 py-6 space-y-8 custom-scrollbar-premium">
+      <div className="overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6 sm:space-y-8 custom-scrollbar-premium">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 space-y-8">
+          <div className="bg-white rounded-[2rem] p-5 sm:p-8 shadow-sm border border-slate-100 space-y-6 sm:space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* First Name */}
               <div>
@@ -1430,10 +1430,10 @@ const QuoteModal = ({
 
   // Step 3: Order Confirmation
   const renderOrderConfirmation = () => (
-    <div className="overflow-y-auto px-6 py-6 space-y-6 custom-scrollbar-premium">
+    <div className="overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6 custom-scrollbar-premium">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Customer Details Summary */}
-        <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
+        <div className="bg-white rounded-[2rem] p-4 sm:p-6 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:bg-blue-50 transition-colors duration-500"></div>
 
           <div className="relative z-10">
@@ -1495,7 +1495,7 @@ const QuoteModal = ({
         </div>
 
         {/* Product Configuration Summary */}
-        <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
+        <div className="bg-white rounded-[2rem] p-4 sm:p-6 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:bg-green-50 transition-colors duration-500"></div>
 
           <div className="relative z-10">
@@ -1541,7 +1541,7 @@ const QuoteModal = ({
         </div>
 
         {/* Price Summary */}
-        <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
+        <div className="bg-white rounded-[2rem] p-4 sm:p-6 shadow-sm border border-slate-100 group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:bg-blue-50 transition-colors duration-500"></div>
 
           <div className="relative z-10">
@@ -1654,8 +1654,8 @@ const QuoteModal = ({
     </div>
   );
   const renderThankYouPage = () => (
-    <div className="overflow-y-auto px-6 py-12 custom-scrollbar-premium">
-      <div className="max-w-xl mx-auto text-center space-y-8">
+    <div className="overflow-y-auto px-4 sm:px-6 py-8 sm:py-12 custom-scrollbar-premium">
+      <div className="max-w-xl mx-auto text-center space-y-6 sm:space-y-8">
         <div className="relative inline-block">
           <div className="absolute inset-0 bg-green-500/20 blur-3xl rounded-full scale-150 animate-pulse"></div>
           <div className="relative w-24 h-24 bg-gradient-to-br from-green-500 to-green-700 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-green-200 animate-in bounce-in duration-1000">
@@ -1664,8 +1664,8 @@ const QuoteModal = ({
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-4xl font-black text-slate-800 tracking-tight">Bestillingen er bekræftet!</h2>
-          <p className="text-slate-500 font-medium text-lg leading-relaxed">
+          <h2 className="text-2xl sm:text-4xl font-black text-slate-800 tracking-tight">Bestillingen er bekræftet!</h2>
+          <p className="text-slate-500 font-medium text-base sm:text-lg leading-relaxed">
             Din ordre er modtaget, og betalingen er gennemført.
           </p>
         </div>
@@ -1696,7 +1696,7 @@ const QuoteModal = ({
           </div>
         </div>
 
-        <div className="bg-slate-50 rounded-[2rem] p-8 border border-white shadow-inner">
+        <div className="bg-slate-50 rounded-[2rem] p-5 sm:p-8 border border-white shadow-inner">
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Bekræftelsesnummer</span>
           <p className="text-2xl font-black text-slate-800 tracking-tight font-mono">{orderDate}</p>
           <div className="mt-4 pt-4 border-t border-slate-200 flex items-center justify-center space-x-2">
@@ -1769,22 +1769,22 @@ const QuoteModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-in fade-in duration-300">
-      <div className="bg-white/95 backdrop-blur-xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] border border-slate-100 rounded-[2rem] overflow-hidden animate-in slide-in-from-bottom duration-500">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-0 sm:p-6 animate-in fade-in duration-300">
+      <div className="bg-white/95 backdrop-blur-xl w-full max-w-5xl h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[92vh] flex flex-col shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] border border-slate-100 rounded-none sm:rounded-[2rem] overflow-hidden animate-in slide-in-from-bottom duration-500">
         {/* Modal Header with Step Indicator */}
-        <div className="relative bg-white border-b border-slate-100 p-6 z-10">
+        <div className="relative bg-white border-b border-slate-100 p-4 sm:p-6 z-10">
           <div className="relative">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center space-x-3">
-                <div className="p-2.5 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg shadow-green-100">
+            <div className="flex justify-between items-center mb-4 sm:mb-6">
+              <div className="flex items-center space-x-3 min-w-0">
+                <div className="p-2.5 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg shadow-green-100 shrink-0">
                   {React.createElement(getStepIcon(currentStep), { className: "w-5 h-5 text-white" })}
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-800 tracking-tight">
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight truncate">
                     {orderComplete ? 'Order Complete' : steps[currentStep]}
                   </h2>
                   {!orderComplete && (
-                    <p className="text-slate-400 text-[11px] mt-0.5 font-medium">
+                    <p className="hidden sm:block text-slate-400 text-[11px] mt-0.5 font-medium">
                       Indstil detaljer, bekræft leveringsoplysninger og gennemfør købet sikkert
                     </p>
                   )}
@@ -1793,7 +1793,7 @@ const QuoteModal = ({
               {!orderComplete && (
                 <button
                   onClick={onClose}
-                  className="p-2 hover:bg-slate-100 rounded-xl transition-all duration-200 hover:scale-105 group border border-slate-100"
+                  className="p-2 hover:bg-slate-100 rounded-xl transition-all duration-200 hover:scale-105 group border border-slate-100 shrink-0"
                 >
                   <X className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
                 </button>
@@ -1802,7 +1802,7 @@ const QuoteModal = ({
 
             {/* Step Progress Indicator - Only show if not on thank you page */}
             {!orderComplete && (
-              <div className={`grid gap-4 pt-4 border-t border-slate-100`} style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+              <div className={`grid gap-2 sm:gap-4 pt-4 border-t border-slate-100`} style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
                 {steps.map((step, index) => {
                   const Icon = getStepIcon(index);
                   const isActive = index === currentStep;
@@ -1813,12 +1813,12 @@ const QuoteModal = ({
                     <div
                       key={step}
                       onClick={() => handleTabClick(index)}
-                      className={`flex items-center gap-3 p-2.5 rounded-2xl border cursor-pointer transition-all duration-300 active:scale-[0.98] ${isActive
+                      className={`flex items-center justify-center sm:justify-start gap-3 p-2.5 rounded-2xl border cursor-pointer transition-all duration-300 active:scale-[0.98] ${isActive
                         ? 'bg-green-50/50 border-green-200 shadow-sm'
                         : 'border-transparent hover:bg-slate-50/70'
                         }`}
                     >
-                      <div className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all ${isActive
+                      <div className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all shrink-0 ${isActive
                         ? 'bg-green-600 text-white shadow-md shadow-green-200'
                         : isCompleted
                           ? 'bg-green-100 text-green-700'
@@ -1826,11 +1826,11 @@ const QuoteModal = ({
                         }`}>
                         {isCompleted ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
                       </div>
-                      <div className="hidden sm:block">
-                        <p className={`text-[11px] font-bold leading-none ${isActive ? 'text-green-800' : isCompleted ? 'text-slate-700' : 'text-slate-400'}`}>
+                      <div className="hidden sm:block min-w-0">
+                        <p className={`text-[11px] font-bold leading-none truncate ${isActive ? 'text-green-800' : isCompleted ? 'text-slate-700' : 'text-slate-400'}`}>
                           {step}
                         </p>
-                        <p className="text-[9px] text-slate-400 mt-1 font-medium">
+                        <p className="text-[9px] text-slate-400 mt-1 font-medium truncate">
                           {index === 0 ? 'Review Config' : index === 1 ? 'Shipping Details' : 'Verify & Submit'}
                         </p>
                       </div>
@@ -1849,11 +1849,11 @@ const QuoteModal = ({
 
         {/* Enhanced Compact Footer */}
         {!orderComplete && (
-          <div className="bg-slate-50 border-t border-slate-100 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="bg-slate-50 border-t border-slate-100 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             {/* Price / Status info */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <div className="bg-green-50 border border-green-100 rounded-2xl px-4 py-2.5 flex items-center gap-3">
-                <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div>
+                <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shrink-0"></div>
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block leading-none mb-1">
                     {computedBalanceDue > 0 && amountPaid > 0 ? 'BALANCE DUE' : 'ORDER TOTAL'}
@@ -1868,19 +1868,19 @@ const QuoteModal = ({
               </div>
 
               {(editDeadline || isLocked) && (
-                <div className={`hidden lg:flex items-center text-[11px] font-bold px-3 py-1.5 rounded-xl border ${isLocked ? 'text-red-700 bg-red-50 border-red-100' : 'text-amber-700 bg-amber-50 border-amber-100'}`}>
-                  <History className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
+                <div className={`hidden md:flex items-center text-[11px] font-bold px-3 py-1.5 rounded-xl border ${isLocked ? 'text-red-700 bg-red-50 border-red-100' : 'text-amber-700 bg-amber-50 border-amber-100'}`}>
+                  <History className="w-3.5 h-3.5 mr-1.5 text-amber-600 shrink-0" />
                   {isLocked ? 'Order locked' : `Edit window: ${formatDate(editDeadline)}`}
                 </div>
               )}
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
               {currentStep > 0 ? (
                 <button
                   onClick={() => setCurrentStep(prev => prev - 1)}
-                  className="flex items-center justify-center px-5 py-3 border border-slate-200 bg-white rounded-xl text-slate-700 font-bold text-sm hover:border-slate-300 hover:bg-slate-50 transition-all duration-200"
+                  className="flex-1 sm:flex-none flex items-center justify-center px-5 py-3 border border-slate-200 bg-white rounded-xl text-slate-700 font-bold text-sm hover:border-slate-300 hover:bg-slate-50 transition-all duration-200"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back
@@ -1888,7 +1888,7 @@ const QuoteModal = ({
               ) : (
                 <button
                   onClick={onClose}
-                  className="px-5 py-3 border border-slate-200 bg-white rounded-xl text-slate-600 font-bold text-sm hover:border-slate-300 hover:bg-slate-50 transition-all duration-200"
+                  className="flex-1 sm:flex-none flex items-center justify-center px-5 py-3 border border-slate-200 bg-white rounded-xl text-slate-600 font-bold text-sm hover:border-slate-300 hover:bg-slate-50 transition-all duration-200"
                 >
                   Fortsæt med at designe
                 </button>

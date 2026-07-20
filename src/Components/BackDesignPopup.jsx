@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Test from './Test';
 import { X } from 'lucide-react';
+import { BASE_URL, GARMENT_COLORS } from '../utils/const';
+
+const DARK_COLOR_NAMES = new Set(GARMENT_COLORS.filter(c => c.dark).map(c => c.name));
 
 const BackDesignPopup = ({ onFinish, customizations, setCustomizations, students, backDesigns }) => {
     const [activeTab, setActiveTab] = useState('T-SHIRT');
@@ -12,11 +15,19 @@ const BackDesignPopup = ({ onFinish, customizations, setCustomizations, students
         { name: 'ZIPPERHOODIE', postEx: 'ZipperHoodie:' },
     ];
 
-    // ✅ Apply API backDesign to all students automatically on mount
+    // ✅ Apply API backDesign to all students automatically on mount.
+    // Each garment category can have its own color, and dark garments print
+    // in a light ink — so each category gets its own asset variant
+    // (configured_file_path for light garments, configured_file_path_2 for dark).
     useEffect(() => {
-        if (backDesigns?.data) {
-            const design = backDesigns.data;
-            const src = `${BASE_URL}${design.configured_file_path.replace(/\\/g, "/")}`;   // 👈 file_path → configured_file_path
+        if (!backDesigns) return;
+        const design = backDesigns;
+        const shirtCategories = ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'];
+
+        shirtCategories.forEach(cat => {
+            const isDark = DARK_COLOR_NAMES.has(customizations?.[cat]?.selectedColor);
+            const filePath = (isDark && design.configured_file_path_2) ? design.configured_file_path_2 : design.configured_file_path;
+            const src = `${BASE_URL}${filePath.replace(/\\/g, "/")}`;
 
             const img = new Image();
             img.crossOrigin = "anonymous";
@@ -42,22 +53,19 @@ const BackDesignPopup = ({ onFinish, customizations, setCustomizations, students
 
                 setCustomizations(prev => {
                     const nextCustom = JSON.parse(JSON.stringify(prev || {}));
-                    const shirtCategories = ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'];
-                    shirtCategories.forEach(cat => {
-                        const categoryData = nextCustom[cat] || {};
-                        nextCustom[cat] = {
-                            ...categoryData,
-                            pressureOptions: {
-                                ...(categoryData.pressureOptions || {}),
-                                backDesign: backDesignObj
-                            }
-                        };
-                    });
+                    const categoryData = nextCustom[cat] || {};
+                    nextCustom[cat] = {
+                        ...categoryData,
+                        pressureOptions: {
+                            ...(categoryData.pressureOptions || {}),
+                            backDesign: backDesignObj
+                        }
+                    };
                     return nextCustom;
                 });
             };
             img.src = src;
-        }
+        });
     }, [backDesigns, students, setCustomizations]);
     const currentTab = productTabs.find((t) => t.name === activeTab);
 

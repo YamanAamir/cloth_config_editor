@@ -6,24 +6,10 @@ import logo1 from "../assets/Universitylogo/logo1.png";
 import logo2 from "../assets/Universitylogo/logo2.png";
 import logo3 from "../assets/Universitylogo/logo3.jpg";
 import logo4 from "../assets/Universitylogo/logo4.png";
-import { BASE_URL } from "../utils/const";
+import { BASE_URL, GARMENT_COLORS as colors } from "../utils/const";
 import { ALL_FLAGS, getFlagUrl } from "../utils/flags";
 import { postToPreview } from "../utils/postMessage";
 import { X, Search, Image as ImageIcon, Flag, Trash2 } from "lucide-react";
-
-
-const colors = [
-  { name: "Red", value: "#E61709", border: "#E61709", dark: true },
-  { name: "Black", value: "#120F14", border: "#120F14", dark: true },
-  { name: "White", value: "#FFFFFF", border: "#D1D5DB", dark: false },
-  { name: "Natural", value: "#FFFAD9", border: "#FFFAD9", dark: false },
-  { name: "Heather Grey", value: "#D4D9DC", border: "#D4D9DC", dark: false },
-  { name: "Navy", value: "#051734", border: "#051734", dark: true },
-  { name: "Light Pink", value: "#F0A5C7", border: "#F0A5C7", dark: false },
-  { name: "Olive Green", value: "#63673F", border: "#63673F", dark: true },
-  { name: "Blue", value: "#0000FF", border: "#0000FF", dark: true },
-  { name: "Purple", value: "#431279", border: "#431279", dark: true },
-];
 
 const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText = 25, activeTab: externalTab }) => {
   const [internalTab, setInternalTab] = useState("size");
@@ -39,6 +25,21 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
   const initialDesignColor = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase())?.dark ? "dark" : "light";
   const [designColor, setDesignColor] = useState(initialDesignColor);
   const designColorRef = React.useRef(initialDesignColor);
+
+  // selectedColor can change from outside this component after mount — e.g. an
+  // already-purchased order's saved color arriving once the async fetch resolves,
+  // or restoring a past version — so the light/dark toggle (only set at mount via
+  // useState) can end up stuck out of sync with the actual garment color. Re-sync it.
+  useEffect(() => {
+    const meta = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase());
+    if (!meta) return;
+    const expected = meta.dark ? "dark" : "light";
+    if (expected !== designColorRef.current) {
+      setDesignColor(expected);
+      designColorRef.current = expected;
+    }
+  }, [selectedColor]);
+
   const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" }); // cache last canvas data
   const lastSentBackRef = React.useRef({ diffuse: "", opacity: "", color: "" }); // dedupe: last actually SENT data
 
