@@ -9,7 +9,8 @@ export default function PaymentBreakdown({
     editWindowOpen = false,
     editDeadline = null,
     onPayNow,
-    loading = false
+    loading = false,
+    handlingFee = 0 // new prop for handling fee
 }) {
 
     if (!orderId) return null;
@@ -116,6 +117,13 @@ export default function PaymentBreakdown({
                         <span>Paid</span>
                         <span>- {safePaid.toFixed(2)} DKK</span>
                     </div>
+
+                    {handlingFee > 0 && (
+                        <div className="flex justify-between text-sm text-blue-600">
+                            <span>Handling Fee</span>
+                            <span>{Number(handlingFee).toFixed(2)} DKK</span>
+                        </div>
+                    )}
 
                     {hasBalance && (
                         <div className="flex justify-between text-sm font-bold text-orange-600">

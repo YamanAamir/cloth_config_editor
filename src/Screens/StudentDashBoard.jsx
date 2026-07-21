@@ -1,4 +1,3 @@
-// StudentDashboard.jsx (full fixed code with iframe src fixed to use null instead of empty string)
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { message, Tag, Dropdown, Drawer, Avatar, Divider, Form, Input, Switch, Tour, Button, Modal, Popover } from 'antd';
 import img1 from '../assets/menuimages/1.png';
@@ -22,7 +21,7 @@ import StudentPopup from '../Components/Popup';
 import useLogoStore from '../store/logoStore';
 import useSettingsStore from '../store/settingsStore';
 import { useAuth } from '../context/AuthContext';
-import { getMyOrder, getMyOrderHistory, placeOrder, getStudentProfile, updateStudentProfile, changePasswordAuth, getMyClassBackDesigns, createCheckoutSession, getOrderPaymentBreakdown } from '../api/api';
+import { getMyOrder, getMyOrderHistory, placeOrder, getStudentProfile, updateStudentProfile, changePasswordAuth, getMyClassBackDesigns, createCheckoutSession, getOrderPaymentBreakdown, getMyClassInfo } from '../api/api';
 import useBackDesignStore from '../store/backDesignStore';
 import { getFlagUrl } from '../utils/flags';
 import { BASE_URL, DEFAULT_SELECTIONS } from '../utils/const';
@@ -107,7 +106,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
         return mapped;
     };
-    const { fetchSettings, getGarmentPrice, getVat, getMaxCharsClothText } = useSettingsStore();
+    const { fetchSettings, getGarmentPrice, getVat, getMaxCharsClothText, getHandlingFeeEnabled, getBaseHandlingFee, getThreshold, getExtraFeeAboveThreshold } = useSettingsStore();
 
     // Fetch settings on mount
     useEffect(() => { fetchSettings(); }, []);
@@ -214,6 +213,15 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     };
     const [activeMenu, setActiveMenu] = useState('T-SHIRT');
     const [garmentTab, setGarmentTab] = useState('size'); // 'size' | 'pressure'
+    const [isDesktop, setIsDesktop] = useState(() =>
+        typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : true
+    );
+    useEffect(() => {
+        const mql = window.matchMedia('(min-width: 1024px)');
+        const handleChange = (e) => setIsDesktop(e.matches);
+        mql.addEventListener('change', handleChange);
+        return () => mql.removeEventListener('change', handleChange);
+    }, []);
     const [backDesignKey, setBackDesignKey] = useState(0); // force Test remount on page switch
     const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
     const [profileData, setProfileData] = useState(null);
@@ -330,6 +338,33 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     const [orderId, setOrderId] = useState(null);
     const [amountPaid, setAmountPaid] = useState(0);
     const [paymentStatus, setPaymentStatus] = useState(null);
+    // Handling fee: fetch class student count
+    const [classStudentCount, setClassStudentCount] = useState(0);
+    useEffect(() => {
+        const fetchClassInfo = async () => {
+            try {
+                const { data } = await getMyClassInfo();
+                if (data?.success) {
+                    setClassStudentCount(data.data?.expected_students || 0);
+                }
+            } catch {
+                // silently ignore errors
+            }
+        };
+        fetchClassInfo();
+    }, []);
+    const getHandlingFeePerStudent = () => {
+        if (!getHandlingFeeEnabled()) return 0;
+        if (!classStudentCount || classStudentCount <= 0) return 0;
+        const baseFee = getBaseHandlingFee();
+        const threshold = getThreshold();
+        const extraFee = getExtraFeeAboveThreshold();
+        const totalFee = classStudentCount > threshold ? baseFee + extraFee : baseFee;
+        return Math.round((totalFee / classStudentCount) * 100) / 100;
+    };
+    const handlingFeePerStudent = getHandlingFeePerStudent();
+    const totalHandlingFee = Math.round((handlingFeePerStudent * classStudentCount) * 100) / 100;
+
     const [editDeadline, setEditDeadline] = useState(null);
     const [classStatus, setClassStatus] = useState(null); // tracking.class_status
     const [backDesignStatus, setBackDesignStatus] = useState(null); // back design approval status
@@ -1483,9 +1518,16 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                         <div className="hidden md:block w-px h-4 bg-slate-200" />
 
                         {/* Price */}
-                        <div className="hidden md:flex items-center gap-1.5">
-                            <span className="text-xs text-slate-400 font-medium">Price</span>
-                            <span className="text-xs font-bold text-slate-700">{GARMENT_PRICES[activeMenu]} DKK</span>
+                        <div className="hidden md:flex flex-col justify-center">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-slate-400 font-medium">Price</span>
+                                <span className="text-xs font-bold text-slate-700">{GARMENT_PRICES[activeMenu]} DKK</span>
+                            </div>
+                            {handlingFeePerStudent > 0 && (
+                                <span className="text-[10px] text-slate-500 font-medium">
+                                    (+{handlingFeePerStudent} DKK gebyr)
+                                </span>
+                            )}
                         </div>
 
                         {/* Paid */}
@@ -1669,21 +1711,27 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 </div>
                                 <div id="main-content" className="lg:p-6 p-3 lg:space-y-8 space-y-4">
 
-                                    {activeMenu === 'T-SHIRT' && <Tshirt key="tshirt" isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {activeMenu === "SWEATSHIRT" && <SweatShirt key="sweatshirt" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {activeMenu === "HOODIE" && <Hoodie key="hoodie" isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {activeMenu === "ZIPPERHOODIE" && <ZippedHoodie key="zipper" isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {activeMenu === "SWEATPANTS" && <SweatPants key="sweatpants" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {activeMenu === "SHORTS" && <Shorts key="shorts" isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {isDesktop && activeMenu === 'T-SHIRT' && <Tshirt key="tshirt" isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {isDesktop && activeMenu === "SWEATSHIRT" && <SweatShirt key="sweatshirt" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {isDesktop && activeMenu === "HOODIE" && <Hoodie key="hoodie" isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {isDesktop && activeMenu === "ZIPPERHOODIE" && <ZippedHoodie key="zipper" isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {isDesktop && activeMenu === "SWEATPANTS" && <SweatPants key="sweatpants" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {isDesktop && activeMenu === "SHORTS" && <Shorts key="shorts" isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
                                 </div>
                             </div>
                         </div>
                         <div id="price-summary" className=" border-slate-200 p-6 bg-white/50 backdrop-blur-sm">
                             <div className="mb-4 space-y-1.5">
                                 <div className="flex justify-between items-center pt-1.5">
-                                    <span className="text-sm font-semibold text-slate-700">Price</span>
+                                    <span className="text-sm font-semibold text-slate-700">Pris</span>
                                     <span className="text-2xl font-bold text-slate-900">{GARMENT_PRICES[activeMenu]} DKK</span>
                                 </div>
+                                {handlingFeePerStudent > 0 && (
+                                    <div className="flex justify-between items-center text-xs text-slate-500 font-medium pt-1 border-t border-slate-100">
+                                        <span>Ekspeditionsgebyr</span>
+                                        <span>+{handlingFeePerStudent} DKK</span>
+                                    </div>
+                                )}
                             </div>
                             {/* pending_payment — payment being confirmed by Stripe */}
                             {processStatus === 'pending_payment' && (
@@ -1822,9 +1870,16 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                             <div className="hidden md:block w-px h-4 bg-slate-200" />
 
                             {/* Price */}
-                            <div className="hidden md:flex items-center gap-1.5">
-                                <span className="text-xs text-slate-400 font-medium">Price</span>
-                                <span className="text-xs font-bold text-slate-700">{GARMENT_PRICES[activeMenu]} DKK</span>
+                            <div className="hidden md:flex flex-col justify-center">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-xs text-slate-400 font-medium">Price</span>
+                                    <span className="text-xs font-bold text-slate-700">{GARMENT_PRICES[activeMenu]} DKK</span>
+                                </div>
+                                {handlingFeePerStudent > 0 && (
+                                    <span className="text-[10px] text-slate-500 font-medium">
+                                        (+{handlingFeePerStudent} DKK gebyr)
+                                    </span>
+                                )}
                             </div>
 
                             {/* Paid */}
@@ -1960,12 +2015,12 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
                     {/* ── Mobile Controls ── */}
                     <div className="lg:px-4 px-2 lg:pt-4 pt-2 pb-2 lg:space-y-4 space-y-2 shrink-0">
-                        {activeMenu === 'T-SHIRT' && <Tshirt key="tshirt-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === "SWEATSHIRT" && <SweatShirt key="sweatshirt-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === "HOODIE" && <Hoodie key="hoodie-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === "ZIPPERHOODIE" && <ZippedHoodie key="zipper-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === "SWEATPANTS" && <SweatPants key="sweatpants-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {activeMenu === "SHORTS" && <Shorts key="shorts-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {!isDesktop && activeMenu === 'T-SHIRT' && <Tshirt key="tshirt-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {!isDesktop && activeMenu === "SWEATSHIRT" && <SweatShirt key="sweatshirt-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {!isDesktop && activeMenu === "HOODIE" && <Hoodie key="hoodie-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {!isDesktop && activeMenu === "ZIPPERHOODIE" && <ZippedHoodie key="zipper-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {!isDesktop && activeMenu === "SWEATPANTS" && <SweatPants key="sweatpants-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {!isDesktop && activeMenu === "SHORTS" && <Shorts key="shorts-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
                     </div>
 
                     {/* ── 3D Preview ── */}

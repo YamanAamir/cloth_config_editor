@@ -991,6 +991,11 @@ const QuoteModal = ({
             <h4 className="font-bold text-blue-900 text-sm mb-1">Vælg de varer, du vil købe</h4>
             <p className="text-blue-700 text-xs">
               Klik på afkrydsningsfeltet på hvert produktkort for at vælge eller fravælge varer til din ordre. Prisen opdateres automatisk ud fra dit valg.
+              {handlingFeePerStudent > 0 && (
+                <span className="block mt-1 font-semibold text-blue-900 text-[11px]">
+                  * Bemærk: Der tillægges {handlingFeePerStudent} DKK i ekspeditionsgebyr til din samlede ordre.
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -1864,6 +1869,18 @@ const QuoteModal = ({
                       : `${computedBalanceDue} DKK`
                     }
                   </span>
+                  {/* Make the handling/shipping fees visible from the very first
+                      step, not just buried in the step-3 price summary — the
+                      garment cards only show the base product price, so this
+                      total would otherwise look unexplained. */}
+                  {computedBalanceDue > 0 && (handlingFeePerStudent > 0 || shippingRate > 0) && (
+                    <span className="block text-[11px] font-bold text-slate-600 mt-1">
+                      (inkl. {[
+                        handlingFeePerStudent > 0 && `${handlingFeePerStudent} DKK ekspeditionsgebyr`,
+                        shippingRate > 0 && `${shippingRate} DKK fragt`
+                      ].filter(Boolean).join(' + ')})
+                    </span>
+                  )}
                 </div>
               </div>
 
