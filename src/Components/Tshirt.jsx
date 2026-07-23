@@ -56,6 +56,16 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
     }
   };
 
+  useEffect(() => {
+    if (!backDesigns) return;
+    const hasLight = !!backDesigns.configured_file_path;
+    const hasDark = !!backDesigns.configured_file_path_2;
+    const forced = hasDark && !hasLight ? "dark" : hasLight ? "light" : null;
+    if (forced && forced !== designColorRef.current) {
+      handleDesignColorChange(forced);
+    }
+  }, [backDesigns]);
+
   const pressureOptions = data?.pressureOptions || {
     rightChestText: "",
     rightChestFlag: "",
@@ -789,27 +799,31 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       {activeTab === "size" ? (
         <>
           <h1 className="lg:text-lg text-md lg:font-bold font-semibold lg:mb-3 mb-1 text-gray-900">T-shirt</h1>
-          {backDesigns && (
+          {backDesigns && (backDesigns.configured_file_path || backDesigns.configured_file_path_2) && (
             <div className="lg:mb-5 mb-2">
 
               <p className="text-xs font-semibold text-gray-700 mb-2">Garment Color</p>
               <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleDesignColorChange("light")}
-                  className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${designColor === "light" ? "border-green-600 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-500"}`}
-                >
-                  <div className="font-bold">Light Garment</div>
-                  <div className="text-xs text-gray-400 font-normal">Black print</div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDesignColorChange("dark")}
-                  className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${designColor === "dark" ? "border-green-600 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-500"}`}
-                >
-                  <div className="font-bold">Dark Garment</div>
-                  <div className="text-xs text-gray-400 font-normal">White print</div>
-                </button>
+                {backDesigns.configured_file_path && (
+                  <button
+                    type="button"
+                    onClick={() => handleDesignColorChange("light")}
+                    className={`basis-1/2 flex-none py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${designColor === "light" ? "border-green-600 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-500"}`}
+                  >
+                    <div className="font-bold">Light Garment</div>
+                    <div className="text-xs text-gray-400 font-normal">Black print</div>
+                  </button>
+                )}
+                {backDesigns.configured_file_path_2 && (
+                  <button
+                    type="button"
+                    onClick={() => handleDesignColorChange("dark")}
+                    className={`basis-1/2 flex-none py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all ${designColor === "dark" ? "border-green-600 bg-white text-gray-900" : "border-gray-200 bg-white text-gray-500"}`}
+                  >
+                    <div className="font-bold">Dark Garment</div>
+                    <div className="text-xs text-gray-400 font-normal">White print</div>
+                  </button>
+                )}
               </div>
             </div>
           )}

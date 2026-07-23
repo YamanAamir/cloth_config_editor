@@ -133,7 +133,19 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
   useEffect(() => {
     if (backDesigns && objects.length === 0 && !pressureOptions?.backDesign) {
       const design = backDesigns;
-      const img = `${BASE_URL}${design.configured_file_path.replace(/\\/g, "/")}`;
+      const imgPath = design.configured_file_path || design.configured_file_path_2 || design.file_path || "";
+      if (!imgPath) {
+        setObjects([]);
+        setSelectedId(null);
+        return;
+      }
+      const img = `${BASE_URL}${imgPath.replace(/\\/g, "/")}`;
+     
+      try {
+        localStorage.setItem('backDesignUrl', img);
+      } catch (e) {
+        console.warn('Failed to cache back design URL', e);
+      }
 
       loadImageSafe(img, async (imgObj) => {
         const scale = Math.min(

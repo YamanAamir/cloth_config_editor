@@ -24,7 +24,9 @@ import { useAuth } from '../context/AuthContext';
 import { getMyOrder, getMyOrderHistory, placeOrder, getStudentProfile, updateStudentProfile, changePasswordAuth, getMyClassBackDesigns, createCheckoutSession, getOrderPaymentBreakdown, getMyClassInfo } from '../api/api';
 import useBackDesignStore from '../store/backDesignStore';
 import { getFlagUrl } from '../utils/flags';
-import { BASE_URL, DEFAULT_SELECTIONS } from '../utils/const';
+import { BASE_URL, DEFAULT_SELECTIONS, GARMENT_COLORS } from '../utils/const';
+
+const DARK_COLOR_NAMES = new Set(GARMENT_COLORS.filter(c => c.dark).map(c => c.name));
 import useSocket from '../hooks/useSocket';
 
 const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup, initialOrderData, initialHistoryData, initialBackDesignData /*, setShowBackTextPopup */ }) => { // COMMENTED: Back text feature disabled
@@ -411,9 +413,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         }
     }, [school_id, fetchLogos]);
 
-    // Auto-fetch back designs on mount so Test.jsx gets them without button
-    // Also update localStorage studentCustomizations with fresh backDesign src
-    // so stale cached image URLs get replaced with the latest from API on every refresh
     useEffect(() => {
         const classId = user?.class_id;
         if (!classId) return;
@@ -424,10 +423,9 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         getMyClassBackDesigns().then(res => {
             if (!res.data?.success || !res.data?.data) return;
             const design = res.data.data;
-            const latestSrc = design.configured_file_path
-                ? `${BASE_URL}${design.configured_file_path.replace(/\\/g, '/')}`
-                : null;
-            if (!latestSrc) return;
+            const hasLight = !!design.configured_file_path;
+            const hasDark = !!design.configured_file_path_2;
+            if (!hasLight && !hasDark) return;
 
             try {
                 const stored = localStorage.getItem('studentCustomizations');
@@ -437,10 +435,18 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                 let updated = false;
                 const studentData = JSON.parse(JSON.stringify(parsed));
 
-                // Update backDesign.src in ALL garment types where it is set
                 Object.keys(studentData).forEach(garmentType => {
                     const po = studentData[garmentType]?.pressureOptions;
-                    if (po?.backDesign?.src && po.backDesign.src !== latestSrc) {
+                    if (!po?.backDesign?.src) return;
+
+                    const isDarkGarment = DARK_COLOR_NAMES.has(studentData[garmentType]?.selectedColor);
+                    const filePath = isDarkGarment
+                        ? (design.configured_file_path_2 || design.configured_file_path)
+                        : (design.configured_file_path || design.configured_file_path_2);
+                    if (!filePath) return;
+
+                    const latestSrc = `${BASE_URL}${filePath.replace(/\\/g, '/')}`;
+                    if (po.backDesign.src !== latestSrc) {
                         po.backDesign.src = latestSrc;
                         po.backDesign.designId = design.id;
                         updated = true;
