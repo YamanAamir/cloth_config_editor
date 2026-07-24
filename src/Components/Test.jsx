@@ -282,40 +282,60 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
           }
           ectx.restore();
         });
+        const dImgData = ectx.getImageData(0, 0, exportCanvas.width, exportCanvas.height);
+        const dData = dImgData.data;
+
+        const exportOpacity = document.createElement("canvas");
+        exportOpacity.width = exportCanvas.width;
+        exportOpacity.height = exportCanvas.height;
+        const eoctx = exportOpacity.getContext("2d");
+        const oImgData = eoctx.createImageData(exportCanvas.width, exportCanvas.height);
+        const oData = oImgData.data;
+
+        const isLightGarment = designColorRef.current === "light";
+
+        for (let i = 0; i < dData.length; i += 4) {
+          const r = dData[i];
+          const g = dData[i + 1];
+          const b = dData[i + 2];
+          const a = dData[i + 3];
+
+          if (a < 20) {
+            // Transparent background
+            dData[i + 3] = 0;
+            oData[i] = oData[i + 1] = oData[i + 2] = 0;
+            oData[i + 3] = 255;
+          } else {
+            const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+
+            if (isLightGarment) {
+              // Printing dark ink on light garment -> remove white background
+              if (brightness >= 220) {
+                dData[i + 3] = 0; // Make white background transparent
+                oData[i] = oData[i + 1] = oData[i + 2] = 0;
+                oData[i + 3] = 255;
+              } else {
+                oData[i] = oData[i + 1] = oData[i + 2] = 255;
+                oData[i + 3] = 255;
+              }
+            } else {
+              // Dark garment (white print on dark garment) -> remove black background box
+              if (brightness <= 60) {
+                dData[i + 3] = 0; // Make black background transparent
+                oData[i] = oData[i + 1] = oData[i + 2] = 0;
+                oData[i + 3] = 255;
+              } else {
+                oData[i] = oData[i + 1] = oData[i + 2] = 255;
+                oData[i + 3] = 255;
+              }
+            }
+          }
+        }
+
+        ectx.putImageData(dImgData, 0, 0);
         diffuseBase64 = exportCanvas.toDataURL("image/png", 1.0);
 
-        // Opacity (B&W) export
-        const exportOpacity = document.createElement("canvas");
-        exportOpacity.width = CANVAS_WIDTH * EXPORT_SCALE;
-        exportOpacity.height = CANVAS_HEIGHT * EXPORT_SCALE;
-        const eoctx = exportOpacity.getContext("2d");
-        eoctx.imageSmoothingEnabled = true;
-        eoctx.imageSmoothingQuality = "high";
-        eoctx.fillStyle = "#ffffff";
-        eoctx.fillRect(0, 0, exportOpacity.width, exportOpacity.height);
-        objects.forEach(obj => {
-          eoctx.save();
-          eoctx.translate(obj.pos.x * EXPORT_SCALE, obj.pos.y * EXPORT_SCALE);
-          eoctx.rotate((obj.angle * Math.PI) / 180);
-          if (obj.type === 'image') {
-            eoctx.drawImage(
-              obj.srcObj,
-              -(obj.size.w * EXPORT_SCALE) / 2,
-              -(obj.size.h * EXPORT_SCALE) / 2,
-              obj.size.w * EXPORT_SCALE,
-              obj.size.h * EXPORT_SCALE
-            );
-          }
-          eoctx.restore();
-        });
-        const eImgData = eoctx.getImageData(0, 0, exportOpacity.width, exportOpacity.height);
-        for (let i = 0; i < eImgData.data.length; i += 4) {
-          const brightness = 0.299 * eImgData.data[i] + 0.587 * eImgData.data[i + 1] + 0.114 * eImgData.data[i + 2];
-          const bw = brightness > 128 ? 0 : 255;
-          eImgData.data[i] = eImgData.data[i + 1] = eImgData.data[i + 2] = bw;
-          eImgData.data[i + 3] = 255;
-        }
-        eoctx.putImageData(eImgData, 0, 0);
+        eoctx.putImageData(oImgData, 0, 0);
         opacityBase64 = exportOpacity.toDataURL("image/png", 1.0);
       } catch (err) {
         console.warn("Canvas export error:", err);

@@ -68,11 +68,9 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
 
   useEffect(() => {
     if (!backDesigns) return;
-    const hasLight = !!backDesigns.configured_file_path;
-    const hasDark = !!backDesigns.configured_file_path_2;
-    const forced = hasDark && !hasLight ? "dark" : hasLight ? "light" : null;
-    if (forced && forced !== designColorRef.current) {
-      handleDesignColorChange(forced);
+    const targetDesignColor = backDesigns.designColor !== null ? "light" : "dark";
+    if (targetDesignColor !== designColorRef.current) {
+      handleDesignColorChange(targetDesignColor);
     }
   }, [backDesigns]);
 
@@ -702,15 +700,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
             if (formattedDiffuse) iframe.contentWindow.postMessage("SweatShirt:back_black_diffuse: " + formattedDiffuse, "*");
             if (formattedOpacity) iframe.contentWindow.postMessage("SweatShirt:back_black_opacity: " + formattedOpacity, "*");
           } else {
-            const whiteCanvas = document.createElement("canvas");
-            whiteCanvas.width = 4096;
-            whiteCanvas.height = 4096;
-            const wctx = whiteCanvas.getContext("2d");
-            wctx.fillStyle = "#ffffff";
-            wctx.fillRect(0, 0, 4096, 4096);
-            const whiteDiffuse = whiteCanvas.toDataURL("image/png", 1.0);
-
-            iframe.contentWindow.postMessage("SweatShirt:back_white_diffuse: " + whiteDiffuse, "*");
+            if (formattedDiffuse) iframe.contentWindow.postMessage("SweatShirt:back_white_diffuse: " + formattedDiffuse, "*");
             if (formattedOpacity) iframe.contentWindow.postMessage("SweatShirt:back_white_opacity: " + formattedOpacity, "*");
           }
         });
