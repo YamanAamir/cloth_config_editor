@@ -803,6 +803,15 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             // Color — sirf active garment pe apply hoga (sync band)
             if (updates.selectedColor) {
                 next[category].selectedColor = updates.selectedColor;
+                if (backDesigns && next[category]?.pressureOptions?.backDesign) {
+                    const isDarkGarment = DARK_COLOR_NAMES.has(updates.selectedColor);
+                    const filePath = isDarkGarment
+                        ? (backDesigns.configured_file_path_2)
+                        : (backDesigns.configured_file_path);
+                    if (filePath) {
+                        next[category].pressureOptions.backDesign.src = `${BASE_URL}${filePath.replace(/\\/g, '/')}`;
+                    }
+                }
             }
 
             // Size — sirf active garment pe apply hoga (sync band)

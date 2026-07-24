@@ -25,8 +25,10 @@ const BackDesignPopup = ({ onFinish, customizations, setCustomizations, students
         const shirtCategories = ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'];
 
         shirtCategories.forEach(cat => {
-            const isDark = DARK_COLOR_NAMES.has(customizations?.[cat]?.selectedColor);
-            const filePath = (isDark && design.configured_file_path_2) ? design.configured_file_path_2 : design.configured_file_path;
+            const hasLight = !!design.configured_file_path;
+            const hasDark = !!design.configured_file_path_2;
+            const filePath = (isDark && hasDark) ? design.configured_file_path_2 : (design.configured_file_path);
+            if (!filePath) return;
             const src = `${BASE_URL}${filePath.replace(/\\/g, "/")}`;
 
             const img = new Image();

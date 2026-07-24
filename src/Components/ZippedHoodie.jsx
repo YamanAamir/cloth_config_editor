@@ -26,6 +26,32 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
   // or restoring a past version — so the light/dark toggle (only set at mount via
   // useState) can end up stuck out of sync with the actual garment color. Re-sync it.
   useEffect(() => {
+    if (backDesigns) {
+      const hasLight = !!backDesigns.configured_file_path;
+      const hasDark = !!backDesigns.configured_file_path_2;
+      if (hasLight && !hasDark) {
+        if (designColorRef.current !== "light") {
+          setDesignColor("light");
+          designColorRef.current = "light";
+        }
+        const currentMeta = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase());
+        if (!currentMeta || currentMeta.dark) {
+          onUpdate({ selectedColor: "White" });
+        }
+        return;
+      }
+      if (hasDark && !hasLight) {
+        if (designColorRef.current !== "dark") {
+          setDesignColor("dark");
+          designColorRef.current = "dark";
+        }
+        const currentMeta = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase());
+        if (!currentMeta || !currentMeta.dark) {
+          onUpdate({ selectedColor: "Black" });
+        }
+        return;
+      }
+    }
     const meta = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase());
     if (!meta) return;
     const expected = meta.dark ? "dark" : "light";
@@ -33,7 +59,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
       setDesignColor(expected);
       designColorRef.current = expected;
     }
-  }, [selectedColor]);
+  }, [selectedColor, backDesigns]);
 
   const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" }); // cache last canvas data
   const lastSentBackRef = React.useRef({ diffuse: "", opacity: "", color: "" }); // dedupe: last actually SENT data
@@ -63,9 +89,30 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
 
   useEffect(() => {
     if (!backDesigns) return;
-    const targetDesignColor = backDesigns.designColor !== null ? "light" : "dark";
+    const hasLight = !!backDesigns.configured_file_path;
+    const hasDark = !!backDesigns.configured_file_path_2;
+
+    let targetDesignColor = designColorRef.current;
+    if (hasLight && !hasDark) {
+      targetDesignColor = "light";
+    } else if (hasDark && !hasLight) {
+      targetDesignColor = "dark";
+    } else if (hasLight && hasDark) {
+      const meta = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase());
+      if (meta) {
+        targetDesignColor = meta.dark ? "dark" : "light";
+      }
+    }
+
     if (targetDesignColor !== designColorRef.current) {
       handleDesignColorChange(targetDesignColor);
+    } else {
+      const current = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase());
+      const isCompatible = current && (targetDesignColor === "dark" ? current.dark : !current.dark);
+      if (!isCompatible) {
+        const defaultColor = targetDesignColor === "dark" ? "Black" : "White";
+        onUpdate({ selectedColor: defaultColor });
+      }
     }
   }, [backDesigns]);
 
@@ -655,7 +702,13 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
 
   // Filter colors based on garment toggle — dark garment shows dark colors, light shows light colors
   const visibleColors = backDesigns
-    ? colors.filter(c => (designColor === "dark" ? c.dark : !c.dark))
+    ? colors.filter(c => {
+      const hasLight = !!backDesigns.configured_file_path;
+      const hasDark = !!backDesigns.configured_file_path_2;
+      if (hasLight && !hasDark) return !c.dark;
+      if (hasDark && !hasLight) return c.dark;
+      return designColor === "dark" ? c.dark : !c.dark;
+    })
     : colors;
 
   const sizes = ["S", "M", "L", "XL", "2XL", "3XL"];

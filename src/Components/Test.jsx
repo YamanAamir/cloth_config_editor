@@ -92,95 +92,96 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
       });
   };
 
-  const lastBackDesignConfigRef = useRef(null);
+  const lastLoadedImgPathRef = useRef(null);
 
   useEffect(() => {
-    const config = pressureOptions?.backDesign;
+    // 1. If backDesigns from API is available, determine the expected class back design image
+    let targetSrc = null;
+    let designId = backDesigns?.id;
 
-    if (config) {
-      const serialized = JSON.stringify({
-        src: config.src,
-        pos: config.pos,
-        size: config.size,
-        angle: config.angle,
-        locked: config.locked,
-      });
+    if (backDesigns) {
+      const isDark = designColor === "dark";
+      const imgPath = isDark
+        ? (backDesigns.configured_file_path_2 || "")
+        : (backDesigns.configured_file_path || "");
 
-      // Content same hai (parent ne bas naya reference banaya) → kuch mat karo
-      if (lastBackDesignConfigRef.current === serialized) return;
-      lastBackDesignConfigRef.current = serialized;
-
-      loadImageSafe(config.src, (img) => {
-        if (!img) return;
-        setObjects([{
-          id: 'uploadedImage',
-          type: 'image',
-          srcObj: img,
-          pos: config.pos,
-          size: config.size,
-          angle: config.angle,
-          locked: config.locked,
-        }]);
-        setSelectedId('uploadedImage');
-      });
-    } else {
-      if (lastBackDesignConfigRef.current === null) return; // already empty
-      lastBackDesignConfigRef.current = null;
-      setObjects([]);
-      setSelectedId(null);
+      if (imgPath) {
+        targetSrc = `${BASE_URL}${imgPath.replace(/\\/g, "/")}`;
+      }
     }
-  }, [pressureOptions?.backDesign]);
-  useEffect(() => {
-    if (backDesigns && objects.length === 0 && !pressureOptions?.backDesign) {
-      const design = backDesigns;
-      const imgPath = design.configured_file_path || design.configured_file_path_2 || design.file_path || "";
-      if (!imgPath) {
+
+    // 2. Fallback to pressureOptions.backDesign.src if backDesigns is not available
+    if (!targetSrc && pressureOptions?.backDesign?.src) {
+      targetSrc = pressureOptions.backDesign.src;
+    }
+
+    if (!targetSrc) {
+      if (lastLoadedImgPathRef.current !== null) {
+        lastLoadedImgPathRef.current = null;
         setObjects([]);
         setSelectedId(null);
-        return;
       }
-      const img = `${BASE_URL}${imgPath.replace(/\\/g, "/")}`;
-     
-      try {
-        localStorage.setItem('backDesignUrl', img);
-      } catch (e) {
-        console.warn('Failed to cache back design URL', e);
-      }
+      return;
+    }
 
-      loadImageSafe(img, async (imgObj) => {
+    // Cache key includes targetSrc and designColor to detect light <-> dark switches
+    const cacheKey = `${targetSrc}:${designColor}`;
+    if (lastLoadedImgPathRef.current === cacheKey) return;
+    lastLoadedImgPathRef.current = cacheKey;
+
+    try {
+      localStorage.setItem('backDesignUrl', targetSrc);
+    } catch (e) {
+      console.warn('Failed to cache back design URL', e);
+    }
+
+    const config = pressureOptions?.backDesign;
+
+    loadImageSafe(targetSrc, (imgObj) => {
+      if (!imgObj) return;
+
+      const pos = config?.pos || { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
+      const angle = config?.angle || 0;
+      const locked = config?.locked || false;
+
+      let w = config?.size?.w;
+      let h = config?.size?.h;
+      if (!w || !h) {
         const scale = Math.min(
           (CANVAS_WIDTH * 0.98) / imgObj.width,
           (CANVAS_HEIGHT * 0.95) / imgObj.height
         );
-        const w = imgObj.width * scale;
-        const h = imgObj.height * scale;
+        w = imgObj.width * scale;
+        h = imgObj.height * scale;
+      }
 
-        const newImageObj = {
-          id: 'uploadedImage',
-          type: 'image',
-          srcObj: imgObj,
-          pos: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
-          size: { w, h },
-          angle: 0,
-          locked: false,
-        };
+      const newImageObj = {
+        id: 'uploadedImage',
+        type: 'image',
+        srcObj: imgObj,
+        pos,
+        size: { w, h },
+        angle,
+        locked,
+      };
 
-        setObjects([newImageObj]);
-        setSelectedId('uploadedImage');
+      setObjects([newImageObj]);
+      setSelectedId('uploadedImage');
 
+      if (onUpdate && config?.src !== targetSrc) {
         onUpdate({
           backDesign: {
-            pos: newImageObj.pos,
-            size: newImageObj.size,
-            angle: newImageObj.angle,
-            locked: newImageObj.locked,
-            src: img,
-            designId: design?.id
+            pos,
+            size: { w, h },
+            angle,
+            locked,
+            src: targetSrc,
+            designId
           }
         });
-      });
-    }
-  }, [backDesigns]); // Only watch backDesigns changes
+      }
+    });
+  }, [backDesigns, designColor, pressureOptions?.backDesign?.src]); // Only watch backDesigns changes
 
   const getSelected = () => objects.find(o => o.id === selectedId);
 
