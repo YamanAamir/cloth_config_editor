@@ -1483,7 +1483,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
 
                 {/* Status Bar for Locked / Deadline / Progress */}
-                <div className="hidden lg:flex bg-white border-b border-slate-200 lg:px-6 px-3 py-2 flex items-center justify-between shadow-sm">
+                <div className="hidden lg:flex bg-white border-b border-slate-200 lg:px-6 px-3 py-2 flex items-center justify-between shadow-sm pt-[4.75rem]">
                     <div className="flex items-center lg:gap-4 gap-1.5 flex-wrap">
                         {/* Items configured */}
                         <div className="flex items-center gap-1.5">
