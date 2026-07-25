@@ -1372,7 +1372,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
             <div className="min-h-screen lg:bg-gradient-to-br from-slate-50 to-slate-100">
                 {/* Global Header */}
-                <header id="global-header" className="lg:bg-white/80 backdrop-blur-md lg:border-b lg:border-slate-200 lg:px-6 px-3 lg:py-4 py-2 flex justify-between items-center sticky top-0 z-40">
+                <header id="global-header" className="lg:bg-white/80 lg:border-b lg:border-slate-200 lg:px-6 px-3 lg:py-4 py-2 flex justify-between items-center fixed  w-full top-0 z-40">
                     <div className="flex items-center gap-4">
                         <div className="w-24 flex items-center justify-center">
                             <img src="clothLogo.png" alt="" />
@@ -1391,43 +1391,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 <span className="hidden sm:inline">Undo</span>
                             </button>
                         )}
-                        {/* <button
-                            onClick={handleSaveClick}
-                            disabled={isSaving || (isLocked && !isAdmin)}
-                            className={`flex items-center space-x-2 px-3 py-2 ${isSaving ? 'bg-slate-100' : 'bg-green-600 hover:bg-green-700'} text-white rounded-xl transition-all font-medium text-sm shadow-sm disabled:opacity-50`}
-                        >
-                            <Settings className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} />
-                            <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save Design'}</span>
-                        </button> */}
-                        {/* {dbHistory.length > 0 && (
-                            <button
-                                onClick={() => setIsHistoryModalOpen(true)}
-                                className="flex items-center space-x-2 px-3 py-2 bg-white text-slate-600 rounded-xl hover:bg-slate-50 transition-all font-medium text-sm border border-slate-200"
-                                title="View Saved Versions"
-                            >
-                                <History className="w-4 h-4 text-green-600" />
-                                <span className="hidden sm:inline">History</span>
-                            </button>
-                        )} */}
-                        {/* <button
-                            onClick={() => setShowBackPopup(true)}
-                            className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-900 transition-all font-medium text-sm shadow-md"
-                        >
-                            <Settings className="w-4 h-4" />
-                            <span className="hidden sm:inline">Design Back</span>
-                            <span className="sm:hidden text-[10px]">Back</span>
-                        </button> */}
-                        {/* COMMENTED: Back text feature disabled */}
-                        {/* <button
-                            onClick={() => setShowBackTextPopup(true)}
-                            className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-indigo-700 text-white rounded-xl hover:bg-indigo-800 transition-all font-medium text-sm shadow-md"
-                        >
-                            <Type className="w-4 h-4" />
-                            <span className="hidden sm:inline">Back Text</span>
-                            <span className="sm:hidden text-[10px]">Text</span>
-                        </button> */}
-
-                        {/* Tour Guide Button */}
                         <Popover
                             content={
                                 <div className="flex flex-col p-1 max-w-[240px]">
@@ -2029,7 +1992,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
 
                     {/* ── Mobile Controls ── */}
-                    <div className="lg:px-4 px-2 lg:pt-4 pt-2 pb-2 lg:space-y-4 space-y-2 shrink-0">
+                    <div className="lg:px-4 px-2 lg:pt-4 pt-2 pb-2 lg:space-y-4 space-y-2 shrink-0 md:h-full h-[21vh] overflow-y-auto custom-scrollbar-premium">
                         {!isDesktop && activeMenu === 'T-SHIRT' && <Tshirt key="tshirt-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
                         {!isDesktop && activeMenu === "SWEATSHIRT" && <SweatShirt key="sweatshirt-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
                         {!isDesktop && activeMenu === "HOODIE" && <Hoodie key="hoodie-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
