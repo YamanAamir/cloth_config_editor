@@ -316,6 +316,11 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
                 oData[i] = oData[i + 1] = oData[i + 2] = 0;
                 oData[i + 3] = 255;
               } else {
+                // Snap ink to flat black — keeping the smoothed/anti-aliased
+                // gray from the 3x upscale is what showed up as a soft dark
+                // outline/emboss halo around the text on the shirt.
+                dData[i] = dData[i + 1] = dData[i + 2] = 0;
+                dData[i + 3] = 255;
                 oData[i] = oData[i + 1] = oData[i + 2] = 255;
                 oData[i + 3] = 255;
               }
@@ -326,6 +331,9 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
                 oData[i] = oData[i + 1] = oData[i + 2] = 0;
                 oData[i + 3] = 255;
               } else {
+                // Snap ink to flat white for the same reason as above.
+                dData[i] = dData[i + 1] = dData[i + 2] = 255;
+                dData[i + 3] = 255;
                 oData[i] = oData[i + 1] = oData[i + 2] = 255;
                 oData[i + 3] = 255;
               }

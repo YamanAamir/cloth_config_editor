@@ -535,6 +535,24 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
       img.crossOrigin = "anonymous";
 
       img.onload = () => {
+        // Bleed pass at natural size: push opaque edge colors out into the
+        // transparent margin so the upscale smoothing below can't sample
+        // transparent-black RGB at the edges — that's what was showing up
+        // as a dark outline around the design on the shirt.
+        const bleedCanvas = document.createElement("canvas");
+        bleedCanvas.width = img.width;
+        bleedCanvas.height = img.height;
+        const bctx = bleedCanvas.getContext("2d");
+        bctx.drawImage(img, 0, 0);
+        bctx.globalCompositeOperation = "destination-over";
+        const bleed = 2;
+        for (let ox = -bleed; ox <= bleed; ox++) {
+          for (let oy = -bleed; oy <= bleed; oy++) {
+            if (ox === 0 && oy === 0) continue;
+            bctx.drawImage(img, ox, oy);
+          }
+        }
+
         const BIG_CANVAS = 4096; // pehle 2048 tha
 
         const c = document.createElement("canvas");
@@ -559,7 +577,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
         const dx = (BIG_CANVAS - dw) / 2.5;
         const dy = (BIG_CANVAS - dh) / 2;
 
-        ctx.drawImage(img, dx, dy, dw, dh);
+        ctx.drawImage(bleedCanvas, dx, dy, dw, dh);
 
         cb(c.toDataURL("image/png", 1.0));
       };
