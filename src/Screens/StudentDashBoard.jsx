@@ -1110,125 +1110,16 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 }
                             }
                         }
-                        // Trigger re-send of back design without remounting component
-                        window.dispatchEvent(new Event("resendBackDesign"));
                     }, 300);
                 }
             });
 
             setTimeout(() => {
-                // setAllSelections(JSON.parse(JSON.stringify(latestSelections)));
                 window.dispatchEvent(new Event("resendBackDesign"));
-            }, 650);
+            }, 350);
         }
     }, [activeMenu, garmentTab, isAppReady]);
-    // On initial load, if saved garment data is already present, immediately resend
-    // the relevant preview messages so flag/logo payloads aren't stuck behind a tab switch.
-    // useEffect(() => {
-    //     if (!isAppReady || !allSelections?.[activeMenu]) return;
 
-    //     const currentData = allSelections[activeMenu];
-    //     const prefixMap = {
-    //         'T-SHIRT': 'T-Shirt: ',
-    //         'SWEATSHIRT': 'SweatShirt: ',
-    //         'HOODIE': 'Hoodie: ',
-    //         'ZIPPERHOODIE': 'ZipperHoodie: ',
-    //         'SWEATPANTS': 'SweatPant: ',
-    //         'SHORTS': 'Short: '
-    //     };
-    //     const prefix = prefixMap[activeMenu];
-
-    //     ['preview-iframe', 'preview-iframe2'].forEach((id) => {
-    //         const iframe = document.getElementById(id);
-    //         if (iframe?.contentWindow) {
-    //             if (prefix) {
-    //                 if (currentData.selectedColor) iframe.contentWindow.postMessage(`${prefix}${currentData.selectedColor.toLowerCase()}`, "*");
-    //                 if (currentData.selectedSize) iframe.contentWindow.postMessage(`${prefix}size:${currentData.selectedSize}`, "*");
-    //             }
-    //         }
-    //     });
-
-    //     window.dispatchEvent(new Event("resendBackDesign"));
-    // }, [isAppReady, activeMenu, allSelections]);
-    // Safety-net: first load pe (default T-SHIRT tab) bhi flags/logos postMessage
-    // ek dafa force-resync ho jaye, jaisa tab-switch pe hota hai.
-    // PlayCanvas ka asset/texture load app:ready ke baad bhi thodi der le sakta hai,
-    // isliye ek single timer ki bajaye multiple retries karte hain taake reliably catch ho jaye.
-    // useEffect(() => {
-    //     if (!isAppReady || !allSelectionsRef.current?.[activeMenu]) return;
-
-    //     const currentData = allSelectionsRef.current[activeMenu];
-    //     const prefixMap = {
-    //         'T-SHIRT': 'T-Shirt: ',
-    //         'SWEATSHIRT': 'SweatShirt: ',
-    //         'HOODIE': 'Hoodie: ',
-    //         'ZIPPERHOODIE': 'ZipperHoodie: ',
-    //         'SWEATPANTS': 'SweatPant: ',
-    //         'SHORTS': 'Short: '
-    //     };
-    //     const prefix = prefixMap[activeMenu];
-
-    //     ['preview-iframe', 'preview-iframe2'].forEach((id) => {
-    //         const iframe = document.getElementById(id);
-    //         if (iframe?.contentWindow) {
-    //             if (prefix) {
-    //                 if (currentData.selectedColor) iframe.contentWindow.postMessage(`${prefix}${currentData.selectedColor.toLowerCase()}`, "*");
-    //                 if (currentData.selectedSize) iframe.contentWindow.postMessage(`${prefix}size:${currentData.selectedSize}`, "*");
-    //             }
-    //         }
-    //     });
-
-    //     window.dispatchEvent(new Event("resendBackDesign"));
-    // }, [isAppReady, activeMenu]);
-    useEffect(() => {
-        if (!isAppReady || !allSelectionsRef.current?.[activeMenu]) return;
-
-        const currentData = allSelectionsRef.current[activeMenu];
-
-        // Dedupe: agar same garment + same color + same size pehle hi bheja ja chuka hai,
-        // to Effect #1 (Page-switch effect) ke sath duplicate mat bhejo
-        const key = `${activeMenu}:${currentData.selectedColor}:${currentData.selectedSize}`;
-        if (lastSentKeyRef.current === key) return;
-        lastSentKeyRef.current = key;
-
-        const prefixMap = {
-            'T-SHIRT': 'T-Shirt: ',
-            'SWEATSHIRT': 'SweatShirt: ',
-            'HOODIE': 'Hoodie: ',
-            'ZIPPERHOODIE': 'ZipperHoodie: ',
-            'SWEATPANTS': 'SweatPant: ',
-            'SHORTS': 'Short: '
-        };
-        const prefix = prefixMap[activeMenu];
-
-        ['preview-iframe', 'preview-iframe2'].forEach((id) => {
-            const iframe = document.getElementById(id);
-            if (iframe?.contentWindow) {
-                if (prefix) {
-                    if (currentData.selectedColor) iframe.contentWindow.postMessage(`${prefix}${currentData.selectedColor.toLowerCase()}`, "*");
-                    if (currentData.selectedSize) iframe.contentWindow.postMessage(`${prefix}size:${currentData.selectedSize}`, "*");
-                }
-            }
-        });
-
-        window.dispatchEvent(new Event("resendBackDesign"));
-    }, [isAppReady, activeMenu]);
-    const didInitialForceSync = useRef(false);
-    useEffect(() => {
-        if (!isAppReady || didInitialForceSync.current) return;
-        didInitialForceSync.current = true;
-
-        const doSync = () => {
-            // "Page : X" message ko yaha retries se hata diya gaya hai.
-            // Ab Page message deduplicate hokar sirf main useEffect se hi jayega (jahan lastSentPageRef laga hai).
-            window.dispatchEvent(new Event("resendBackDesign"));
-        };
-
-        // Multiple retries — 1s, 2.5s, 4s — taake variable load time cover ho jaye
-        const timers = [1000, 2500, 4000].map(delay => setTimeout(doSync, delay));
-
-        return () => timers.forEach(clearTimeout);
-    }, [isAppReady]);
     useEffect(() => {
         const handleMessage = (event) => {
             if (event.data === 'app:ready') {
@@ -1786,15 +1677,17 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                             <p className="text-sm text-slate-500">Loading 3D Preview...</p>
                                         </div>
                                     )} */}
-                                    <iframe
-                                        id="preview-iframe"
-                                        src={'https://playcanv.as/e/p/1b1eadeb/'}
-                                        className="w-full h-full"
-                                        frameBorder="0"
-                                        title="3D Student Card Preview"
-                                        onLoad={() => setIsIframeLoaded(true)}
-                                        onError={() => setIsIframeLoaded(true)}
-                                    />
+                                    {isDesktop && (
+                                        <iframe
+                                            id="preview-iframe"
+                                            src={'https://playcanv.as/e/p/1b1eadeb/'}
+                                            className="w-full h-full"
+                                            frameBorder="0"
+                                            title="3D Student Card Preview"
+                                            onLoad={() => setIsIframeLoaded(true)}
+                                            onError={() => setIsIframeLoaded(true)}
+                                        />
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1802,15 +1695,17 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                 </div>
                 <div id="main-content-mobile" className="lg:hidden flex flex-col flex-1 overflow-y-auto relative">
                     <div className="overflow-hiddenshrink-0" style={{ height: '300px' }}>
-                        <iframe
-                            id="preview-iframe2"
-                            src={'https://playcanv.as/e/p/1b1eadeb/'}
-                            className="w-full h-full"
-                            frameBorder="0"
-                            title="3D Preview"
-                            onLoad={() => setIsIframeLoaded(true)}
-                            onError={() => setIsIframeLoaded(true)}
-                        />
+                        {!isDesktop && (
+                            <iframe
+                                id="preview-iframe2"
+                                src={'https://playcanv.as/e/p/1b1eadeb/'}
+                                className="w-full h-full"
+                                frameBorder="0"
+                                title="3D Preview"
+                                onLoad={() => setIsIframeLoaded(true)}
+                                onError={() => setIsIframeLoaded(true)}
+                            />
+                        )}
                     </div>
 
                     {/* ── Product strip (garment selector) ── */}

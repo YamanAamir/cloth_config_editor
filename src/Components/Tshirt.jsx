@@ -64,11 +64,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
 
   const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" }); // cache last canvas data
   const lastSentBackRef = React.useRef({ diffuse: "", opacity: "", color: "" }); // dedupe: last actually SENT data
-  React.useEffect(() => {
-    if (isAppReady) {
-      lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
-    }
-  }, [isAppReady]);
+
   const handleDesignColorChange = (newDesignColor) => {
     setDesignColor(newDesignColor);
     designColorRef.current = newDesignColor;
@@ -1196,9 +1192,9 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
             onClick={() => setShowFlagModal(false)}
           />
 
-          <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
+          <div className="relative bg-white md:rounded-[2.5rem] rounded-[1.5rem] shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
             {/* Header */}
-            <div className="flex items-center justify-between px-8 py-7 border-b border-slate-50 bg-white/50 sticky top-0 z-10">
+            <div className="flex items-center justify-between md:px-8 px-4 md:py-7 py-3 border-b border-slate-50 bg-white/50 sticky top-0 z-10">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-green-50 rounded-2xl">
                   {currentField.includes("Logo") ? (
@@ -1224,16 +1220,16 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
               </button>
             </div>
 
-            <div className="p-8 overflow-y-auto custom-scrollbar-premium bg-slate-50/30">
+            <div className="md:p-8 p-4 overflow-y-auto custom-scrollbar-premium bg-slate-50/30">
               {currentField.includes("Logo") ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+                <div className="grid grid-cols-3 sm:grid-cols-3 md:gap-6 gap-2">
                   {logos && logos.map((logo) => (
                     <button
                       key={logo.id}
                       onClick={() => selectLogo(logo.name, logo.id)}
                       className="group relative flex flex-col items-center p-2 rounded-3xl transition-all duration-300 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50"
                     >
-                      <div className="w-full aspect-square mb-4 flex items-center justify-center bg-white rounded-2xl border border-slate-100 shadow-sm group-hover:border-green-200 group-hover:-translate-y-2 transition-all duration-500 p-5 overflow-hidden">
+                      <div className="w-full aspect-square mb-4 flex items-center justify-center bg-white rounded-2xl border border-slate-100 shadow-sm group-hover:border-green-200 group-hover:-translate-y-2 transition-all duration-500 md:p-5 p-2 overflow-hidden">
                         <img
                           src={`${BASE_URL}${logo.file_path}`.replace(/\\/g, '/')}
                           alt={logo.name}
@@ -1264,12 +1260,12 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
                   {countries.map((country) => (
                     <button
                       key={country.name}
                       onClick={() => selectFlag(country.name)}
-                      className="group flex flex-col items-center gap-3 p-4 rounded-xl bg-white border border-slate-100 hover:border-green-300 hover:shadow-lg hover:shadow-green-900/5 hover:-translate-y-1 transition-all duration-300"
+                      className="group flex flex-col items-center gap-3 p-2 md:p-4 rounded-xl bg-white border border-slate-100 hover:border-green-300 hover:shadow-lg hover:shadow-green-900/5 hover:-translate-y-1 transition-all duration-300"
                     >
                       <div className="relative w-16 h-12 rounded-lg overflow-hidden shadow-sm bg-slate-100 group-hover:ring-4 group-hover:ring-green-50 transition-all duration-300">
                         <img
@@ -1288,7 +1284,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
             </div>
 
             {/* Quick Helper Footer */}
-            <div className="px-8 py-5 border-t border-slate-50 bg-white flex justify-center items-center gap-2">
+            <div className="md:px-8 px-4 md:py-5 py-3 border-t border-slate-50 bg-white flex justify-center items-center gap-2">
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
               <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">
                 Choose an asset to customize your placement
