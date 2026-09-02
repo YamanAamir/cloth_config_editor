@@ -466,6 +466,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
   }, []);
 
   useEffect(() => {
+    if (!isAppReady || !selectedColor) return;
     const colorMap = {
       "heather grey": "Short:heatherGrey",
       black: "Short:black",
@@ -475,17 +476,26 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
     const msg = colorMap[selectedColor.toLowerCase()];
     if (!msg) return;
     ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(msg, "*"); });
+    prevRef.current = {};
   }, [selectedColor, isAppReady]);
 
   useEffect(() => {
-    if (!selectedSize) return;
+    if (!isAppReady || !selectedSize) return;
     const msg = `Short:size:${selectedSize}`;
     ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(msg, "*"); });
   }, [selectedSize, isAppReady]);
 
   const prevRef = React.useRef({});
   const renderCounterRef = React.useRef({});
+
   useEffect(() => {
+    if (isAppReady) {
+      prevRef.current = {};
+    }
+  }, [isAppReady]);
+
+  useEffect(() => {
+    if (!isAppReady) return;
     ["rightLeg", "leftLeg"].forEach(area => {
       const text = pressureOptions[`${area}Text`]?.trim() || "";
       const flag = pressureOptions[`${area}Flag`] || "";
@@ -497,16 +507,14 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
       const textColor = pressureOptions[`${area}TextColor`] || "#ffffff";
 
       const prev = prevRef.current[area] || {};
-      // Text and flag/logo are independent textures — only re-render the one
-      // whose own fields actually changed, so typing text doesn't also
-      // re-trigger the (async, network-fetched) flag/logo texture.
       const textChanged = prev.text !== text || prev.textColor !== textColor;
       const flagLogoChanged =
         prev.flag !== flag || prev.flag2 !== flag2 || prev.flagCount !== flagCount ||
         prev.logoPre !== logoPre || prev.logoCustom !== logoCustom || prev.type !== type;
+      const colorChanged = prev.color !== selectedColor;
 
-      if (!textChanged && !flagLogoChanged) return;
-      prevRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor };
+      if (!textChanged && !flagLogoChanged && !colorChanged) return;
+      prevRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor, color: selectedColor };
 
       const hasFlag = !!flag && type === "flag";
       const hasLogo = !!(logoPre || logoCustom) && type === "logo";
@@ -593,7 +601,7 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
         });
       }, flag2, flagCount, type);
     });
-  }, [isAppReady, pressureOptions]);
+  }, [isAppReady, pressureOptions, selectedColor]);
 
   const colors = [
     { name: "Heather Grey", value: "#D4D9DC", border: "#D4D9DC" },

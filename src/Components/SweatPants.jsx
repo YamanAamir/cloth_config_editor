@@ -494,6 +494,7 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
   }, []);
 
   useEffect(() => {
+    if (!isAppReady || !selectedColor) return;
     const colorMap = {
       "heather grey": "SweatPant:heatherGrey",
       black: "SweatPant:black",
@@ -503,17 +504,26 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
     const msg = colorMap[selectedColor.toLowerCase()];
     if (!msg) return;
     ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(msg, "*"); });
+    prevRef.current = {};
   }, [selectedColor, isAppReady]);
 
   useEffect(() => {
-    if (!selectedSize) return;
+    if (!isAppReady || !selectedSize) return;
     const msg = `SweatPant:size:${selectedSize}`;
     ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(msg, "*"); });
   }, [selectedSize, isAppReady]);
 
   const prevRef = React.useRef({});
   const renderCounterRef = React.useRef({});
+
   useEffect(() => {
+    if (isAppReady) {
+      prevRef.current = {};
+    }
+  }, [isAppReady]);
+
+  useEffect(() => {
+    if (!isAppReady) return;
     ["rightLeg", "leftLeg"].forEach(area => {
       const text = pressureOptions[`${area}Text`]?.trim() || "";
       const flag = pressureOptions[`${area}Flag`] || "";
@@ -524,8 +534,13 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
       const type = pressureOptions[`${area}Type`] || "";
       const textColor = pressureOptions[`${area}TextColor`] || "#ffffff";
       const prev = prevRef.current[area] || {};
-      if (prev.text === text && prev.flag === flag && prev.flag2 === flag2 && prev.flagCount === flagCount && prev.logoPre === logoPre && prev.logoCustom === logoCustom && prev.type === type && prev.textColor === textColor) return;
-      prevRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor };
+      if (
+        prev.text === text && prev.flag === flag && prev.flag2 === flag2 &&
+        prev.flagCount === flagCount && prev.logoPre === logoPre &&
+        prev.logoCustom === logoCustom && prev.type === type &&
+        prev.textColor === textColor && prev.color === selectedColor
+      ) return;
+      prevRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor, color: selectedColor };
 
       const currentRender = (renderCounterRef.current[area] || 0) + 1;
       renderCounterRef.current[area] = currentRender;
@@ -551,7 +566,7 @@ const SweatPants = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, acti
         });
       }, flag2, flagCount, textColor, type);
     });
-  }, [isAppReady, pressureOptions]);
+  }, [isAppReady, pressureOptions, selectedColor]);
 
   const colors = [
     { name: "Heather Grey", value: "#D4D9DC", border: "#D4D9DC" },

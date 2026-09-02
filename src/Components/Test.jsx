@@ -251,6 +251,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
     // Clear any pending export
     if (exportTimerRef.current) clearTimeout(exportTimerRef.current);
 
+    const exportDelay = isInteractingRef.current ? 300 : 50;
     exportTimerRef.current = setTimeout(() => {
       // Skip export if user is still interacting (drag / resize / rotate)
       if (isInteractingRef.current) return;
@@ -373,7 +374,7 @@ export default function Test({ pressureOptions, onUpdate, postEx, isAppReady, de
           }
         }
       });
-    }, 400); // 400ms debounce — waits until objects stop changing
+    }, exportDelay); // 400ms debounce — waits until objects stop changing
 
     return () => { if (exportTimerRef.current) clearTimeout(exportTimerRef.current); };
   }, [objects]); // ← ONLY objects

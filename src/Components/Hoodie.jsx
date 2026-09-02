@@ -14,7 +14,27 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [currentField, setCurrentField] = useState("");
 
-  const selectedColor = data?.selectedColor || "Red";
+  const getInitialColor = () => {
+    if (data?.selectedColor) {
+      if (backDesigns) {
+        const hasLight = !!backDesigns.configured_file_path;
+        const hasDark = !!backDesigns.configured_file_path_2;
+        const currentMeta = colors.find(c => c.name.toLowerCase() === data.selectedColor.toLowerCase());
+        if (hasLight && !hasDark && currentMeta?.dark) return "White";
+        if (hasDark && !hasLight && currentMeta && !currentMeta.dark) return "Black";
+      }
+      return data.selectedColor;
+    }
+    if (backDesigns) {
+      const hasLight = !!backDesigns.configured_file_path;
+      const hasDark = !!backDesigns.configured_file_path_2;
+      if (hasLight && !hasDark) return "White";
+      if (hasDark && !hasLight) return "Black";
+    }
+    return "Red";
+  };
+
+  const selectedColor = getInitialColor();
   const selectedSize = data?.selectedSize || "";
 
   const initialDesignColor = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase())?.dark ? "dark" : "light";
@@ -67,12 +87,20 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   React.useEffect(() => {
     const handleResend = () => {
       if (lastBackDataRef.current?.diffuse) {
+        lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
         sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
       }
     };
     window.addEventListener("resendBackDesign", handleResend);
     return () => window.removeEventListener("resendBackDesign", handleResend);
-  }, []);
+  }, [isAppReady]);
+
+  React.useEffect(() => {
+    if (isAppReady && lastBackDataRef.current?.diffuse) {
+      lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
+      sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
+    }
+  }, [isAppReady]);
 
   const handleDesignColorChange = (newDesignColor) => {
     setDesignColor(newDesignColor);
@@ -646,25 +674,37 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   }, [logos]);
 
   useEffect(() => {
+    if (!isAppReady || !selectedColor) return;
     const m = { red: "Hoodie:red", black: "Hoodie:black", white: "Hoodie:white", natural: "Hoodie:natural", "heather grey": "Hoodie:heatherGrey", navy: "Hoodie:navy", "light pink": "Hoodie:lightPink", "olive green": "Hoodie:oliveGreen", blue: "Hoodie:blue", purple: "Hoodie:purple" };
     const msg = m[selectedColor.toLowerCase()]; if (!msg) return;
     ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(msg, "*"); });
+
+    // When color changes, reset texture cache so textures re-apply over the new material
+    prevRef.current = {};
   }, [selectedColor, isAppReady]);
 
   useEffect(() => {
-    if (!selectedSize) return;
+    if (!isAppReady || !selectedSize) return;
     ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(`Hoodie:size:${selectedSize}`, "*"); });
   }, [selectedSize, isAppReady]);
 
   const prevRef = React.useRef({});
   const renderCounterRef = React.useRef({});
+
   useEffect(() => {
+    if (isAppReady) {
+      prevRef.current = {};
+    }
+  }, [isAppReady]);
+
+  useEffect(() => {
+    if (!isAppReady) return;
     ["rightChest", "leftChest", "bottomChest", "rightSleeve", "leftSleeve"].forEach(area => {
       const text = pressureOptions[`${area}Text`]?.trim() || "", flag = pressureOptions[`${area}Flag`] || "", flag2 = pressureOptions[`${area}Flag2`] || "", flagCount = pressureOptions[`${area}FlagCount`] || 1, logoPre = pressureOptions[`${area}LogoPredefined`] || "", logoCustom = pressureOptions[`${area}LogoCustom`] || "", type = pressureOptions[`${area}Type`] || "";
       const textColor = pressureOptions[`${area}TextColor`] || "#ffffff";
       const p = prevRef.current[area] || {};
-      if (p.text === text && p.flag === flag && p.flag2 === flag2 && p.flagCount === flagCount && p.logoPre === logoPre && p.logoCustom === logoCustom && p.type === type && p.textColor === textColor) return;
-      prevRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor };
+      if (p.text === text && p.flag === flag && p.flag2 === flag2 && p.flagCount === flagCount && p.logoPre === logoPre && p.logoCustom === logoCustom && p.type === type && p.textColor === textColor && p.color === selectedColor) return;
+      prevRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor, color: selectedColor };
 
       const currentRender = (renderCounterRef.current[area] || 0) + 1;
       renderCounterRef.current[area] = currentRender;
@@ -689,7 +729,7 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         });
       }, flag2, flagCount, textColor);
     });
-  }, [isAppReady, pressureOptions]);
+  }, [isAppReady, pressureOptions, selectedColor]);
 
   // Filter colors based on garment toggle — dark garment shows dark colors, light shows light colors
   const visibleColors = backDesigns

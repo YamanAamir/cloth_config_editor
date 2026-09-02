@@ -14,7 +14,27 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [currentField, setCurrentField] = useState("");
 
-  const selectedColor = data?.selectedColor || "Red";
+  const getInitialColor = () => {
+    if (data?.selectedColor) {
+      if (backDesigns) {
+        const hasLight = !!backDesigns.configured_file_path;
+        const hasDark = !!backDesigns.configured_file_path_2;
+        const currentMeta = colors.find(c => c.name.toLowerCase() === data.selectedColor.toLowerCase());
+        if (hasLight && !hasDark && currentMeta?.dark) return "White";
+        if (hasDark && !hasLight && currentMeta && !currentMeta.dark) return "Black";
+      }
+      return data.selectedColor;
+    }
+    if (backDesigns) {
+      const hasLight = !!backDesigns.configured_file_path;
+      const hasDark = !!backDesigns.configured_file_path_2;
+      if (hasLight && !hasDark) return "White";
+      if (hasDark && !hasLight) return "Black";
+    }
+    return "Red";
+  };
+
+  const selectedColor = getInitialColor();
   const selectedSize = data?.selectedSize || "";
 
   const initialDesignColor = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase())?.dark ? "dark" : "light";
@@ -67,12 +87,21 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
   React.useEffect(() => {
     const handleResend = () => {
       if (lastBackDataRef.current?.diffuse) {
+        lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
         sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
       }
     };
     window.addEventListener("resendBackDesign", handleResend);
     return () => window.removeEventListener("resendBackDesign", handleResend);
-  }, []);
+  }, [isAppReady]);
+
+  // When isAppReady becomes true on page load/refresh, send back design if already rendered
+  React.useEffect(() => {
+    if (isAppReady && lastBackDataRef.current?.diffuse) {
+      lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
+      sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
+    }
+  }, [isAppReady]);
 
   const handleDesignColorChange = (newDesignColor) => {
     setDesignColor(newDesignColor);
@@ -487,7 +516,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
   };
 
   const sendBackDesign = (diffuseB64, opacityB64, color) => {
-    if (!diffuseB64 && !opacityB64) return;
+    if (!isAppReady || (!diffuseB64 && !opacityB64)) return;
 
     // Dedupe: agar same data + same color pehle hi bheja ja chuka hai, to skip
     if (
@@ -643,6 +672,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
   }, [logos]);
 
   useEffect(() => {
+    if (!isAppReady || !selectedColor) return;
     const colorMap = {
       red: "ZipperHoodie:red", black: "ZipperHoodie:black", white: "ZipperHoodie:white", natural: "ZipperHoodie:natural",
       'heather grey': "ZipperHoodie:heatherGrey", navy: "ZipperHoodie:navy", 'light pink': "ZipperHoodie:lightPink",
@@ -654,10 +684,11 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
       const iframe = document.getElementById(id);
       if (iframe?.contentWindow) iframe.contentWindow.postMessage(message, "*");
     });
+    prevPressureOptionsRef.current = {};
   }, [selectedColor, isAppReady]);
 
   useEffect(() => {
-    if (!selectedSize) return;
+    if (!isAppReady || !selectedSize) return;
     const message = `ZipperHoodie:size:${selectedSize}`;
     ["preview-iframe", "preview-iframe2"].forEach((id) => {
       const iframe = document.getElementById(id);
@@ -669,6 +700,13 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
   const renderCounterRef = React.useRef({});
 
   useEffect(() => {
+    if (isAppReady) {
+      prevPressureOptionsRef.current = {};
+    }
+  }, [isAppReady]);
+
+  useEffect(() => {
+    if (!isAppReady) return;
     const areas = ["rightChest", "leftChest", "rightSleeve", "leftSleeve"];
     areas.forEach((area) => {
       const text = pressureOptions[`${area}Text`]?.trim() || "";
@@ -684,10 +722,11 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
       if (
         prev.text === text && prev.flag === flag && prev.flag2 === flag2 &&
         prev.flagCount === flagCount && prev.logoPre === logoPre &&
-        prev.logoCustom === logoCustom && prev.type === type && prev.textColor === textColor
+        prev.logoCustom === logoCustom && prev.type === type && prev.textColor === textColor &&
+        prev.color === selectedColor
       ) return;
 
-      prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor };
+      prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor, color: selectedColor };
 
       const currentRender = (renderCounterRef.current[area] || 0) + 1;
       renderCounterRef.current[area] = currentRender;
@@ -716,7 +755,7 @@ const ZippedHoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxChars
         });
       }, flag2, flagCount, textColor);
     });
-  }, [isAppReady, pressureOptions]);
+  }, [isAppReady, pressureOptions, selectedColor]);
 
   // Filter colors based on garment toggle — dark garment shows dark colors, light shows light colors
   const visibleColors = backDesigns

@@ -15,7 +15,27 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [currentField, setCurrentField] = useState("");
 
-  const selectedColor = data?.selectedColor || "Red";
+  const getInitialColor = () => {
+    if (data?.selectedColor) {
+      if (backDesigns) {
+        const hasLight = !!backDesigns.configured_file_path;
+        const hasDark = !!backDesigns.configured_file_path_2;
+        const currentMeta = colors.find(c => c.name.toLowerCase() === data.selectedColor.toLowerCase());
+        if (hasLight && !hasDark && currentMeta?.dark) return "White";
+        if (hasDark && !hasLight && currentMeta && !currentMeta.dark) return "Black";
+      }
+      return data.selectedColor;
+    }
+    if (backDesigns) {
+      const hasLight = !!backDesigns.configured_file_path;
+      const hasDark = !!backDesigns.configured_file_path_2;
+      if (hasLight && !hasDark) return "White";
+      if (hasDark && !hasLight) return "Black";
+    }
+    return "Red";
+  };
+
+  const selectedColor = getInitialColor();
   const selectedSize = data?.selectedSize || "";
 
   const initialDesignColor = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase())?.dark ? "dark" : "light";
@@ -613,6 +633,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   };
 
   useEffect(() => {
+    if (!isAppReady || !selectedColor) return;
     const colorMap = {
       red: "T-Shirt:red",
       black: "T-Shirt:black",
@@ -635,10 +656,11 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         iframe.contentWindow.postMessage(message, "*");
       }
     });
+    prevPressureOptionsRef.current = {};
   }, [selectedColor, isAppReady]);
 
   useEffect(() => {
-    if (!selectedSize) return;
+    if (!isAppReady || !selectedSize) return;
     const message = `T-Shirt:size:${selectedSize}`;
     ["preview-iframe", "preview-iframe2"].forEach((id) => {
       const iframe = document.getElementById(id);
@@ -660,6 +682,7 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   }, [isAppReady]);
 
   useEffect(() => {
+    if (!isAppReady) return;
     const areas = ["rightChest", "leftChest", "rightSleeve", "leftSleeve"];
 
     areas.forEach((area) => {
@@ -681,11 +704,12 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         prev.logoPre !== logoPre ||
         prev.logoCustom !== logoCustom ||
         prev.type !== type ||
-        prev.textColor !== textColor;
+        prev.textColor !== textColor ||
+        prev.color !== selectedColor;
 
       if (!hasChanged) return;
 
-      prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor };
+      prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor, color: selectedColor };
 
       // Stale result prevention — renderCounterRef
       const currentRender = (renderCounterRef.current[area] || 0) + 1;
@@ -720,10 +744,10 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         });
       }, flag2, textColor, type);
     });
-  }, [isAppReady, pressureOptions]);
+  }, [isAppReady, pressureOptions, selectedColor]);
 
   const sendBackDesign = (diffuseB64, opacityB64, color) => {
-    if (!diffuseB64 && !opacityB64) return;
+    if (!isAppReady || (!diffuseB64 && !opacityB64)) return;
 
     // Dedupe: agar same data + same color pehle hi bheja ja chuka hai, to skip
     if (
@@ -815,12 +839,21 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   useEffect(() => {
     const handleResend = () => {
       if (lastBackDataRef.current?.diffuse) {
+        lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
         sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
       }
     };
     window.addEventListener("resendBackDesign", handleResend);
     return () => window.removeEventListener("resendBackDesign", handleResend);
-  }, []);
+  }, [isAppReady]);
+
+  // When isAppReady becomes true on page load/refresh, send back design if already rendered
+  useEffect(() => {
+    if (isAppReady && lastBackDataRef.current?.diffuse) {
+      lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
+      sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
+    }
+  }, [isAppReady]);
 
   const handleBackDesignUpdate = (update) => {
     if (update.canvasBase64) {

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import { message, Tag, Dropdown, Drawer, Avatar, Divider, Form, Input, Switch, Tour, Button, Modal, Popover } from 'antd';
 import img1 from '../assets/menuimages/1.png';
 import img2 from '../assets/menuimages/2.png';
@@ -25,8 +25,10 @@ import { getMyOrder, getMyOrderHistory, placeOrder, getStudentProfile, updateStu
 import useBackDesignStore from '../store/backDesignStore';
 import { getFlagUrl } from '../utils/flags';
 import { BASE_URL, DEFAULT_SELECTIONS, GARMENT_COLORS } from '../utils/const';
+import { sendPageMessage, GARMENT_PAGE_MAP } from '../utils/postMessage';
 
 const DARK_COLOR_NAMES = new Set(GARMENT_COLORS.filter(c => c.dark).map(c => c.name));
+
 import useSocket from '../hooks/useSocket';
 
 const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup, initialOrderData, initialHistoryData, initialBackDesignData /*, setShowBackTextPopup */ }) => { // COMMENTED: Back text feature disabled
@@ -214,6 +216,17 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
         setAllSelectionsState(val);
     };
     const [activeMenu, setActiveMenu] = useState('T-SHIRT');
+    const activeMenuRef = useRef(activeMenu);
+    useEffect(() => { activeMenuRef.current = activeMenu; }, [activeMenu]);
+
+    const handleGarmentSwitch = (newGarment) => {
+        const pageNum = GARMENT_PAGE_MAP[newGarment] || 1;
+        if (lastSentPageRef.current !== pageNum) {
+            lastSentPageRef.current = pageNum;
+            sendPageMessage(pageNum);
+        }
+        setActiveMenu(newGarment);
+    };
     const [garmentTab, setGarmentTab] = useState('size'); // 'size' | 'pressure'
     const [isDesktop, setIsDesktop] = useState(() =>
         typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : true
@@ -933,7 +946,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
     const handleSaveClick = () => {
         if (isLocked && !isAdmin) {
-            message.warning("Order is locked and cannot be saved.");
+            message.warning("Ordren er låst og kan ikke gemmes.");
             return;
         }
         // Build list of configured garments for user to pick from
@@ -944,7 +957,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             }
         });
         if (Object.keys(configured).length === 0) {
-            message.warning("Pehle koi garment configure karein.");
+            message.warning("Konfigurer venligst et produkt først.");
             return;
         }
         setSaveGarmentSelection(configured);
@@ -1007,7 +1020,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
                 // If edit-window and new products added → redirect to Stripe immediately
                 if (requiresPayment && savedData?.orderId) {
-                    message.info("Design saved! Redirecting to payment for new products…");
+                    message.info("Design gemt! Omdirigerer til betaling for nye produkter…");
                     try {
                         const payRes = await createCheckoutSession({ orderId: savedData.orderId });
                         if (payRes.data?.url) {
@@ -1016,10 +1029,10 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                         }
                     } catch (payErr) {
                         console.error("Payment redirect failed:", payErr);
-                        message.warning("Design saved. Please pay the balance from the dashboard.");
+                        message.warning("Design gemt. Betal venligst restbeløbet fra oversigten.");
                     }
                 } else {
-                    message.success("Design saved successfully!");
+                    message.success("Design gemt!");
                 }
 
                 await fetchOrderData();
@@ -1058,71 +1071,27 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     // Unified message sending logic for Page switching and state synchronization
     useEffect(() => {
         if (!isAppReady) return;
+        const pageNum = GARMENT_PAGE_MAP[activeMenu] || 1;
 
-        // Stale localStorage read hata diya — allSelections hi hamesha authoritative/fresh state hai
-        // (localStorage write App.jsx mein 800ms debounce hai, isliye seedha localStorage padhna purana data de sakta hai)
-        const latestSelections = allSelections;
-        const menuIndex = menuItems.findIndex(item => item.name === activeMenu);
-        if (menuIndex !== -1) {
-            const pageNum = menuIndex + 1;
-            // Sirf tab bhejo jab page number actually badla ho — garmentTab switch
-            // (Size <-> Design) par pageNum same rehta hai, isliye repeat postMessage nahi jayega
-            const shouldSendPage = lastSentPageRef.current !== pageNum;
-            if (shouldSendPage) lastSentPageRef.current = pageNum;
-            console.log("shouldSendPage", shouldSendPage);
-
-            ['preview-iframe', 'preview-iframe2'].forEach((id) => {
-                const iframe = document.getElementById(id);
-                if (iframe?.contentWindow) {
-                    // 1. Switch Page — sirf tab jab page number naya ho
-                    if (shouldSendPage) {
-                        iframe.contentWindow.postMessage(`Page : ${pageNum}`, "*");
-                    }
-                    // iframe.contentWindow.postMessage('Tilvælg:no', "*");
-
-                    // 2. Initial state sync for the new model
-                    setTimeout(() => {
-                        const currentIframe = document.getElementById(id);
-                        if (currentIframe?.contentWindow) {
-                            const currentData = latestSelections[activeMenu];
-                            if (currentData) {
-                                const { selectedColor, selectedSize } = currentData;
-                                const key = `${activeMenu}:${selectedColor}:${selectedSize}`;
-
-                                // Safety-net effect ne pehle hi ye bhej diya ho to skip karo
-                                if (lastSentKeyRef.current !== key) {
-                                    lastSentKeyRef.current = key;
-
-                                    const prefixMap = {
-                                        'T-SHIRT': 'T-Shirt: ',
-                                        'SWEATSHIRT': 'SweatShirt: ',
-                                        'HOODIE': 'Hoodie: ',
-                                        'ZIPPERHOODIE': 'ZipperHoodie: ',
-                                        'SWEATPANTS': 'SweatPant: ',
-                                        'SHORTS': 'Short: '
-                                    };
-
-                                    const prefix = prefixMap[activeMenu];
-                                    if (prefix) {
-                                        if (selectedColor) currentIframe.contentWindow.postMessage(`${prefix}${selectedColor.toLowerCase()}`, "*");
-                                        if (selectedSize) currentIframe.contentWindow.postMessage(`${prefix}size:${selectedSize}`, "*");
-                                    }
-                                }
-                            }
-                        }
-                    }, 300);
-                }
-            });
-
-            setTimeout(() => {
-                window.dispatchEvent(new Event("resendBackDesign"));
-            }, 350);
+        if (lastSentPageRef.current !== pageNum) {
+            lastSentPageRef.current = pageNum;
+            sendPageMessage(pageNum);
         }
+
+        const timer = setTimeout(() => {
+            window.dispatchEvent(new Event("resendBackDesign"));
+        }, 350);
+
+        return () => clearTimeout(timer);
     }, [activeMenu, garmentTab, isAppReady]);
 
     useEffect(() => {
         const handleMessage = (event) => {
             if (event.data === 'app:ready') {
+                // Hamesha app:ready aane par pehle active page number postMessage bhejo
+                const pageNum = GARMENT_PAGE_MAP[activeMenuRef.current] || 1;
+                lastSentPageRef.current = pageNum;
+                sendPageMessage(pageNum);
                 setIsAppReady(true);
             }
         };
@@ -1135,6 +1104,9 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             setIsAppReady(prev => {
                 if (!prev) {
                     console.warn("PlayCanvas app:ready timeout — WebGL may not be supported. Enabling UI anyway.");
+                    const pageNum = GARMENT_PAGE_MAP[activeMenuRef.current] || 1;
+                    lastSentPageRef.current = pageNum;
+                    sendPageMessage(pageNum);
                 }
                 return true;
             });
@@ -1172,11 +1144,11 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
                     <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-100">
                         <h3 className="text-lg font-bold text-slate-800 mb-2">
-                            Copy Design?
+                            Kopier design?
                         </h3>
                         <p className="text-sm text-slate-500 mb-6">
                             Du har konfigureret en <span className="font-bold text-green-700">{copyDesignPrompt.from}</span>.
-                            Vil du også kopiere dette design til <span className="font-bold text-green-700">{copyDesignPrompt.to}</span>
+                            Vil du også kopiere dette design til <span className="font-bold text-green-700">{copyDesignPrompt.to}</span>?
                         </p>
                         <div className="flex gap-3">
                             <button
@@ -1194,21 +1166,21 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                     handleUpdateSelection(copyDesignPrompt.to, {
                                         pressureOptions: mappedOptions
                                     });
-                                    setActiveMenu(copyDesignPrompt.to);
+                                    handleGarmentSwitch(copyDesignPrompt.to);
                                     setCopyDesignPrompt(null);
                                 }}
                                 className="flex-1 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-all"
                             >
-                                Haan, Copy Karo
+                                Ja, kopier
                             </button>
                             <button
                                 onClick={() => {
-                                    setActiveMenu(copyDesignPrompt.to);
+                                    handleGarmentSwitch(copyDesignPrompt.to);
                                     setCopyDesignPrompt(null);
                                 }}
                                 className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
                             >
-                                Nahi, Alag Rakho
+                                Nej, behold adskilt
                             </button>
                         </div>
                     </div>
@@ -1219,8 +1191,8 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             {showSaveModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
                     <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-100">
-                        <h3 className="text-lg font-bold text-slate-800 mb-1">Select Garments to Save</h3>
-                        <p className="text-sm text-slate-500 mb-5">Select items to include in your order</p>
+                        <h3 className="text-lg font-bold text-slate-800 mb-1">Vælg produkter der skal gemmes</h3>
+                        <p className="text-sm text-slate-500 mb-5">Vælg de produkter, der skal inkluderes i din bestilling</p>
                         <div className="space-y-3 mb-6">
                             {Object.entries(saveGarmentSelection).map(([type, checked]) => (
                                 <label key={type} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-green-300 cursor-pointer transition-all">
@@ -1241,20 +1213,20 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                     const selected = Object.entries(saveGarmentSelection)
                                         .filter(([, v]) => v).map(([k]) => k);
                                     if (selected.length === 0) {
-                                        message.warning("Kam az kam ek garment select karein.");
+                                        message.warning("Vælg mindst ét produkt.");
                                         return;
                                     }
                                     handleSaveOrder(selected);
                                 }}
                                 className="flex-1 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-all"
                             >
-                                Save Karein
+                                Gem
                             </button>
                             <button
                                 onClick={() => setShowSaveModal(false)}
                                 className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
                             >
-                                Cancel
+                                Annuller
                             </button>
                         </div>
                     </div>
@@ -1537,7 +1509,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                                     ) {
                                                         setCopyDesignPrompt({ from: activeMenu, to: item.name });
                                                     } else {
-                                                        setActiveMenu(item.name);
+                                                        handleGarmentSwitch(item.name);
                                                     }
                                                 }}
                                                 className={`flex items-center px-2 py-3 rounded-xl transition-all duration-200 group w-full ${activeMenu === item.name
@@ -1715,7 +1687,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 {menuItems.map((item, index) => (
                                     <button
                                         key={index}
-                                        onClick={() => setActiveMenu(item.name)}
+                                        onClick={() => handleGarmentSwitch(item.name)}
                                         className={`flex-shrink-0 flex flex-col items-center p-2 rounded-xl transition-all duration-200 min-w-[52px] ${activeMenu === item.name
                                             ? 'bg-green-50 border border-green-200 shadow-sm'
                                             : 'hover:bg-slate-50'

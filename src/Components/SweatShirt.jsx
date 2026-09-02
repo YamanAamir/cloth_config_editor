@@ -19,7 +19,27 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
   const [currentField, setCurrentField] = useState("");
 
   // Defaults
-  const selectedColor = data?.selectedColor || "Red";
+  const getInitialColor = () => {
+    if (data?.selectedColor) {
+      if (backDesigns) {
+        const hasLight = !!backDesigns.configured_file_path;
+        const hasDark = !!backDesigns.configured_file_path_2;
+        const currentMeta = colors.find(c => c.name.toLowerCase() === data.selectedColor.toLowerCase());
+        if (hasLight && !hasDark && currentMeta?.dark) return "White";
+        if (hasDark && !hasLight && currentMeta && !currentMeta.dark) return "Black";
+      }
+      return data.selectedColor;
+    }
+    if (backDesigns) {
+      const hasLight = !!backDesigns.configured_file_path;
+      const hasDark = !!backDesigns.configured_file_path_2;
+      if (hasLight && !hasDark) return "White";
+      if (hasDark && !hasLight) return "Black";
+    }
+    return "Red";
+  };
+
+  const selectedColor = getInitialColor();
   const selectedSize = data?.selectedSize || "";
 
   const initialDesignColor = colors.find(c => c.name.toLowerCase() === selectedColor.toLowerCase())?.dark ? "dark" : "light";
@@ -72,12 +92,21 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
   React.useEffect(() => {
     const handleResend = () => {
       if (lastBackDataRef.current?.diffuse) {
+        lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
         sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
       }
     };
     window.addEventListener("resendBackDesign", handleResend);
     return () => window.removeEventListener("resendBackDesign", handleResend);
-  }, []);
+  }, [isAppReady]);
+
+  // When isAppReady becomes true on page load/refresh, send back design if already rendered
+  React.useEffect(() => {
+    if (isAppReady && lastBackDataRef.current?.diffuse) {
+      lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
+      sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
+    }
+  }, [isAppReady]);
 
   const handleDesignColorChange = (newDesignColor) => {
     setDesignColor(newDesignColor);
@@ -658,7 +687,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
   };
 
   const sendBackDesign = (diffuseB64, opacityB64, color) => {
-    if (!diffuseB64 && !opacityB64) return;
+    if (!isAppReady || (!diffuseB64 && !opacityB64)) return;
 
     // Dedupe: agar same data + same color pehle hi bheja ja chuka hai, to skip
     if (
@@ -871,14 +900,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
     //   red: 'SweatShirt:red',
     //   orange: 'SweatShirt:orange',
     //   lime: 'SweatShirt:lime',
-    //   kit: 'SweatShirt:kit',
-    //   'light blue': 'SweatShirt:light blue',
-    //   turquoise: 'SweatShirt:turquoise',
-    //   navy: 'SweatShirt:navy',
-    //   black: 'SweatShirt:black',
-    //   'white (black print)': 'SweatShirt:white',
-    // };
-
+    if (!isAppReady || !selectedColor) return;
     const colorMap = {
       red: "SweatShirt:red",
       black: "SweatShirt:black",
@@ -901,16 +923,11 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
         iframe.contentWindow.postMessage(message, "*");
       }
     });
+    prevPressureOptionsRef.current = {};
   }, [selectedColor, isAppReady]);
 
-  // useEffect(() => {
-  //   if (!data?.selectedColor) {
-  //     onUpdate({ selectedColor: "Red" });
-  //   }
-  // }, []);
-
   useEffect(() => {
-    if (!selectedSize) return;
+    if (!isAppReady || !selectedSize) return;
     const message = `SweatShirt:size:${selectedSize}`;
     ["preview-iframe", "preview-iframe2"].forEach((id) => {
       const iframe = document.getElementById(id);
@@ -925,6 +942,13 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
   const renderCounterRef = React.useRef({});
 
   useEffect(() => {
+    if (isAppReady) {
+      prevPressureOptionsRef.current = {};
+    }
+  }, [isAppReady]);
+
+  useEffect(() => {
+    if (!isAppReady) return;
     const areas = ["rightChest", "leftChest", "rightSleeve", "leftSleeve"];
 
     areas.forEach((area) => {
@@ -947,12 +971,13 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
         prev.logoPre !== logoPre ||
         prev.logoCustom !== logoCustom ||
         prev.type !== type ||
-        prev.textColor !== textColor;
+        prev.textColor !== textColor ||
+        prev.color !== selectedColor;
 
       if (!hasChanged) return;
 
       // Update the ref for this area
-      prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor };
+      prevPressureOptionsRef.current[area] = { text, flag, flag2, flagCount, logoPre, logoCustom, type, textColor, color: selectedColor };
 
       // Stale result prevention ? renderCounterRef
       const currentRender = (renderCounterRef.current[area] || 0) + 1;
@@ -991,7 +1016,7 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
         });
       }, flag2, flagCount, textColor);
     });
-  }, [isAppReady, pressureOptions]);
+  }, [isAppReady, pressureOptions, selectedColor]);
 
   // const colors = [
   //   { name: "Red", value: "#DC143C", border: "#DC143C" },
