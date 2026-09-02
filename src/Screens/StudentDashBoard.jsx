@@ -225,6 +225,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             lastSentPageRef.current = pageNum;
             sendPageMessage(pageNum);
         }
+        setIsGarmentReady(false);
         setActiveMenu(newGarment);
     };
     const [garmentTab, setGarmentTab] = useState('size'); // 'size' | 'pressure'
@@ -252,6 +253,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [globalEmblem, setGlobalEmblem] = useState({ name: 'Guld', value: 'Guld', color: '#FCD34D' });
     const [isAppReady, setIsAppReady] = useState(false);
+    const [isGarmentReady, setIsGarmentReady] = useState(false);
     const [isIframeLoaded, setIsIframeLoaded] = useState(false);
     const [extraCoverReset, setExtraCoverReset] = useState(false)
     const lastSentPageRef = useRef(null);
@@ -1070,20 +1072,30 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
     // Unified message sending logic for Page switching and state synchronization
     useEffect(() => {
-        if (!isAppReady) return;
+        if (!isAppReady) {
+            setIsGarmentReady(false);
+            return;
+        }
+
         const pageNum = GARMENT_PAGE_MAP[activeMenu] || 1;
 
+        // 1. Send Page : X immediately
         if (lastSentPageRef.current !== pageNum) {
             lastSentPageRef.current = pageNum;
             sendPageMessage(pageNum);
         }
 
+        // 2. Keep other messages paused during the 1-second delay
+        setIsGarmentReady(false);
+
+        // 3. Emit all other post messages after exactly 1 second (1000ms) delay
         const timer = setTimeout(() => {
+            setIsGarmentReady(true);
             window.dispatchEvent(new Event("resendBackDesign"));
-        }, 350);
+        }, 500);
 
         return () => clearTimeout(timer);
-    }, [activeMenu, garmentTab, isAppReady]);
+    }, [activeMenu, isAppReady]);
 
     useEffect(() => {
         const handleMessage = (event) => {
@@ -1552,12 +1564,12 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                 </div>
                                 <div id="main-content" className="lg:p-6 p-3 lg:space-y-8 space-y-4">
 
-                                    {isDesktop && activeMenu === 'T-SHIRT' && <Tshirt key="tshirt" isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {isDesktop && activeMenu === "SWEATSHIRT" && <SweatShirt key="sweatshirt" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {isDesktop && activeMenu === "HOODIE" && <Hoodie key="hoodie" isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {isDesktop && activeMenu === "ZIPPERHOODIE" && <ZippedHoodie key="zipper" isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {isDesktop && activeMenu === "SWEATPANTS" && <SweatPants key="sweatpants" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                                    {isDesktop && activeMenu === "SHORTS" && <Shorts key="shorts" isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {isDesktop && activeMenu === 'T-SHIRT' && <Tshirt key="tshirt" isAppReady={isGarmentReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {isDesktop && activeMenu === "SWEATSHIRT" && <SweatShirt key="sweatshirt" isAppReady={isGarmentReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {isDesktop && activeMenu === "HOODIE" && <Hoodie key="hoodie" isAppReady={isGarmentReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {isDesktop && activeMenu === "ZIPPERHOODIE" && <ZippedHoodie key="zipper" isAppReady={isGarmentReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {isDesktop && activeMenu === "SWEATPANTS" && <SweatPants key="sweatpants" isAppReady={isGarmentReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                                    {isDesktop && activeMenu === "SHORTS" && <Shorts key="shorts" isAppReady={isGarmentReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
                                 </div>
                             </div>
                         </div>
@@ -1860,12 +1872,12 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
 
                     {/* ── Mobile Controls ── */}
                     <div className="lg:px-4 px-2 lg:pt-4 pt-2 pb-2 lg:space-y-4 space-y-2 shrink-0 md:h-full h-[21vh] overflow-y-auto custom-scrollbar-premium">
-                        {!isDesktop && activeMenu === 'T-SHIRT' && <Tshirt key="tshirt-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {!isDesktop && activeMenu === "SWEATSHIRT" && <SweatShirt key="sweatshirt-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {!isDesktop && activeMenu === "HOODIE" && <Hoodie key="hoodie-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {!isDesktop && activeMenu === "ZIPPERHOODIE" && <ZippedHoodie key="zipper-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {!isDesktop && activeMenu === "SWEATPANTS" && <SweatPants key="sweatpants-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
-                        {!isDesktop && activeMenu === "SHORTS" && <Shorts key="shorts-mobile" isAppReady={isAppReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {!isDesktop && activeMenu === 'T-SHIRT' && <Tshirt key="tshirt-mobile" isAppReady={isGarmentReady} logos={logos} data={allSelections['T-SHIRT']} onUpdate={(updates) => handleUpdateSelection('T-SHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {!isDesktop && activeMenu === "SWEATSHIRT" && <SweatShirt key="sweatshirt-mobile" isAppReady={isGarmentReady} logos={logos} data={allSelections['SWEATSHIRT']} onUpdate={(updates) => handleUpdateSelection('SWEATSHIRT', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {!isDesktop && activeMenu === "HOODIE" && <Hoodie key="hoodie-mobile" isAppReady={isGarmentReady} logos={logos} data={allSelections['HOODIE']} onUpdate={(updates) => handleUpdateSelection('HOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {!isDesktop && activeMenu === "ZIPPERHOODIE" && <ZippedHoodie key="zipper-mobile" isAppReady={isGarmentReady} logos={logos} data={allSelections['ZIPPERHOODIE']} onUpdate={(updates) => handleUpdateSelection('ZIPPERHOODIE', updates)} backDesigns={backDesigns} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {!isDesktop && activeMenu === "SWEATPANTS" && <SweatPants key="sweatpants-mobile" isAppReady={isGarmentReady} logos={logos} data={allSelections['SWEATPANTS']} onUpdate={(updates) => handleUpdateSelection('SWEATPANTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
+                        {!isDesktop && activeMenu === "SHORTS" && <Shorts key="shorts-mobile" isAppReady={isGarmentReady} logos={logos} data={allSelections['SHORTS']} onUpdate={(updates) => handleUpdateSelection('SHORTS', updates)} maxCharsText={getMaxCharsClothText()} activeTab={garmentTab} />}
                     </div>
 
                     {/* ── 3D Preview ── */}
