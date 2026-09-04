@@ -632,6 +632,11 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
     });
   };
 
+  const prevPressureOptionsRef = React.useRef({});
+  const renderCounterRef = React.useRef({});
+  const lastSentColorRef = React.useRef(null);
+  const lastSentSizeRef = React.useRef(null);
+
   useEffect(() => {
     if (!isAppReady || !selectedColor) return;
     const colorMap = {
@@ -649,6 +654,8 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
 
     const message = colorMap[selectedColor.toLowerCase()];
     if (!message) return;
+    if (lastSentColorRef.current === message) return;
+    lastSentColorRef.current = message;
 
     ["preview-iframe", "preview-iframe2"].forEach((id) => {
       const iframe = document.getElementById(id);
@@ -656,12 +663,14 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
         iframe.contentWindow.postMessage(message, "*");
       }
     });
-    prevPressureOptionsRef.current = {};
   }, [selectedColor, isAppReady]);
 
   useEffect(() => {
     if (!isAppReady || !selectedSize) return;
     const message = `T-Shirt:size:${selectedSize}`;
+    if (lastSentSizeRef.current === message) return;
+    lastSentSizeRef.current = message;
+
     ["preview-iframe", "preview-iframe2"].forEach((id) => {
       const iframe = document.getElementById(id);
       if (iframe?.contentWindow) {
@@ -669,17 +678,6 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       }
     });
   }, [selectedSize, isAppReady]);
-
-  const prevPressureOptionsRef = React.useRef({});
-  const renderCounterRef = React.useRef({});
-
-  // Reset stale comparison when the preview app becomes ready so first-load
-  // saved flags/logos are not skipped after an early pre-ready render.
-  useEffect(() => {
-    if (isAppReady) {
-      prevPressureOptionsRef.current = {};
-    }
-  }, [isAppReady]);
 
   useEffect(() => {
     if (!isAppReady) return;
@@ -836,21 +834,9 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
     });
   };
 
-  useEffect(() => {
-    const handleResend = () => {
-      if (lastBackDataRef.current?.diffuse) {
-        lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
-        sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
-      }
-    };
-    window.addEventListener("resendBackDesign", handleResend);
-    return () => window.removeEventListener("resendBackDesign", handleResend);
-  }, [isAppReady]);
-
   // When isAppReady becomes true on page load/refresh, send back design if already rendered
   useEffect(() => {
     if (isAppReady && lastBackDataRef.current?.diffuse) {
-      lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
       sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
     }
   }, [isAppReady]);
@@ -862,7 +848,9 @@ const Tshirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
       const opacityB64 = raw?.opacity || "";
       // Cache for re-send on toggle change
       lastBackDataRef.current = { diffuse: diffuseB64, opacity: opacityB64 };
-      sendBackDesign(diffuseB64, opacityB64, designColorRef.current);
+      if (isAppReady) {
+        sendBackDesign(diffuseB64, opacityB64, designColorRef.current);
+      }
     }
     if (update.backDesign !== undefined) {
       onUpdate({

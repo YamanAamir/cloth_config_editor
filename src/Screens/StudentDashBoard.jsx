@@ -259,8 +259,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
     const lastSentPageRef = useRef(null);
     const lastSentKeyRef = useRef("");
 
-    // Garment switch copy popup state
-    const [copyDesignPrompt, setCopyDesignPrompt] = useState(null); // { from, to }
 
     // --- User Initialization ---
     const userStr = localStorage.getItem("user");
@@ -834,37 +832,35 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                 next[category].selectedSize = updates.selectedSize;
             }
 
-            // Sync Pressure Options with positional mapping
+            // Sync Pressure Options within garment family (Tops <-> Tops, Bottoms <-> Bottoms)
             if (updates.pressureOptions) {
                 const pUpdates = updates.pressureOptions;
+                const TOP_GARMENTS = ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'];
+                const BOTTOM_GARMENTS = ['SWEATPANTS', 'SHORTS'];
 
-                // For SHORTS, apply updates directly without cross-category sync
-                if (category === 'SHORTS') {
-                    Object.keys(pUpdates).forEach(key => {
-                        if (next[category].pressureOptions) {
-                            next[category].pressureOptions[key] = pUpdates[key];
-                        }
-                    });
-                } else {
-                    // Sirf backDesign cross-garment sync hoga — baaki sab sirf active category pe
+                const isTop = TOP_GARMENTS.includes(category);
+                const isBottom = BOTTOM_GARMENTS.includes(category);
+                const targetGarments = isTop ? TOP_GARMENTS : isBottom ? BOTTOM_GARMENTS : [category];
+
+                targetGarments.forEach(garment => {
+                    if (!next[garment]) return;
+                    if (!next[garment].pressureOptions) next[garment].pressureOptions = {};
+
                     Object.keys(pUpdates).forEach(key => {
                         if (key === 'backDesign') {
-                            const val = pUpdates[key];
-                            ['T-SHIRT', 'SWEATSHIRT', 'HOODIE', 'ZIPPERHOODIE'].forEach(cat => {
-                                if (next[cat]) next[cat].pressureOptions.backDesign = val;
-                            });
+                            if (isTop) {
+                                next[garment].pressureOptions.backDesign = pUpdates[key];
+                            }
                             return;
                         }
 
-                        // Baaki sab updates sirf active category pe apply karo — NO cross-garment sync
-                        if (next[category].pressureOptions && next[category].pressureOptions.hasOwnProperty(key)) {
-                            next[category].pressureOptions[key] = pUpdates[key];
-                        } else if (next[category].pressureOptions) {
-                            // Key exist nahi karti toh bhi set karo (naye fields ke liye)
-                            next[category].pressureOptions[key] = pUpdates[key];
+                        // Apply to target garment if the field exists in its default schema or if it's the active category
+                        const targetDefaults = DEFAULT_SELECTIONS[garment]?.pressureOptions;
+                        if (garment === category || (targetDefaults && targetDefaults.hasOwnProperty(key))) {
+                            next[garment].pressureOptions[key] = pUpdates[key];
                         }
                     });
-                }
+                });
             }
 
             // Apply any non-sync updates directly
@@ -1085,16 +1081,17 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
             sendPageMessage(pageNum);
         }
 
-        // 2. Keep other messages paused during the 1-second delay
+        // 2. Keep other messages paused during model transition delay
         setIsGarmentReady(false);
 
-        // 3. Emit all other post messages after exactly 1 second (1000ms) delay
+        // 3. Emit all other post messages once after delay (800ms for WebGL model transition)
         const timer = setTimeout(() => {
             setIsGarmentReady(true);
-            window.dispatchEvent(new Event("resendBackDesign"));
-        }, 500);
+        }, 800);
 
-        return () => clearTimeout(timer);
+        return () => {
+            clearTimeout(timer);
+        };
     }, [activeMenu, isAppReady]);
 
     useEffect(() => {
@@ -1151,53 +1148,6 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                 okButtonProps={{ style: { backgroundColor: '#008235', color: '#fff' } }}
                 cancelButtonProps={{ style: { color: '#008235' } }} />
 
-            {/* ── Copy Design Prompt Modal ── */}
-            {copyDesignPrompt && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-100">
-                        <h3 className="text-lg font-bold text-slate-800 mb-2">
-                            Kopier design?
-                        </h3>
-                        <p className="text-sm text-slate-500 mb-6">
-                            Du har konfigureret en <span className="font-bold text-green-700">{copyDesignPrompt.from}</span>.
-                            Vil du også kopiere dette design til <span className="font-bold text-green-700">{copyDesignPrompt.to}</span>?
-                        </p>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => {
-                                    // Copy pressureOptions from source to target — via handleUpdateSelection
-                                    // taake customizations (parent state) bhi update ho aur localStorage autosave/undo history ke saath sync rahe
-                                    // Field names bhi target garment ke schema mein translate hote hain (Chest<->Leg), warna
-                                    // SHORTS/SWEATPANTS jaise garments pe chest/sleeve fields ghuskar pollute kar dete hain
-                                    const sourceData = allSelections[copyDesignPrompt.from];
-                                    const mappedOptions = mapPressureOptionsForGarment(
-                                        sourceData.pressureOptions,
-                                        copyDesignPrompt.from,
-                                        copyDesignPrompt.to
-                                    );
-                                    handleUpdateSelection(copyDesignPrompt.to, {
-                                        pressureOptions: mappedOptions
-                                    });
-                                    handleGarmentSwitch(copyDesignPrompt.to);
-                                    setCopyDesignPrompt(null);
-                                }}
-                                className="flex-1 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-all"
-                            >
-                                Ja, kopier
-                            </button>
-                            <button
-                                onClick={() => {
-                                    handleGarmentSwitch(copyDesignPrompt.to);
-                                    setCopyDesignPrompt(null);
-                                }}
-                                className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
-                            >
-                                Nej, behold adskilt
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* ── Save Design — Garment Selection Modal ── */}
             {showSaveModal && (
@@ -1509,21 +1459,7 @@ const StudentDashboard = ({ customizations, setCustomizations, setShowBackPopup,
                                         {menuItems.map((item, index) => (
                                             <button
                                                 key={index}
-                                                onClick={() => {
-                                                    // Agar current garment configured hai aur naya garment configured nahi
-                                                    // toh copy karne ka poochho
-                                                    const currentConfigured = isGarmentConfigured(activeMenu, allSelections[activeMenu]);
-                                                    const targetConfigured = isGarmentConfigured(item.name, allSelections[item.name]);
-                                                    if (
-                                                        item.name !== activeMenu &&
-                                                        currentConfigured &&
-                                                        !targetConfigured
-                                                    ) {
-                                                        setCopyDesignPrompt({ from: activeMenu, to: item.name });
-                                                    } else {
-                                                        handleGarmentSwitch(item.name);
-                                                    }
-                                                }}
+                                                onClick={() => handleGarmentSwitch(item.name)}
                                                 className={`flex items-center px-2 py-3 rounded-xl transition-all duration-200 group w-full ${activeMenu === item.name
                                                     ? 'bg-gradient-to-r from-green-50 to-green-50 border border-green-200 shadow-sm'
                                                     : 'hover:bg-slate-50 hover:shadow-sm'

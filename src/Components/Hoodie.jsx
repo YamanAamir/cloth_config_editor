@@ -84,20 +84,9 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
   const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" }); // cache last canvas data
   const lastSentBackRef = React.useRef({ diffuse: "", opacity: "", color: "" }); // dedupe: last actually SENT data
 
-  React.useEffect(() => {
-    const handleResend = () => {
-      if (lastBackDataRef.current?.diffuse) {
-        lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
-        sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
-      }
-    };
-    window.addEventListener("resendBackDesign", handleResend);
-    return () => window.removeEventListener("resendBackDesign", handleResend);
-  }, [isAppReady]);
-
+  // When isAppReady becomes true on page load/refresh, send back design if already rendered
   React.useEffect(() => {
     if (isAppReady && lastBackDataRef.current?.diffuse) {
-      lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
       sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
     }
   }, [isAppReady]);
@@ -673,29 +662,29 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
     }
   }, [logos]);
 
+  const prevRef = React.useRef({});
+  const renderCounterRef = React.useRef({});
+  const lastSentColorRef = React.useRef(null);
+  const lastSentSizeRef = React.useRef(null);
+
   useEffect(() => {
     if (!isAppReady || !selectedColor) return;
     const m = { red: "Hoodie:red", black: "Hoodie:black", white: "Hoodie:white", natural: "Hoodie:natural", "heather grey": "Hoodie:heatherGrey", navy: "Hoodie:navy", "light pink": "Hoodie:lightPink", "olive green": "Hoodie:oliveGreen", blue: "Hoodie:blue", purple: "Hoodie:purple" };
     const msg = m[selectedColor.toLowerCase()]; if (!msg) return;
-    ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(msg, "*"); });
+    if (lastSentColorRef.current === msg) return;
+    lastSentColorRef.current = msg;
 
-    // When color changes, reset texture cache so textures re-apply over the new material
-    prevRef.current = {};
+    ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(msg, "*"); });
   }, [selectedColor, isAppReady]);
 
   useEffect(() => {
     if (!isAppReady || !selectedSize) return;
-    ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(`Hoodie:size:${selectedSize}`, "*"); });
+    const msg = `Hoodie:size:${selectedSize}`;
+    if (lastSentSizeRef.current === msg) return;
+    lastSentSizeRef.current = msg;
+
+    ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(msg, "*"); });
   }, [selectedSize, isAppReady]);
-
-  const prevRef = React.useRef({});
-  const renderCounterRef = React.useRef({});
-
-  useEffect(() => {
-    if (isAppReady) {
-      prevRef.current = {};
-    }
-  }, [isAppReady]);
 
   useEffect(() => {
     if (!isAppReady) return;
@@ -1127,7 +1116,9 @@ const Hoodie = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsText =
             const diffuseB64 = raw?.diffuse || "";
             const opacityB64 = raw?.opacity || "";
             lastBackDataRef.current = { diffuse: diffuseB64, opacity: opacityB64 };
-            sendBackDesign(diffuseB64, opacityB64, designColorRef.current);
+            if (isAppReady) {
+              sendBackDesign(diffuseB64, opacityB64, designColorRef.current);
+            }
           }
           if (u.backDesign !== undefined) onUpdate({ pressureOptions: { ...pressureOptions, backDesign: u.backDesign } });
         }} />

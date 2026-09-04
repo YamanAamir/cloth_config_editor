@@ -89,21 +89,9 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
   const lastBackDataRef = React.useRef({ diffuse: "", opacity: "" }); // cache last canvas data
   const lastSentBackRef = React.useRef({ diffuse: "", opacity: "", color: "" }); // dedupe: last actually SENT data
 
-  React.useEffect(() => {
-    const handleResend = () => {
-      if (lastBackDataRef.current?.diffuse) {
-        lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
-        sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
-      }
-    };
-    window.addEventListener("resendBackDesign", handleResend);
-    return () => window.removeEventListener("resendBackDesign", handleResend);
-  }, [isAppReady]);
-
   // When isAppReady becomes true on page load/refresh, send back design if already rendered
   React.useEffect(() => {
     if (isAppReady && lastBackDataRef.current?.diffuse) {
-      lastSentBackRef.current = { diffuse: "", opacity: "", color: "" };
       sendBackDesign(lastBackDataRef.current.diffuse, lastBackDataRef.current.opacity, designColorRef.current);
     }
   }, [isAppReady]);
@@ -893,13 +881,15 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
     });
   };
 
+  // Ref to track previous options to prevent unnecessary updates
+  const prevPressureOptionsRef = React.useRef({});
+  const renderCounterRef = React.useRef({});
+  const lastSentColorRef = React.useRef(null);
+  const lastSentSizeRef = React.useRef(null);
+
   // -- Effects --------------------------------------------------------------
 
   useEffect(() => {
-    // const colorMap = {
-    //   red: 'SweatShirt:red',
-    //   orange: 'SweatShirt:orange',
-    //   lime: 'SweatShirt:lime',
     if (!isAppReady || !selectedColor) return;
     const colorMap = {
       red: "SweatShirt:red",
@@ -916,6 +906,8 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
 
     const message = colorMap[selectedColor.toLowerCase()];
     if (!message) return;
+    if (lastSentColorRef.current === message) return;
+    lastSentColorRef.current = message;
 
     ["preview-iframe", "preview-iframe2"].forEach((id) => {
       const iframe = document.getElementById(id);
@@ -923,12 +915,14 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
         iframe.contentWindow.postMessage(message, "*");
       }
     });
-    prevPressureOptionsRef.current = {};
   }, [selectedColor, isAppReady]);
 
   useEffect(() => {
     if (!isAppReady || !selectedSize) return;
     const message = `SweatShirt:size:${selectedSize}`;
+    if (lastSentSizeRef.current === message) return;
+    lastSentSizeRef.current = message;
+
     ["preview-iframe", "preview-iframe2"].forEach((id) => {
       const iframe = document.getElementById(id);
       if (iframe?.contentWindow) {
@@ -936,16 +930,6 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
       }
     });
   }, [selectedSize, isAppReady]);
-
-  // Ref to track previous options to prevent unnecessary updates
-  const prevPressureOptionsRef = React.useRef({});
-  const renderCounterRef = React.useRef({});
-
-  useEffect(() => {
-    if (isAppReady) {
-      prevPressureOptionsRef.current = {};
-    }
-  }, [isAppReady]);
 
   useEffect(() => {
     if (!isAppReady) return;
@@ -1283,7 +1267,9 @@ const SweatShirt = ({ data, onUpdate, isAppReady, logos, backDesigns, maxCharsTe
               const diffuseB64 = raw?.diffuse || "";
               const opacityB64 = raw?.opacity || "";
               lastBackDataRef.current = { diffuse: diffuseB64, opacity: opacityB64 };
-              sendBackDesign(diffuseB64, opacityB64, designColorRef.current);
+              if (isAppReady) {
+                sendBackDesign(diffuseB64, opacityB64, designColorRef.current);
+              }
             }
             if (update.backDesign !== undefined) {
               onUpdate({

@@ -465,6 +465,11 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
     if (!data?.selectedColor) onUpdate({ selectedColor: "Heather Grey" });
   }, []);
 
+  const prevRef = React.useRef({});
+  const renderCounterRef = React.useRef({});
+  const lastSentColorRef = React.useRef(null);
+  const lastSentSizeRef = React.useRef(null);
+
   useEffect(() => {
     if (!isAppReady || !selectedColor) return;
     const colorMap = {
@@ -475,24 +480,20 @@ const Shorts = ({ data, onUpdate, isAppReady, logos, maxCharsText = 25, activeTa
     };
     const msg = colorMap[selectedColor.toLowerCase()];
     if (!msg) return;
+    if (lastSentColorRef.current === msg) return;
+    lastSentColorRef.current = msg;
+
     ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(msg, "*"); });
-    prevRef.current = {};
   }, [selectedColor, isAppReady]);
 
   useEffect(() => {
     if (!isAppReady || !selectedSize) return;
     const msg = `Short:size:${selectedSize}`;
+    if (lastSentSizeRef.current === msg) return;
+    lastSentSizeRef.current = msg;
+
     ["preview-iframe", "preview-iframe2"].forEach(id => { const f = document.getElementById(id); if (f?.contentWindow) f.contentWindow.postMessage(msg, "*"); });
   }, [selectedSize, isAppReady]);
-
-  const prevRef = React.useRef({});
-  const renderCounterRef = React.useRef({});
-
-  useEffect(() => {
-    if (isAppReady) {
-      prevRef.current = {};
-    }
-  }, [isAppReady]);
 
   useEffect(() => {
     if (!isAppReady) return;
